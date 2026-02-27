@@ -33,6 +33,62 @@ public class TranscodeEngineTests
     }
 
     [Fact]
+    public void ProcessWithProbeResult_WhenProbeProvided_BuildsCommandAndSkipsProbeReader()
+    {
+        var (sut, probeReader, _) = CreateSut();
+        var request = new TranscodeRequest(InputPath: "C:\\video\\a.mp4");
+        var probe = CreateProbe(codec: "h264", audioCodec: "aac", height: 1080);
+
+        var actual = sut.ProcessWithProbeResult(request, probe);
+
+        probeReader.DidNotReceive().Read(Arg.Any<string>());
+        actual.Should().StartWith("ffmpeg -hide_banner");
+        actual.Should().Contain("-map 0:v:0 -c:v copy");
+    }
+
+    [Fact]
+    public void ProcessWithProbeResult_WhenProbeIsNull_ReturnsFfprobeFailedRemAndSkipsProbeReader()
+    {
+        var (sut, probeReader, _) = CreateSut();
+        var request = new TranscodeRequest(InputPath: "C:\\video\\a.mp4");
+
+        var actual = sut.ProcessWithProbeResult(request, null);
+
+        probeReader.DidNotReceive().Read(Arg.Any<string>());
+        actual.Should().Be("REM ffprobe failed: C:\\video\\a.mp4");
+    }
+
+    [Fact]
+    public void ProcessWithProbeJson_WhenProbeJsonValid_BuildsCommandAndSkipsProbeReader()
+    {
+        var (sut, probeReader, _) = CreateSut();
+        var request = new TranscodeRequest(InputPath: "C:\\video\\a.mp4");
+        var probeJson = CreateProbeJson();
+
+        var actual = sut.ProcessWithProbeJson(request, probeJson);
+
+        probeReader.DidNotReceive().Read(Arg.Any<string>());
+        actual.Should().StartWith("ffmpeg -hide_banner");
+        actual.Should().Contain("-map 0:v:0 -c:v copy");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("{invalid")]
+    public void ProcessWithProbeJson_WhenProbeJsonInvalid_ReturnsFfprobeFailedRemAndSkipsProbeReader(string? probeJson)
+    {
+        var (sut, probeReader, _) = CreateSut();
+        var request = new TranscodeRequest(InputPath: "C:\\video\\a.mp4");
+
+        var actual = sut.ProcessWithProbeJson(request, probeJson);
+
+        probeReader.DidNotReceive().Read(Arg.Any<string>());
+        actual.Should().Be("REM ffprobe failed: C:\\video\\a.mp4");
+    }
+
+    [Fact]
     public void Process_WhenNoVideoStream_ReturnsNoVideoRem()
     {
         var (sut, probeReader, _) = CreateSut();
@@ -291,6 +347,30 @@ public class TranscodeEngineTests
                 new ProbeStream("video", codec, Width: 1920, Height: height),
                 new ProbeStream("audio", audioCodec)
             });
+    }
+
+    private static string CreateProbeJson()
+    {
+        return """
+               {
+                 "format": {
+                   "duration": "600.0",
+                   "bit_rate": "6000000"
+                 },
+                 "streams": [
+                   {
+                     "codec_type": "video",
+                     "codec_name": "h264",
+                     "width": 1920,
+                     "height": 1080
+                   },
+                   {
+                     "codec_type": "audio",
+                     "codec_name": "aac"
+                   }
+                 ]
+               }
+               """;
     }
 
     private static TranscodePolicyConfig CreateConfigWithoutBuckets()

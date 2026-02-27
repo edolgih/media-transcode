@@ -34,6 +34,25 @@ public sealed class TranscodeEngine
 
     public string Process(TranscodeRequest request)
     {
+        return ProcessCore(request, probeOverride: null, useProbeOverride: false);
+    }
+
+    public string ProcessWithProbeResult(TranscodeRequest request, ProbeResult? probe)
+    {
+        return ProcessCore(request, probeOverride: probe, useProbeOverride: true);
+    }
+
+    public string ProcessWithProbeJson(TranscodeRequest request, string? probeJson)
+    {
+        var parsedProbe = ProbeJsonParser.Parse(probeJson);
+        return ProcessCore(request, parsedProbe, useProbeOverride: true);
+    }
+
+    private string ProcessCore(
+        TranscodeRequest request,
+        ProbeResult? probeOverride,
+        bool useProbeOverride)
+    {
         ArgumentNullException.ThrowIfNull(request);
 
         var fileName = request.InputPath;
@@ -60,7 +79,9 @@ public sealed class TranscodeEngine
                 : $"REM Downscale 720 not implemented: {fileName}";
         }
 
-        var probe = _probeReader.Read(fileName);
+        var probe = useProbeOverride
+            ? probeOverride
+            : _probeReader.Read(fileName);
         if (probe is null || probe.Streams.Count == 0)
         {
             return request.Info
