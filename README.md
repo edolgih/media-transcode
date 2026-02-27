@@ -14,6 +14,7 @@
 ## Repository layout
 
 - `src/MediaTranscodeEngine.Core` - engine, policy, command builder, infrastructure adapters
+- `src/MediaTranscodeEngine.Cli` - console host for engine commands (no in-process DLL loading in PowerShell)
 - `src/MediaTranscodeEngine.Core/Infrastructure/Profiles/ToMkvGPU.576.Profiles.yaml` - default 576 profile config
 - `tests/MediaTranscodeEngine.Core.Tests` - xUnit/NSubstitute/FluentAssertions tests
 - `docs/ToMkvGPU.Baseline.md` - baseline parity scenarios
@@ -42,4 +43,18 @@ Notes:
 dotnet restore
 dotnet build
 dotnet test
+```
+
+## CLI usage
+
+Generate ToMkvGPU commands from explicit files:
+
+```bash
+dotnet run --project src/MediaTranscodeEngine.Cli -- tomkvgpu --input "F:\2. Мульты\Зверополис.mkv" --force-video-encode
+```
+
+Generate commands from piped paths (one path per line):
+
+```bash
+some_path_producer | dotnet run --project src/MediaTranscodeEngine.Cli -- tomkvgpu --info
 ```
