@@ -7,9 +7,14 @@ public sealed class StaticProfileRepository : IProfileRepository
 {
     private readonly TranscodePolicyConfig _config;
 
-    public StaticProfileRepository(TranscodePolicyConfig? config = null)
+    public StaticProfileRepository()
+        : this(CreateDefaultConfig())
     {
-        _config = config ?? CreateDefaultConfig();
+    }
+
+    public StaticProfileRepository(TranscodePolicyConfig config)
+    {
+        _config = config ?? throw new ArgumentNullException(nameof(config));
     }
 
     public TranscodePolicyConfig Get576Config() => _config;
