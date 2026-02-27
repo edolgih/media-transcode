@@ -24,4 +24,17 @@
     <ProjectReference Include="..\..\src\MediaTranscodeEngine.Core\MediaTranscodeEngine.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\src\MediaTranscodeEngine.Core\Infrastructure\Profiles\ToMkvGPU.576.Profiles.yaml">
+      <Link>TestData\ToMkvGPU.576.Profiles.yaml</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\invalid.config.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\invalid.syntax.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
