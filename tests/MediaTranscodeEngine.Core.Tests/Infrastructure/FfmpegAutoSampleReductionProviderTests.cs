@@ -93,6 +93,43 @@ public class FfmpegAutoSampleReductionProviderTests
         }
     }
 
+    [Fact]
+    public void EstimateAccurate_WhenDefaultSampleDurationIsUsed_Uses15SecondWindow()
+    {
+        var inputPath = CreateTempFileWithLength(24_000_000);
+        try
+        {
+            var probeReader = Substitute.For<IProbeReader>();
+            probeReader.Read(inputPath).Returns(new ProbeResult(
+                Format: new ProbeFormat(DurationSeconds: 1_200, BitrateBps: 4_000_000),
+                Streams: [new ProbeStream("video", "h264", Width: 1280, Height: 720)]));
+
+            var processRunner = new ScriptedProcessRunner(encodedSampleSizesBytes: [150_000]);
+            var sut = new FfmpegAutoSampleReductionProvider(
+                probeReader,
+                processRunner,
+                ffmpegPath: "ffmpeg",
+                timeoutMs: 30_000,
+                sampleEncodeInactivityTimeoutMs: 12_000,
+                nvencPreset: "p6");
+
+            var actual = sut.EstimateAccurate(new AutoSampleReductionInput(
+                InputPath: inputPath,
+                Cq: 23,
+                Maxrate: 2.0,
+                Bufsize: 4.0));
+
+            actual.Should().NotBeNull();
+            actual!.Value.Should().BeApproximately(50.0, 0.01);
+            processRunner.Calls.Should().ContainSingle();
+            processRunner.Calls[0].Should().Contain("-t 15 ");
+        }
+        finally
+        {
+            TryDelete(inputPath);
+        }
+    }
+
     [Theory]
     [InlineData(1_200, 1)]
     [InlineData(2_400, 2)]
@@ -158,23 +195,138 @@ public class FfmpegAutoSampleReductionProviderTests
         }
     }
 
+    [Fact]
+    public void EstimateAccurate_WhenFirstAttemptFailsAndRetrySucceeds_ReturnsReduction()
+    {
+        var inputPath = CreateTempFileWithLength(120_000_000);
+        try
+        {
+            var probeReader = Substitute.For<IProbeReader>();
+            probeReader.Read(inputPath).Returns(new ProbeResult(
+                Format: new ProbeFormat(DurationSeconds: 7200, BitrateBps: 6_000_000),
+                Streams: [new ProbeStream("video", "h264", Width: 1920, Height: 1080)]));
+
+            var processRunner = new ScriptedProcessRunner(
+                encodedSampleSizesBytes: [500_000, 500_000, 500_000],
+                failOnCallNumbers: [1]);
+            var sut = CreateSut(probeReader, processRunner, sampleEncodeMaxRetries: 1);
+
+            var actual = sut.EstimateAccurate(new AutoSampleReductionInput(
+                InputPath: inputPath,
+                Cq: 24,
+                Maxrate: 2.4,
+                Bufsize: 4.8));
+
+            actual.Should().NotBeNull();
+            actual!.Value.Should().BeApproximately(50.0, 0.01);
+            processRunner.Calls.Count.Should().Be(4);
+        }
+        finally
+        {
+            TryDelete(inputPath);
+        }
+    }
+
+    [Fact]
+    public void EstimateAccurate_WhenAttemptsExhausted_ReturnsNull()
+    {
+        var inputPath = CreateTempFileWithLength(24_000_000);
+        try
+        {
+            var probeReader = Substitute.For<IProbeReader>();
+            probeReader.Read(inputPath).Returns(new ProbeResult(
+                Format: new ProbeFormat(DurationSeconds: 1_200, BitrateBps: 4_000_000),
+                Streams: [new ProbeStream("video", "h264", Width: 1280, Height: 720)]));
+
+            var processRunner = new ScriptedProcessRunner(
+                encodedSampleSizesBytes: [300_000],
+                failOnCallNumbers: [1, 2]);
+            var sut = CreateSut(probeReader, processRunner, sampleEncodeMaxRetries: 1);
+
+            var actual = sut.EstimateAccurate(new AutoSampleReductionInput(
+                InputPath: inputPath,
+                Cq: 23,
+                Maxrate: 2.0,
+                Bufsize: 4.0));
+
+            actual.Should().BeNull();
+            processRunner.Calls.Count.Should().Be(2);
+        }
+        finally
+        {
+            TryDelete(inputPath);
+        }
+    }
+
+    [Fact]
+    public void EstimateAccurate_WhenCalled_UsesInputDirectoryWorkSubfolderAndCleansItUp()
+    {
+        var testDir = Path.Combine(Path.GetTempPath(), $"mte-provider-workdir-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(testDir);
+        var inputPath = CreateTempFileWithLength(120_000_000, testDir);
+
+        try
+        {
+            var probeReader = Substitute.For<IProbeReader>();
+            probeReader.Read(inputPath).Returns(new ProbeResult(
+                Format: new ProbeFormat(DurationSeconds: 7_200, BitrateBps: 6_000_000),
+                Streams: [new ProbeStream("video", "h264", Width: 1920, Height: 1080)]));
+
+            var processRunner = new ScriptedProcessRunner(
+                encodedSampleSizesBytes: [500_000, 500_000, 500_000]);
+            var sut = CreateSut(probeReader, processRunner);
+
+            var actual = sut.EstimateAccurate(new AutoSampleReductionInput(
+                InputPath: inputPath,
+                Cq: 24,
+                Maxrate: 2.4,
+                Bufsize: 4.8));
+
+            actual.Should().NotBeNull();
+            processRunner.OutputPaths.Should().NotBeEmpty();
+            processRunner.OutputPaths.Should().OnlyContain(path =>
+                path.StartsWith(testDir, StringComparison.OrdinalIgnoreCase) &&
+                path.Contains(".mte-autosample-", StringComparison.OrdinalIgnoreCase));
+
+            var workDirs = processRunner.OutputPaths
+                .Select(Path.GetDirectoryName)
+                .Where(static p => !string.IsNullOrWhiteSpace(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            workDirs.Should().HaveCount(1);
+            Directory.Exists(workDirs[0]!).Should().BeFalse();
+        }
+        finally
+        {
+            TryDelete(inputPath);
+            TryDeleteDirectory(testDir);
+        }
+    }
+
     private static FfmpegAutoSampleReductionProvider CreateSut(
         IProbeReader probeReader,
-        IProcessRunner processRunner)
+        IProcessRunner processRunner,
+        int sampleEncodeMaxRetries = 0)
     {
         return new FfmpegAutoSampleReductionProvider(
             probeReader,
             processRunner,
             ffmpegPath: "ffmpeg",
             timeoutMs: 30_000,
+            sampleEncodeInactivityTimeoutMs: 12_000,
             sampleDurationSeconds: 60,
-            nvencPreset: "p6");
+            nvencPreset: "p6",
+            sampleEncodeMaxRetries: sampleEncodeMaxRetries);
     }
 
-    private static string CreateTempFileWithLength(long lengthBytes)
+    private static string CreateTempFileWithLength(long lengthBytes, string? directoryPath = null)
     {
+        var directory = string.IsNullOrWhiteSpace(directoryPath) ? Path.GetTempPath() : directoryPath;
+        Directory.CreateDirectory(directory);
+
         var path = Path.Combine(
-            Path.GetTempPath(),
+            directory,
             $"mte-provider-test-{Guid.NewGuid():N}.mkv");
 
         using var stream = File.Open(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
@@ -197,6 +349,21 @@ public class FfmpegAutoSampleReductionProviderTests
         }
     }
 
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch
+        {
+            // Best effort cleanup for temporary test artifacts.
+        }
+    }
+
     private sealed class ScriptedProcessRunner(
         IReadOnlyList<long> encodedSampleSizesBytes,
         IReadOnlyList<int>? failOnCallNumbers = null) : IProcessRunner
@@ -204,6 +371,7 @@ public class FfmpegAutoSampleReductionProviderTests
         private readonly Queue<long> _remainingSizes = new(encodedSampleSizesBytes);
         private readonly HashSet<int> _failOnCalls = new(failOnCallNumbers ?? []);
         public List<string> Calls { get; } = [];
+        public List<string> OutputPaths { get; } = [];
 
         public ProcessRunResult Run(string fileName, string arguments, int timeoutMs = 30_000)
         {
@@ -226,6 +394,7 @@ public class FfmpegAutoSampleReductionProviderTests
                     StdErr: "output path not found");
             }
 
+            OutputPaths.Add(outputPath);
             var size = _remainingSizes.Count > 0 ? _remainingSizes.Dequeue() : 1_024;
             var directory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrWhiteSpace(directory))
@@ -240,6 +409,15 @@ public class FfmpegAutoSampleReductionProviderTests
                 ExitCode: 0,
                 StdOut: string.Empty,
                 StdErr: string.Empty);
+        }
+
+        public ProcessRunResult RunWithInactivityTimeout(
+            string fileName,
+            string arguments,
+            int timeoutMs = 30_000,
+            int inactivityTimeoutMs = 0)
+        {
+            return Run(fileName, arguments, timeoutMs);
         }
 
         private static string ExtractLastQuotedToken(string arguments)

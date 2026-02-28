@@ -4,8 +4,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaTranscodeEngine.Core",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaTranscodeEngine.Core.Tests", "tests\MediaTranscodeEngine.Core.Tests\MediaTranscodeEngine.Core.Tests.csproj", "{EF06E1A0-D0B7-45F0-B4DA-37EF260682BC}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaTranscodeEngine.Cli", "src\MediaTranscodeEngine.Cli\MediaTranscodeEngine.Cli.csproj", "{97E9300D-D5FB-4BC0-9E84-C4C3C809D367}"
 EndProject
 Global
@@ -57,8 +55,5 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{97E9300D-D5FB-4BC0-9E84-C4C3C809D367} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

@@ -11,16 +11,20 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
     private readonly IProcessRunner _processRunner;
     private readonly string _ffmpegPath;
     private readonly int _timeoutMs;
+    private readonly int _sampleEncodeInactivityTimeoutMs;
     private readonly int _sampleDurationSeconds;
     private readonly string _nvencPreset;
+    private readonly int _sampleEncodeMaxRetries;
 
     public FfmpegAutoSampleReductionProvider(
         IProbeReader probeReader,
         IProcessRunner processRunner,
         string ffmpegPath = "ffmpeg",
         int timeoutMs = 30_000,
-        int sampleDurationSeconds = 60,
-        string nvencPreset = "p6")
+        int sampleEncodeInactivityTimeoutMs = 12_000,
+        int sampleDurationSeconds = 15,
+        string nvencPreset = "p6",
+        int sampleEncodeMaxRetries = 0)
     {
         ArgumentNullException.ThrowIfNull(probeReader);
         ArgumentNullException.ThrowIfNull(processRunner);
@@ -36,12 +40,24 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
             throw new ArgumentOutOfRangeException(nameof(sampleDurationSeconds), "Sample duration must be greater than zero.");
         }
 
+        if (sampleEncodeInactivityTimeoutMs <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sampleEncodeInactivityTimeoutMs), "Inactivity timeout must be greater than zero.");
+        }
+
+        if (sampleEncodeMaxRetries < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sampleEncodeMaxRetries), "Retry count cannot be negative.");
+        }
+
         _probeReader = probeReader;
         _processRunner = processRunner;
         _ffmpegPath = ffmpegPath;
         _timeoutMs = timeoutMs;
+        _sampleEncodeInactivityTimeoutMs = sampleEncodeInactivityTimeoutMs;
         _sampleDurationSeconds = sampleDurationSeconds;
         _nvencPreset = nvencPreset;
+        _sampleEncodeMaxRetries = sampleEncodeMaxRetries;
     }
 
     public double? EstimateAccurate(AutoSampleReductionInput input)
@@ -57,46 +73,79 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
             return null;
         }
 
-        long encodedBytesTotal = 0;
-        double sourceWindowBytesTotal = 0;
-        foreach (var window in windows)
+        var sampleWorkDir = CreateSampleWorkDirectory(input.InputPath);
+        try
         {
-            var outputPath = Path.Combine(
-                Path.GetTempPath(),
-                $"mte-autosample-{Guid.NewGuid():N}.mkv");
-
-            try
+            long encodedBytesTotal = 0;
+            double sourceWindowBytesTotal = 0;
+            for (var index = 0; index < windows.Count; index++)
             {
-                var arguments = BuildSampleEncodeArguments(
-                    input.InputPath,
-                    outputPath,
-                    input,
-                    window.StartSeconds,
-                    window.DurationSeconds);
+                var window = windows[index];
+                var outputPath = Path.Combine(
+                    sampleWorkDir,
+                    $"sample-{index + 1}-{Guid.NewGuid():N}.mkv");
 
-                var run = _processRunner.Run(_ffmpegPath, arguments, _timeoutMs);
-                if (run.ExitCode != 0 || !File.Exists(outputPath))
+                try
                 {
-                    return null;
+                    if (!TryRunSampleEncode(input, window.StartSeconds, window.DurationSeconds, outputPath))
+                    {
+                        return null;
+                    }
+
+                    var encodedBytes = new FileInfo(outputPath).Length;
+                    encodedBytesTotal += encodedBytes;
+                    sourceWindowBytesTotal += sourceBytes * (window.DurationSeconds / durationSeconds);
                 }
-
-                var encodedBytes = new FileInfo(outputPath).Length;
-                encodedBytesTotal += encodedBytes;
-                sourceWindowBytesTotal += sourceBytes * (window.DurationSeconds / durationSeconds);
+                finally
+                {
+                    TryDelete(outputPath);
+                }
             }
-            finally
+
+            if (sourceWindowBytesTotal <= 0)
             {
-                TryDelete(outputPath);
+                return null;
             }
-        }
 
-        if (sourceWindowBytesTotal <= 0)
+            var reduction = (1d - encodedBytesTotal / sourceWindowBytesTotal) * 100d;
+            return Math.Round(reduction, 3, MidpointRounding.AwayFromZero);
+        }
+        finally
         {
-            return null;
+            TryDeleteDirectory(sampleWorkDir);
+        }
+    }
+
+    private bool TryRunSampleEncode(
+        AutoSampleReductionInput input,
+        double startSeconds,
+        double durationSeconds,
+        string outputPath)
+    {
+        var arguments = BuildSampleEncodeArguments(
+            input.InputPath,
+            outputPath,
+            input,
+            startSeconds,
+            durationSeconds);
+
+        var attempts = _sampleEncodeMaxRetries + 1;
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            var run = _processRunner.RunWithInactivityTimeout(
+                _ffmpegPath,
+                arguments,
+                _timeoutMs,
+                _sampleEncodeInactivityTimeoutMs);
+            if (run.ExitCode == 0 && File.Exists(outputPath))
+            {
+                return true;
+            }
+
+            TryDelete(outputPath);
         }
 
-        var reduction = (1d - encodedBytesTotal / sourceWindowBytesTotal) * 100d;
-        return Math.Round(reduction, 3, MidpointRounding.AwayFromZero);
+        return false;
     }
 
     public double? EstimateFast(AutoSampleReductionInput input)
@@ -245,6 +294,34 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         catch
         {
             // Best effort cleanup for temporary files.
+        }
+    }
+
+    private static string CreateSampleWorkDirectory(string inputPath)
+    {
+        var sourceDirectory = Path.GetDirectoryName(inputPath);
+        if (string.IsNullOrWhiteSpace(sourceDirectory))
+        {
+            sourceDirectory = Path.GetTempPath();
+        }
+
+        var workDir = Path.Combine(sourceDirectory, $".mte-autosample-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(workDir);
+        return workDir;
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch
+        {
+            // Best effort cleanup for temporary directories.
         }
     }
 
