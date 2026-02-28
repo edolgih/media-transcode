@@ -116,6 +116,69 @@ public class FfmpegCommandBuilderTests
         actual.Should().NotContain("-level:v 4.2");
     }
 
+    [Fact]
+    public void Build_WhenAudioEncodeIsDisabled_UsesAudioCopy()
+    {
+        var sut = CreateSut();
+        var input = CreateInput(
+            needVideoEncode: false,
+            needAudioEncode: false,
+            needContainer: true);
+
+        var actual = sut.Build(input);
+
+        actual.Should().Contain("-map 0:a? -c:a copy");
+        actual.Should().NotContain("-c:a aac");
+    }
+
+    [Fact]
+    public void Build_WhenAudioEncodeIsEnabled_UsesAacWithAsyncResample()
+    {
+        var sut = CreateSut();
+        var input = CreateInput(
+            needVideoEncode: false,
+            needAudioEncode: true,
+            needContainer: false);
+
+        var actual = sut.Build(input);
+
+        actual.Should().Contain("-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k");
+        actual.Should().Contain("aresample=async=1:first_pts=0");
+    }
+
+    [Fact]
+    public void Build_WhenOverlayAndSourceDimensionsAreMissing_UsesSafeDefaultDimensions()
+    {
+        var sut = CreateSut();
+        var input = CreateInput(
+            needVideoEncode: true,
+            overlayBg: true,
+            sourceWidth: null,
+            sourceHeight: null);
+
+        var actual = sut.Build(input);
+
+        actual.Should().Contain("scale=1920:-1");
+        actual.Should().Contain("crop=1920:1080");
+    }
+
+    [Fact]
+    public void Build_WhenOverlayAndSourceIsPortrait_SwapsDimensionsToLandscapeOutput()
+    {
+        var sut = CreateSut();
+        var input = CreateInput(
+            needVideoEncode: true,
+            overlayBg: true,
+            sourceWidth: 1080,
+            sourceHeight: 1920);
+
+        var actual = sut.Build(input);
+
+        actual.Should().Contain("scale=1920:-1");
+        actual.Should().Contain("crop=1920:1080");
+        actual.Should().Contain("scale=-1:1080");
+    }
+
     [Theory]
     [InlineData(true, true, false, false, true, true)]
     [InlineData(false, true, false, false, false, false)]
