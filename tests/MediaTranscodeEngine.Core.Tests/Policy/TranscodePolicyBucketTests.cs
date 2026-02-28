@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediaTranscodeEngine.Core.Infrastructure;
 using MediaTranscodeEngine.Core.Policy;
 
 namespace MediaTranscodeEngine.Core.Tests.Policy;
@@ -38,6 +39,34 @@ public class TranscodePolicyBucketTests
         var actual = sut.ResolveSourceBucket(config, sourceHeight: 901);
 
         actual.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(650, "hd_720")]
+    [InlineData(899, "hd_720")]
+    [InlineData(900, null)]
+    [InlineData(999, null)]
+    [InlineData(1000, "fhd_1080")]
+    [InlineData(1105, "fhd_1080")]
+    [InlineData(1300, "fhd_1080")]
+    [InlineData(1301, null)]
+    public void ResolveSourceBucket_WhenBoundaryHeightProvided_ReturnsExpectedBucket(
+        double sourceHeight,
+        string? expectedBucketName)
+    {
+        var sut = CreateSut();
+        var config = CreateConfigWithoutDefaultBucket();
+
+        var actual = sut.ResolveSourceBucket(config, sourceHeight);
+
+        if (expectedBucketName is null)
+        {
+            actual.Should().BeNull();
+            return;
+        }
+
+        actual.Should().NotBeNull();
+        actual!.Name.Should().Be(expectedBucketName);
     }
 
     [Fact]
@@ -91,6 +120,63 @@ public class TranscodePolicyBucketTests
         actual.MaxInclusive.Should().Be(52.0);
     }
 
+    [Fact]
+    public void ResolveQualityRange_WhenHd720BucketMatched_ReturnsHd720BucketRange()
+    {
+        var sut = CreateSut();
+        var config = CreateConfigWithoutDefaultBucket();
+
+        var actual = sut.ResolveQualityRange(
+            config,
+            contentProfile: "anime",
+            qualityProfile: "default",
+            sourceHeight: 720);
+
+        actual.Should().NotBeNull();
+        actual!.MinInclusive.Should().Be(32.0);
+        actual.MaxInclusive.Should().Be(46.0);
+    }
+
+    [Fact]
+    public void ResolveQualityRange_WhenSourceHeightMissingAndDefaultBucketHasQualityRange_UsesDefaultBucketRange()
+    {
+        var sut = CreateSut();
+        var config = CreateConfigWithDefaultBucketQualityRange();
+
+        var actual = sut.ResolveQualityRange(
+            config,
+            contentProfile: "anime",
+            qualityProfile: "default",
+            sourceHeight: null);
+
+        actual.Should().NotBeNull();
+        actual!.MinInclusive.Should().Be(20.0);
+        actual.MaxInclusive.Should().Be(30.0);
+    }
+
+    [Theory]
+    [InlineData("anime", 45.0, 60.0)]
+    [InlineData("mult", 42.0, 57.0)]
+    [InlineData("film", 35.0, 50.0)]
+    public void ResolveQualityRange_WhenUsingStaticProfilesForFhdBucket_ReturnsExpectedRange(
+        string contentProfile,
+        double expectedMin,
+        double expectedMax)
+    {
+        var sut = CreateSut();
+        var config = new StaticProfileRepository().Get576Config();
+
+        var actual = sut.ResolveQualityRange(
+            config,
+            contentProfile: contentProfile,
+            qualityProfile: "default",
+            sourceHeight: 1080);
+
+        actual.Should().NotBeNull();
+        actual!.MinInclusive.Should().Be(expectedMin);
+        actual.MaxInclusive.Should().Be(expectedMax);
+    }
+
     [Theory]
     [InlineData(0, "anime", "high", "missing corridor 'anime/high'")]
     [InlineData(1, "anime", "default", null)]
@@ -142,6 +228,25 @@ public class TranscodePolicyBucketTests
             QualityRanges: CreateGlobalQualityRanges(),
             ContentQualityRanges: new Dictionary<string, IReadOnlyDictionary<string, ReductionRange>>(StringComparer.OrdinalIgnoreCase),
             SourceBuckets: CreateSourceBuckets(includeDefault: false));
+    }
+
+    private static TranscodePolicyConfig CreateConfigWithDefaultBucketQualityRange()
+    {
+        var sourceBuckets = CreateSourceBuckets(includeDefault: false).ToList();
+        sourceBuckets.Add(new SourceBucketSettings(
+            Name: "default_bucket",
+            IsDefault: true,
+            QualityRanges: new Dictionary<string, ReductionRange>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["default"] = new ReductionRange(MinInclusive: 20.0, MaxInclusive: 30.0)
+            }));
+
+        return new TranscodePolicyConfig(
+            ContentProfiles: CreateContentProfiles(),
+            RateModel: new RateModelSettings(CqStepToMaxrateStep: 0.4, BufsizeMultiplier: 2.0),
+            QualityRanges: CreateGlobalQualityRanges(),
+            ContentQualityRanges: CreateGlobalContentQualityRanges(),
+            SourceBuckets: sourceBuckets);
     }
 
     private static TranscodePolicyConfig CreateConfigForBucketValidation()
