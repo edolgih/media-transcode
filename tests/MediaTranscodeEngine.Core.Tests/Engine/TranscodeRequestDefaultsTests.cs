@@ -3,12 +3,12 @@ using MediaTranscodeEngine.Core.Engine;
 
 namespace MediaTranscodeEngine.Core.Tests.Engine;
 
-public class UnifiedTranscodeRequestTests
+public class TranscodeRequestTests
 {
     [Fact]
     public void Create_WhenInputPathIsMissing_ThrowsArgumentException()
     {
-        Action action = () => UnifiedTranscodeRequest.Create(InputPath: " ");
+        Action action = () => TranscodeRequest.Create(InputPath: " ");
 
         action.Should().Throw<ArgumentException>()
             .WithParameterName("InputPath")
@@ -18,13 +18,13 @@ public class UnifiedTranscodeRequestTests
     [Fact]
     public void Create_WhenDefaultsUsed_UsesContractDefaults()
     {
-        var request = UnifiedTranscodeRequest.Create(InputPath: "C:\\video\\movie.mkv");
+        var request = TranscodeRequest.Create(InputPath: "C:\\video\\movie.mkv");
 
-        request.TargetContainer.Should().Be(RequestContracts.Unified.DefaultContainer);
-        request.ComputeMode.Should().Be(RequestContracts.Unified.DefaultComputeMode);
-        request.VideoPreset.Should().Be(RequestContracts.Unified.DefaultVideoPreset);
-        request.DownscaleAlgo.Should().Be(RequestContracts.Unified.DefaultDownscaleAlgorithm);
-        request.AqStrength.Should().Be(RequestContracts.Unified.DefaultAqStrength);
+        request.TargetContainer.Should().Be(RequestContracts.General.DefaultContainer);
+        request.ComputeMode.Should().Be(RequestContracts.General.DefaultComputeMode);
+        request.VideoPreset.Should().Be(RequestContracts.General.DefaultVideoPreset);
+        request.DownscaleAlgo.Should().Be(RequestContracts.General.DefaultDownscaleAlgorithm);
+        request.AqStrength.Should().Be(RequestContracts.General.DefaultAqStrength);
     }
 
     [Theory]
@@ -32,7 +32,7 @@ public class UnifiedTranscodeRequestTests
     [InlineData("")]
     public void Create_WhenTargetContainerInvalid_ThrowsArgumentException(string container)
     {
-        Action action = () => UnifiedTranscodeRequest.Create(
+        Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mkv",
             TargetContainer: container);
 
@@ -45,7 +45,7 @@ public class UnifiedTranscodeRequestTests
     [InlineData("")]
     public void Create_WhenComputeModeInvalid_ThrowsArgumentException(string computeMode)
     {
-        Action action = () => UnifiedTranscodeRequest.Create(
+        Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mkv",
             ComputeMode: computeMode);
 
@@ -56,7 +56,7 @@ public class UnifiedTranscodeRequestTests
     [Fact]
     public void Create_WhenPresetInvalid_ThrowsArgumentException()
     {
-        Action action = () => UnifiedTranscodeRequest.Create(
+        Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mkv",
             VideoPreset: "slow");
 

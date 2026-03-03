@@ -9,17 +9,17 @@ using NSubstitute;
 
 namespace MediaTranscodeEngine.Core.Tests.Engine;
 
-public class UnifiedTranscodeEngineTests
+public class GeneralTranscodeEngineTests
 {
     [Fact]
     public void Process_WhenResolvedCodecIsCopy_BuildsRemuxCommand()
     {
         var (sut, probeReader) = CreateSut();
         probeReader.Read(Arg.Any<string>()).Returns(CreateProbe());
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mp4",
-            TargetContainer: RequestContracts.Unified.MkvContainer,
-            ComputeMode: RequestContracts.Unified.GpuComputeMode);
+            TargetContainer: RequestContracts.General.MkvContainer,
+            ComputeMode: RequestContracts.General.GpuComputeMode);
 
         var actual = sut.Process(request);
 
@@ -32,9 +32,9 @@ public class UnifiedTranscodeEngineTests
     {
         var (sut, probeReader) = CreateSut();
         probeReader.Read(Arg.Any<string>()).Returns(CreateProbe());
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mkv",
-            ComputeMode: RequestContracts.Unified.GpuComputeMode,
+            ComputeMode: RequestContracts.General.GpuComputeMode,
             PreferH264: true);
 
         var actual = sut.Process(request);
@@ -46,10 +46,10 @@ public class UnifiedTranscodeEngineTests
     public void ProcessWithProbeResult_WhenResolvedCodecIsCopy_BuildsRemuxCommandAndSkipsProbeReader()
     {
         var (sut, probeReader) = CreateSut();
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mp4",
-            TargetContainer: RequestContracts.Unified.MkvContainer,
-            ComputeMode: RequestContracts.Unified.GpuComputeMode);
+            TargetContainer: RequestContracts.General.MkvContainer,
+            ComputeMode: RequestContracts.General.GpuComputeMode);
         var probe = CreateProbe();
 
         var actual = sut.ProcessWithProbeResult(request, probe);
@@ -62,10 +62,10 @@ public class UnifiedTranscodeEngineTests
     public void ProcessWithProbeJson_WhenResolvedCodecIsCopy_BuildsRemuxCommandAndSkipsProbeReader()
     {
         var (sut, probeReader) = CreateSut();
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mp4",
-            TargetContainer: RequestContracts.Unified.MkvContainer,
-            ComputeMode: RequestContracts.Unified.GpuComputeMode);
+            TargetContainer: RequestContracts.General.MkvContainer,
+            ComputeMode: RequestContracts.General.GpuComputeMode);
         var probeJson = CreateProbeJson();
 
         var actual = sut.ProcessWithProbeJson(request, probeJson);
@@ -78,9 +78,9 @@ public class UnifiedTranscodeEngineTests
     public void ProcessWithProbeResult_WhenResolvedCodecIsH264AndComputeGpu_BuildsNvencCommand()
     {
         var (sut, probeReader) = CreateSut();
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mkv",
-            ComputeMode: RequestContracts.Unified.GpuComputeMode,
+            ComputeMode: RequestContracts.General.GpuComputeMode,
             PreferH264: true);
         var probe = CreateProbe();
 
@@ -94,9 +94,9 @@ public class UnifiedTranscodeEngineTests
     public void ProcessWithProbeJson_WhenResolvedCodecIsH264AndComputeGpu_BuildsNvencCommand()
     {
         var (sut, probeReader) = CreateSut();
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mkv",
-            ComputeMode: RequestContracts.Unified.GpuComputeMode,
+            ComputeMode: RequestContracts.General.GpuComputeMode,
             PreferH264: true);
         var probeJson = CreateProbeJson();
 
@@ -110,9 +110,9 @@ public class UnifiedTranscodeEngineTests
     public void ProcessWithProbeResult_WhenResolvedCodecIsH264AndComputeCpu_ReturnsNotImplemented()
     {
         var (sut, probeReader) = CreateSut();
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mp4",
-            ComputeMode: RequestContracts.Unified.CpuComputeMode);
+            ComputeMode: RequestContracts.General.CpuComputeMode);
         var probe = CreateProbe();
 
         var actual = sut.ProcessWithProbeResult(request, probe);
@@ -125,9 +125,9 @@ public class UnifiedTranscodeEngineTests
     public void ProcessWithProbeJson_WhenResolvedCodecIsH264AndComputeCpu_ReturnsNotImplemented()
     {
         var (sut, probeReader) = CreateSut();
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mp4",
-            ComputeMode: RequestContracts.Unified.CpuComputeMode);
+            ComputeMode: RequestContracts.General.CpuComputeMode);
         var probeJson = CreateProbeJson();
 
         var actual = sut.ProcessWithProbeJson(request, probeJson);
@@ -140,9 +140,9 @@ public class UnifiedTranscodeEngineTests
     public void Process_WhenResolvedCodecIsH264AndComputeCpu_ReturnsNotImplemented()
     {
         var (sut, _) = CreateSut();
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mp4",
-            ComputeMode: RequestContracts.Unified.CpuComputeMode);
+            ComputeMode: RequestContracts.General.CpuComputeMode);
 
         var actual = sut.Process(request);
 
@@ -154,7 +154,7 @@ public class UnifiedTranscodeEngineTests
     {
         var (sut, probeReader) = CreateSut();
         probeReader.Read(Arg.Any<string>()).Returns((ProbeResult?)null);
-        var request = UnifiedTranscodeRequest.Create(InputPath: "C:\\video\\a.mp4");
+        var request = TranscodeRequest.Create(InputPath: "C:\\video\\a.mp4");
 
         var actual = sut.Process(request);
 
@@ -168,7 +168,7 @@ public class UnifiedTranscodeEngineTests
         probeReader.Read(Arg.Any<string>()).Returns(new ProbeResult(
             Format: null,
             Streams: [new ProbeStream("audio", "aac")]));
-        var request = UnifiedTranscodeRequest.Create(InputPath: "C:\\video\\a.mp4");
+        var request = TranscodeRequest.Create(InputPath: "C:\\video\\a.mp4");
 
         var actual = sut.Process(request);
 
@@ -180,7 +180,7 @@ public class UnifiedTranscodeEngineTests
     {
         var (sut, probeReader) = CreateSut();
         probeReader.Read(Arg.Any<string>()).Returns(CreateProbe(height: 1080));
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mp4",
             KeepSource: true,
             PreferH264: true,
@@ -191,7 +191,7 @@ public class UnifiedTranscodeEngineTests
         actual.Should().Contain("\"C:\\video\\a_576p_h264.mkv\"");
     }
 
-    private static (UnifiedTranscodeEngine Sut, IProbeReader ProbeReader) CreateSut()
+    private static (GeneralTranscodeEngine Sut, IProbeReader ProbeReader) CreateSut()
     {
         var probeReader = Substitute.For<IProbeReader>();
         var transcodeEngine = new TranscodeEngine(
@@ -217,7 +217,7 @@ public class UnifiedTranscodeEngineTests
             new H264GpuTranscodeBehavior(h264Engine),
             new H264CpuNotImplementedBehavior()
         };
-        var sut = new UnifiedTranscodeEngine(
+        var sut = new GeneralTranscodeEngine(
             codecResolver: new TargetVideoCodecResolver(),
             behaviorSelector: new TranscodeBehaviorSelector(behaviors));
 

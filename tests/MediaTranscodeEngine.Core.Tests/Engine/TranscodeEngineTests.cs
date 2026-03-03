@@ -383,7 +383,7 @@ public class TranscodeEngineTests
         probeReader.Read(Arg.Any<string>()).Returns(CreateProbe(codec: "hevc", audioCodec: "aac", height: 1080));
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\a.mkv",
-            NvencPreset: "p4");
+            VideoPreset: "p4");
 
         var actual = sut.Process(request);
 

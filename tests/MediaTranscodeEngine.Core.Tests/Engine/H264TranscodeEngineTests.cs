@@ -250,7 +250,7 @@ public class H264TranscodeEngineTests
         return (sut, probeReader);
     }
 
-    private static H264TranscodeRequest CreateRequest(
+    private static TranscodeRequest CreateRequest(
         string inputPath = "C:\\video\\a.mp4",
         int? downscale = null,
         bool keepFps = false,
@@ -258,12 +258,14 @@ public class H264TranscodeEngineTests
         bool outputMkv = false,
         bool keepSource = false)
     {
-        return H264TranscodeRequest.Create(
+        return TranscodeRequest.Create(
             InputPath: inputPath,
             Downscale: downscale,
             KeepFps: keepFps,
             Denoise: denoise,
-            OutputMkv: outputMkv,
+            TargetContainer: outputMkv
+                ? RequestContracts.General.MkvContainer
+                : RequestContracts.General.Mp4Container,
             KeepSource: keepSource);
     }
 

@@ -3,93 +3,57 @@ using MediaTranscodeEngine.Core.Engine;
 
 namespace MediaTranscodeEngine.Core.Tests.Engine;
 
-public class H264TranscodeRequestTests
+public class H264RequestOptionsTests
 {
     [Fact]
-    public void Create_WhenInputPathIsMissing_ThrowsArgumentException()
+    public void Create_WhenCalledWithH264Options_ReturnsNormalizedRequest()
     {
-        Action action = () => H264TranscodeRequest.Create(InputPath: " ");
-
-        action.Should().Throw<ArgumentException>()
-            .WithParameterName("InputPath")
-            .WithMessage("*InputPath is required.*");
-    }
-
-    [Fact]
-    public void Create_WhenCalled_ReturnsNormalizedRequest()
-    {
-        var actual = H264TranscodeRequest.Create(
+        var actual = TranscodeRequest.Create(
             InputPath: " C:\\video\\movie.mp4 ",
+            TargetContainer: RequestContracts.General.MkvContainer,
+            ComputeMode: RequestContracts.General.GpuComputeMode,
+            PreferH264: true,
             Downscale: 576,
             KeepFps: true,
             DownscaleAlgo: "lanczos",
             Cq: 20,
-            NvencPreset: "p6",
+            VideoPreset: "p6",
             UseAq: true,
             AqStrength: 7,
             Denoise: true,
             FixTimestamps: true,
-            OutputMkv: true,
             KeepSource: true);
 
         actual.InputPath.Should().Be("C:\\video\\movie.mp4");
+        actual.TargetContainer.Should().Be(RequestContracts.General.MkvContainer);
+        actual.ComputeMode.Should().Be(RequestContracts.General.GpuComputeMode);
+        actual.PreferH264.Should().BeTrue();
         actual.Downscale.Should().Be(576);
         actual.KeepFps.Should().BeTrue();
         actual.DownscaleAlgo.Should().Be("lanczos");
         actual.Cq.Should().Be(20);
-        actual.NvencPreset.Should().Be("p6");
+        actual.VideoPreset.Should().Be("p6");
         actual.UseAq.Should().BeTrue();
         actual.AqStrength.Should().Be(7);
         actual.Denoise.Should().BeTrue();
         actual.FixTimestamps.Should().BeTrue();
-        actual.OutputMkv.Should().BeTrue();
         actual.KeepSource.Should().BeTrue();
     }
 
     [Fact]
-    public void Create_WhenDefaultsUsed_UsesContractDefaults()
+    public void Create_WhenDefaultsUsedForH264Options_UsesContractDefaults()
     {
-        var actual = H264TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4");
+        var actual = TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4");
 
         actual.Downscale.Should().BeNull();
         actual.KeepFps.Should().BeFalse();
-        actual.DownscaleAlgo.Should().Be(RequestContracts.H264.DefaultDownscaleAlgorithm);
-        actual.Cq.Should().BeNull();
-        actual.NvencPreset.Should().Be(RequestContracts.H264.DefaultNvencPreset);
+        actual.DownscaleAlgo.Should().Be(RequestContracts.General.DefaultDownscaleAlgorithm);
+        actual.VideoPreset.Should().Be(RequestContracts.General.DefaultVideoPreset);
         actual.UseAq.Should().BeFalse();
-        actual.AqStrength.Should().Be(RequestContracts.H264.DefaultAqStrength);
+        actual.AqStrength.Should().Be(RequestContracts.General.DefaultAqStrength);
         actual.Denoise.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
-        actual.OutputMkv.Should().BeFalse();
         actual.KeepSource.Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData("bad")]
-    [InlineData("nearest")]
-    public void Create_WhenDownscaleAlgoInvalid_ThrowsArgumentException(string downscaleAlgo)
-    {
-        Action action = () => H264TranscodeRequest.Create(
-            InputPath: "C:\\video\\movie.mp4",
-            DownscaleAlgo: downscaleAlgo);
-
-        action.Should().Throw<ArgumentException>()
-            .WithParameterName("DownscaleAlgo")
-            .WithMessage("*DownscaleAlgo must be one of: bicubic, lanczos, bilinear.*");
-    }
-
-    [Theory]
-    [InlineData("bad")]
-    [InlineData("p8")]
-    public void Create_WhenNvencPresetInvalid_ThrowsArgumentException(string nvencPreset)
-    {
-        Action action = () => H264TranscodeRequest.Create(
-            InputPath: "C:\\video\\movie.mp4",
-            NvencPreset: nvencPreset);
-
-        action.Should().Throw<ArgumentException>()
-            .WithParameterName("NvencPreset")
-            .WithMessage("*NvencPreset must be one of: p1, p2, p3, p4, p5, p6, p7.*");
     }
 
     [Theory]
@@ -97,7 +61,7 @@ public class H264TranscodeRequestTests
     [InlineData(1080)]
     public void Create_WhenDownscaleInvalid_ThrowsArgumentException(int downscale)
     {
-        Action action = () => H264TranscodeRequest.Create(
+        Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             Downscale: downscale);
 
@@ -111,7 +75,7 @@ public class H264TranscodeRequestTests
     [InlineData(52)]
     public void Create_WhenCqOutOfRange_ThrowsArgumentException(int cq)
     {
-        Action action = () => H264TranscodeRequest.Create(
+        Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             Cq: cq);
 
@@ -125,7 +89,7 @@ public class H264TranscodeRequestTests
     [InlineData(16)]
     public void Create_WhenAqStrengthOutOfRange_ThrowsArgumentException(int aqStrength)
     {
-        Action action = () => H264TranscodeRequest.Create(
+        Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             AqStrength: aqStrength);
 

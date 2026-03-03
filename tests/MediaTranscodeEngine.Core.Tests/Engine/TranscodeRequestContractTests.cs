@@ -3,7 +3,7 @@ using MediaTranscodeEngine.Core.Engine;
 
 namespace MediaTranscodeEngine.Core.Tests.Engine;
 
-public class TranscodeRequestTests
+public class TranscodeRequestContractTests
 {
     [Fact]
     public void Create_WhenInputPathIsMissing_ThrowsArgumentException()
@@ -23,7 +23,7 @@ public class TranscodeRequestTests
             Info: true,
             OverlayBg: true,
             Downscale: 576,
-            DownscaleAlgoOverride: "lanczos",
+            DownscaleAlgo: "lanczos",
             ContentProfile: "film",
             QualityProfile: "high",
             NoAutoSample: true,
@@ -32,7 +32,7 @@ public class TranscodeRequestTests
             Cq: 21,
             Maxrate: 3.5,
             Bufsize: 7.0,
-            NvencPreset: "p5",
+            VideoPreset: "p5",
             ForceVideoEncode: true,
             KeepSource: true);
 
@@ -40,7 +40,8 @@ public class TranscodeRequestTests
         actual.Info.Should().BeTrue();
         actual.OverlayBg.Should().BeTrue();
         actual.Downscale.Should().Be(576);
-        actual.DownscaleAlgoOverride.Should().Be("lanczos");
+        actual.DownscaleAlgo.Should().Be("lanczos");
+        actual.DownscaleAlgoOverridden.Should().BeTrue();
         actual.ContentProfile.Should().Be("film");
         actual.QualityProfile.Should().Be("high");
         actual.NoAutoSample.Should().BeTrue();
@@ -49,7 +50,7 @@ public class TranscodeRequestTests
         actual.Cq.Should().Be(21);
         actual.Maxrate.Should().Be(3.5);
         actual.Bufsize.Should().Be(7.0);
-        actual.NvencPreset.Should().Be("p5");
+        actual.VideoPreset.Should().Be("p5");
         actual.ForceVideoEncode.Should().BeTrue();
         actual.KeepSource.Should().BeTrue();
     }
@@ -62,26 +63,28 @@ public class TranscodeRequestTests
         actual.ContentProfile.Should().Be(RequestContracts.Transcode.DefaultContentProfile);
         actual.QualityProfile.Should().Be(RequestContracts.Transcode.DefaultQualityProfile);
         actual.AutoSampleMode.Should().Be(RequestContracts.Transcode.DefaultAutoSampleMode);
-        actual.NvencPreset.Should().Be(RequestContracts.Transcode.DefaultNvencPreset);
-        actual.DownscaleAlgoOverride.Should().BeNull();
+        actual.VideoPreset.Should().Be(RequestContracts.General.DefaultVideoPreset);
+        actual.DownscaleAlgo.Should().Be(RequestContracts.General.DefaultDownscaleAlgorithm);
+        actual.DownscaleAlgoOverridden.Should().BeFalse();
         actual.KeepSource.Should().BeFalse();
     }
 
     [Fact]
-    public void Create_WhenDownscaleAlgoOverrideIsWhitespace_SetsNull()
+    public void Create_WhenDownscaleAlgoIsWhitespace_UsesDefaultAndMarksAsNotOverridden()
     {
         var actual = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
-            DownscaleAlgoOverride: " ");
+            DownscaleAlgo: " ");
 
-        actual.DownscaleAlgoOverride.Should().BeNull();
+        actual.DownscaleAlgo.Should().Be(RequestContracts.General.DefaultDownscaleAlgorithm);
+        actual.DownscaleAlgoOverridden.Should().BeFalse();
     }
 
     [Theory]
     [InlineData(" ", "ContentProfile", "*ContentProfile is required.*")]
     [InlineData(" ", "QualityProfile", "*QualityProfile is required.*")]
     [InlineData(" ", "AutoSampleMode", "*AutoSampleMode is required.*")]
-    [InlineData(" ", "NvencPreset", "*NvencPreset is required.*")]
+    [InlineData(" ", "VideoPreset", "*VideoPreset is required.*")]
     public void Create_WhenRequiredTextValueIsMissing_ThrowsArgumentException(
         string missingValue,
         string propertyName,
@@ -139,29 +142,29 @@ public class TranscodeRequestTests
     [Theory]
     [InlineData("bad")]
     [InlineData("p8")]
-    public void Create_WhenNvencPresetInvalid_ThrowsArgumentException(string nvencPreset)
+    public void Create_WhenVideoPresetInvalid_ThrowsArgumentException(string nvencPreset)
     {
         Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
-            NvencPreset: nvencPreset);
+            VideoPreset: nvencPreset);
 
         action.Should().Throw<ArgumentException>()
-            .WithParameterName("NvencPreset")
-            .WithMessage("*NvencPreset must be one of: p1, p2, p3, p4, p5, p6, p7.*");
+            .WithParameterName("VideoPreset")
+            .WithMessage("*VideoPreset must be one of: p1, p2, p3, p4, p5, p6, p7.*");
     }
 
     [Theory]
     [InlineData("bad")]
     [InlineData("nearest")]
-    public void Create_WhenDownscaleAlgoOverrideInvalid_ThrowsArgumentException(string downscaleAlgoOverride)
+    public void Create_WhenDownscaleAlgoInvalid_ThrowsArgumentException(string downscaleAlgoOverride)
     {
         Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
-            DownscaleAlgoOverride: downscaleAlgoOverride);
+            DownscaleAlgo: downscaleAlgoOverride);
 
         action.Should().Throw<ArgumentException>()
-            .WithParameterName("DownscaleAlgoOverride")
-            .WithMessage("*DownscaleAlgoOverride must be one of: bicubic, lanczos, bilinear.*");
+            .WithParameterName("DownscaleAlgo")
+            .WithMessage("*DownscaleAlgo must be one of: bicubic, lanczos, bilinear.*");
     }
 
     [Theory]
@@ -227,7 +230,7 @@ public class TranscodeRequestTests
             "ContentProfile" => () => TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4", ContentProfile: value),
             "QualityProfile" => () => TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4", QualityProfile: value),
             "AutoSampleMode" => () => TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4", AutoSampleMode: value),
-            "NvencPreset" => () => TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4", NvencPreset: value),
+            "VideoPreset" => () => TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4", VideoPreset: value),
             _ => throw new InvalidOperationException($"Unexpected property: {propertyName}")
         };
     }

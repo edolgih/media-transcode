@@ -33,7 +33,7 @@ public class CliProgramContractTests
     }
 
     [Fact]
-    public async Task Main_WithHelpOption_ReturnsHelpContainingUnifiedOptions()
+    public async Task Main_WithHelpOption_ReturnsHelpContainingGeneralOptions()
     {
         var result = await RunCliAsync("--help");
 
@@ -57,7 +57,7 @@ public class CliProgramContractTests
     }
 
     [Fact]
-    public async Task Main_WithMinimalUnifiedOptions_ReturnsSuccess()
+    public async Task Main_WithMinimalGeneralOptions_ReturnsSuccess()
     {
         var result = await RunCliAsync(
             "--input", "C:\\video\\movie.mp4",

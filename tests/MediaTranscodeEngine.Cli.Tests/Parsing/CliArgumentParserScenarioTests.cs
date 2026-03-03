@@ -21,7 +21,7 @@ public class CliArgumentParserScenarioTests
     }
 
     [Fact]
-    public void TryParse_WithUnifiedOptions_ReturnsTemplateWithMappedValues()
+    public void TryParse_WithGeneralOptions_ReturnsTemplateWithMappedValues()
     {
         var ok = Parse(
             args:

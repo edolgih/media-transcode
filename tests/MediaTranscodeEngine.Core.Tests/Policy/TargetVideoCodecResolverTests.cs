@@ -11,7 +11,7 @@ public class TargetVideoCodecResolverTests
     [Fact]
     public void Resolve_WhenPreferH264Enabled_ReturnsH264()
     {
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mkv",
             PreferH264: true);
 
@@ -23,9 +23,9 @@ public class TargetVideoCodecResolverTests
     [Fact]
     public void Resolve_WhenComputeIsCpu_ReturnsH264()
     {
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mkv",
-            ComputeMode: RequestContracts.Unified.CpuComputeMode);
+            ComputeMode: RequestContracts.General.CpuComputeMode);
 
         var actual = _sut.Resolve(request);
 
@@ -35,9 +35,9 @@ public class TargetVideoCodecResolverTests
     [Fact]
     public void Resolve_WhenContainerIsMp4_ReturnsH264()
     {
-        var request = UnifiedTranscodeRequest.Create(
+        var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mkv",
-            TargetContainer: RequestContracts.Unified.Mp4Container);
+            TargetContainer: RequestContracts.General.Mp4Container);
 
         var actual = _sut.Resolve(request);
 
@@ -47,7 +47,7 @@ public class TargetVideoCodecResolverTests
     [Fact]
     public void Resolve_WhenDefaultMkvGpuSettings_ReturnsCopy()
     {
-        var request = UnifiedTranscodeRequest.Create(InputPath: "C:\\video\\movie.mkv");
+        var request = TranscodeRequest.Create(InputPath: "C:\\video\\movie.mkv");
 
         var actual = _sut.Resolve(request);
 
