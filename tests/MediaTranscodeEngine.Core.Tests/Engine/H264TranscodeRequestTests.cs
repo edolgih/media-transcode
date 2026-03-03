@@ -29,7 +29,8 @@ public class H264TranscodeRequestTests
             AqStrength: 7,
             Denoise: true,
             FixTimestamps: true,
-            OutputMkv: true);
+            OutputMkv: true,
+            KeepSource: true);
 
         actual.InputPath.Should().Be("C:\\video\\movie.mp4");
         actual.Downscale.Should().Be(576);
@@ -42,6 +43,7 @@ public class H264TranscodeRequestTests
         actual.Denoise.Should().BeTrue();
         actual.FixTimestamps.Should().BeTrue();
         actual.OutputMkv.Should().BeTrue();
+        actual.KeepSource.Should().BeTrue();
     }
 
     [Fact]
@@ -59,6 +61,7 @@ public class H264TranscodeRequestTests
         actual.Denoise.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
         actual.OutputMkv.Should().BeFalse();
+        actual.KeepSource.Should().BeFalse();
     }
 
     [Theory]

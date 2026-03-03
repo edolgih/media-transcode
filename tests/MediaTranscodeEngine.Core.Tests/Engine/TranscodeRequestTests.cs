@@ -33,7 +33,8 @@ public class TranscodeRequestTests
             Maxrate: 3.5,
             Bufsize: 7.0,
             NvencPreset: "p5",
-            ForceVideoEncode: true);
+            ForceVideoEncode: true,
+            KeepSource: true);
 
         actual.InputPath.Should().Be("C:\\video\\movie.mp4");
         actual.Info.Should().BeTrue();
@@ -50,6 +51,7 @@ public class TranscodeRequestTests
         actual.Bufsize.Should().Be(7.0);
         actual.NvencPreset.Should().Be("p5");
         actual.ForceVideoEncode.Should().BeTrue();
+        actual.KeepSource.Should().BeTrue();
     }
 
     [Fact]
@@ -62,6 +64,7 @@ public class TranscodeRequestTests
         actual.AutoSampleMode.Should().Be(RequestContracts.Transcode.DefaultAutoSampleMode);
         actual.NvencPreset.Should().Be(RequestContracts.Transcode.DefaultNvencPreset);
         actual.DownscaleAlgoOverride.Should().BeNull();
+        actual.KeepSource.Should().BeFalse();
     }
 
     [Fact]

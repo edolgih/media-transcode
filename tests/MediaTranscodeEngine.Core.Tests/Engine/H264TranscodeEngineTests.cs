@@ -140,6 +140,49 @@ public class H264TranscodeEngineTests
     }
 
     [Fact]
+    public void Process_WhenKeepSourceAndRemuxMp4Enabled_WritesOutputWithOutSuffixAndKeepsSource()
+    {
+        var (sut, probeReader) = CreateSut();
+        probeReader.Read(Arg.Any<string>()).Returns(CreateProbe());
+        var request = CreateRequest(keepSource: true);
+
+        var actual = sut.Process(request);
+
+        actual.Should().Contain("\"C:\\video\\a_out.mp4\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("move /Y");
+    }
+
+    [Fact]
+    public void Process_WhenKeepSourceAndRemuxMkvRequested_WritesOutputWithoutExtraSuffix()
+    {
+        var (sut, probeReader) = CreateSut();
+        probeReader.Read(Arg.Any<string>()).Returns(CreateProbe());
+        var request = CreateRequest(outputMkv: true, keepSource: true);
+
+        var actual = sut.Process(request);
+
+        actual.Should().Contain("\"C:\\video\\a.mkv\"");
+        actual.Should().NotContain("\"C:\\video\\a_out.mkv\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("move /Y");
+    }
+
+    [Fact]
+    public void Process_WhenKeepSourceAndEncodeDownscaleEnabled_WritesOutputWith576pAndH264Suffixes()
+    {
+        var (sut, probeReader) = CreateSut();
+        probeReader.Read(Arg.Any<string>()).Returns(CreateProbe(height: 1080));
+        var request = CreateRequest(downscale: 576, keepSource: true);
+
+        var actual = sut.Process(request);
+
+        actual.Should().Contain("\"C:\\video\\a_576p_h264.mp4\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("move /Y");
+    }
+
+    [Fact]
     public void ProcessWithProbeJson_WhenProbeJsonValid_BuildsCommandAndSkipsProbeReader()
     {
         var (sut, probeReader) = CreateSut();
@@ -191,14 +234,16 @@ public class H264TranscodeEngineTests
         int? downscale = null,
         bool keepFps = false,
         bool denoise = false,
-        bool outputMkv = false)
+        bool outputMkv = false,
+        bool keepSource = false)
     {
         return H264TranscodeRequest.Create(
             InputPath: inputPath,
             Downscale: downscale,
             KeepFps: keepFps,
             Denoise: denoise,
-            OutputMkv: outputMkv);
+            OutputMkv: outputMkv,
+            KeepSource: keepSource);
     }
 
     private static ProbeResult CreateProbe(

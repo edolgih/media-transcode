@@ -259,6 +259,57 @@ public class TranscodeEngineTests
     }
 
     [Fact]
+    public void Process_WhenKeepSourceAndInputIsNotMkv_WritesMkvOutputWithoutDeletePostOperation()
+    {
+        var (sut, probeReader, _) = CreateSut();
+        probeReader.Read(Arg.Any<string>()).Returns(CreateProbe(codec: "h264", audioCodec: "aac", height: 1080));
+        var request = TranscodeRequest.Create(
+            InputPath: "C:\\video\\movie.mp4",
+            KeepSource: true);
+
+        var actual = sut.Process(request);
+
+        actual.Should().Contain("\"C:\\video\\movie.mkv\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("_temp.mkv");
+    }
+
+    [Fact]
+    public void Process_WhenKeepSourceAndInputIsMkvAndForceVideoEncode_WritesOutputWithH264Suffix()
+    {
+        var (sut, probeReader, _) = CreateSut();
+        probeReader.Read(Arg.Any<string>()).Returns(CreateProbe(codec: "h264", audioCodec: "aac", height: 1080));
+        var request = TranscodeRequest.Create(
+            InputPath: "C:\\video\\movie.mkv",
+            ForceVideoEncode: true,
+            KeepSource: true);
+
+        var actual = sut.Process(request);
+
+        actual.Should().Contain("\"C:\\video\\movie_h264.mkv\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("_temp.mkv");
+    }
+
+    [Fact]
+    public void Process_WhenKeepSourceAndDownscale576Requested_WritesOutputWith576pAndH264Suffixes()
+    {
+        var (sut, probeReader, profileRepository) = CreateSut();
+        probeReader.Read(Arg.Any<string>()).Returns(CreateProbe(codec: "h264", audioCodec: "aac", height: 1080));
+        profileRepository.Get576Config().Returns(CreateConfigForProfileSelection());
+        var request = TranscodeRequest.Create(
+            InputPath: "C:\\video\\movie.mkv",
+            Downscale: 576,
+            KeepSource: true);
+
+        var actual = sut.Process(request);
+
+        actual.Should().Contain("\"C:\\video\\movie_576p_h264.mkv\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("_temp.mkv");
+    }
+
+    [Fact]
     public void Process_WhenForceVideoEncodeAndStreamsAreCopyable_EncodesVideo()
     {
         var (sut, probeReader, _) = CreateSut();

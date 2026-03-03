@@ -28,6 +28,18 @@ public class CliScenarioMappersH264Tests
         actual.OutputMkv.Should().Be(outputMkv);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void BuildToH264Request_WithKeepSourceFlag_ReturnsDomainRequestWithSameKeepSourceValue(bool keepSource)
+    {
+        var template = CreateTemplate(keepSource: keepSource);
+
+        var actual = CliScenarioMappers.BuildToH264Request(template, "C:\\video\\movie.mp4");
+
+        actual.KeepSource.Should().Be(keepSource);
+    }
+
     [Fact]
     public void BuildToH264Request_WithInvalidAqStrength_ThrowsArgumentException()
     {
@@ -43,12 +55,14 @@ public class CliScenarioMappersH264Tests
     private static RawH264TranscodeRequest CreateTemplate(
         bool outputMkv = false,
         int aqStrength = RequestContracts.H264.DefaultAqStrength,
-        int? downscale = null)
+        int? downscale = null,
+        bool keepSource = false)
     {
         return new RawH264TranscodeRequest(
             InputPath: "__input__",
             OutputMkv: outputMkv,
             AqStrength: aqStrength,
-            Downscale: downscale);
+            Downscale: downscale,
+            KeepSource: keepSource);
     }
 }

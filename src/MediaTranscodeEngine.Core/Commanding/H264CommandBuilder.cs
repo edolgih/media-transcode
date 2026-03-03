@@ -4,7 +4,8 @@ public sealed record H264RemuxCommandInput(
     string InputPath,
     string OutputPath,
     string TempOutputPath,
-    bool OutputMkv);
+    bool OutputMkv,
+    bool ReplaceInput = true);
 
 public sealed record H264EncodeCommandInput(
     string InputPath,
@@ -22,7 +23,8 @@ public sealed record H264EncodeCommandInput(
     int AqStrength,
     bool Denoise,
     bool FixTimestamps,
-    bool CopyAudio);
+    bool CopyAudio,
+    bool ReplaceInput = true);
 
 public sealed class H264CommandBuilder
 {
@@ -30,6 +32,10 @@ public sealed class H264CommandBuilder
     {
         ArgumentNullException.ThrowIfNull(input);
 
+        var targetPath = input.ReplaceInput ? input.TempOutputPath : input.OutputPath;
+        var replaceInputPart = input.ReplaceInput
+            ? $"&& del {Quote(input.InputPath)} && move /Y {Quote(input.TempOutputPath)} {Quote(input.OutputPath)}"
+            : string.Empty;
         var muxPart = input.OutputMkv ? string.Empty : "-movflags +faststart";
         var parts = new[]
         {
@@ -41,8 +47,8 @@ public sealed class H264CommandBuilder
             "-map 0:v:0 -map 0:a:0? -sn",
             "-c copy",
             muxPart,
-            Quote(input.TempOutputPath),
-            $"&& del {Quote(input.InputPath)} && move /Y {Quote(input.TempOutputPath)} {Quote(input.OutputPath)}"
+            Quote(targetPath),
+            replaceInputPart
         };
 
         return string.Join(" ", parts.Where(static part => !string.IsNullOrWhiteSpace(part)));
@@ -52,6 +58,10 @@ public sealed class H264CommandBuilder
     {
         ArgumentNullException.ThrowIfNull(input);
 
+        var targetPath = input.ReplaceInput ? input.TempOutputPath : input.OutputPath;
+        var replaceInputPart = input.ReplaceInput
+            ? $"&& del {Quote(input.InputPath)} && move /Y {Quote(input.TempOutputPath)} {Quote(input.OutputPath)}"
+            : string.Empty;
         var fflagsPart = input.FixTimestamps ? "-fflags +genpts+igndts" : string.Empty;
         var hwaccelPart = input.ApplyDownscale ? "-hwaccel cuda -hwaccel_output_format cuda" : string.Empty;
         var vfPart = BuildVfPart(input);
@@ -79,8 +89,8 @@ public sealed class H264CommandBuilder
             $"-r {input.FpsToken} -fps_mode:v cfr -g {input.Gop}",
             audioPart,
             muxPart,
-            Quote(input.TempOutputPath),
-            $"&& del {Quote(input.InputPath)} && move /Y {Quote(input.TempOutputPath)} {Quote(input.OutputPath)}"
+            Quote(targetPath),
+            replaceInputPart
         };
 
         return string.Join(" ", parts.Where(static part => !string.IsNullOrWhiteSpace(part)));

@@ -89,14 +89,22 @@ public sealed class H264TranscodeEngine
             FixTimestamps: fixTimestamps,
             UseDownscale: useDownscale);
 
-        var (outputPath, tempOutputPath) = ResolveOutputPaths(inputPath, request.OutputMkv);
-        if (_remuxEligibilityPolicy.CanRemux(remuxEligibilityInput))
+        var canRemux = _remuxEligibilityPolicy.CanRemux(remuxEligibilityInput);
+        var (outputPath, tempOutputPath) = ResolveOutputPaths(
+            inputPath: inputPath,
+            outputMkv: request.OutputMkv,
+            keepSource: request.KeepSource,
+            useDownscale: useDownscale,
+            downscaleTarget: request.Downscale,
+            willEncode: !canRemux);
+        if (canRemux)
         {
             return _commandBuilder.BuildRemux(new H264RemuxCommandInput(
                 InputPath: inputPath,
                 OutputPath: outputPath,
                 TempOutputPath: tempOutputPath,
-                OutputMkv: request.OutputMkv));
+                OutputMkv: request.OutputMkv,
+                ReplaceInput: !request.KeepSource));
         }
 
         var fpsToken = ResolveFpsToken(video, useDownscale, request.KeepFps);
@@ -122,22 +130,42 @@ public sealed class H264TranscodeEngine
             AqStrength: request.AqStrength,
             Denoise: request.Denoise,
             FixTimestamps: fixTimestamps,
-            CopyAudio: copyAudio));
+            CopyAudio: copyAudio,
+            ReplaceInput: !request.KeepSource));
     }
 
-    private static (string OutputPath, string TempOutputPath) ResolveOutputPaths(string inputPath, bool outputMkv)
+    private static (string OutputPath, string TempOutputPath) ResolveOutputPaths(
+        string inputPath,
+        bool outputMkv,
+        bool keepSource,
+        bool useDownscale,
+        int? downscaleTarget,
+        bool willEncode)
     {
+        var outputExtension = outputMkv ? ".mkv" : ".mp4";
+        if (keepSource)
+        {
+            var downscaleSuffix = useDownscale && downscaleTarget.HasValue
+                ? $"{downscaleTarget.Value}p"
+                : null;
+            var codecSuffix = willEncode ? "h264" : null;
+            var outputPath = OutputPathBuilder.BuildKeepSourceOutputPath(
+                inputPath,
+                outputExtension: outputExtension,
+                downscaleSuffix,
+                codecSuffix);
+            return (outputPath, outputPath);
+        }
+
         var directory = Path.GetDirectoryName(inputPath);
         if (string.IsNullOrWhiteSpace(directory))
         {
             directory = ".";
         }
-
         var baseName = Path.GetFileNameWithoutExtension(inputPath);
-        var extension = outputMkv ? ".mkv" : ".mp4";
         return (
-            OutputPath: Path.Combine(directory, $"{baseName}{extension}"),
-            TempOutputPath: Path.Combine(directory, $"{baseName} (h264){extension}"));
+            OutputPath: Path.Combine(directory, $"{baseName}{outputExtension}"),
+            TempOutputPath: Path.Combine(directory, $"{baseName} (h264){outputExtension}"));
     }
 
     private static bool IsWmvOrAsfExtension(string inputPath)

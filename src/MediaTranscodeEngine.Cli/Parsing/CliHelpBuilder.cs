@@ -44,6 +44,7 @@ internal static class CliHelpBuilder
         lines.Add("Examples:");
         lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\"");
         lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --info");
+        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --keep-source --downscale 576");
         lines.Add($"  {exeName} --scenario toh264gpu --input \"C:\\video\\movie.mp4\" --output-mkv");
         lines.Add($"  Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | {exeName} --info");
 

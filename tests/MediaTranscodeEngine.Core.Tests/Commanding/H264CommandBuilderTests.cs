@@ -31,6 +31,19 @@ public class H264CommandBuilderTests
     }
 
     [Fact]
+    public void BuildRemux_WhenReplaceInputDisabled_WritesToFinalOutputAndKeepsSource()
+    {
+        var sut = CreateSut();
+        var input = CreateRemuxInput(outputMkv: true) with { ReplaceInput = false };
+
+        var actual = sut.BuildRemux(input);
+
+        actual.Should().Contain("\"C:\\video\\a.mkv\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("move /Y");
+    }
+
+    [Fact]
     public void BuildEncode_WhenDownscaleAndUseAqEnabled_IncludesScaleCudaAndAqFlags()
     {
         var sut = CreateSut();
@@ -61,6 +74,19 @@ public class H264CommandBuilderTests
         actual.Should().Contain("-fflags +genpts+igndts");
         actual.Should().Contain("-vf \"hqdn3d=1.2:1.2:6:6\"");
         actual.Should().Contain("-c:v h264_nvenc");
+    }
+
+    [Fact]
+    public void BuildEncode_WhenReplaceInputDisabled_WritesToFinalOutputAndKeepsSource()
+    {
+        var sut = CreateSut();
+        var input = CreateEncodeInput() with { ReplaceInput = false };
+
+        var actual = sut.BuildEncode(input);
+
+        actual.Should().Contain("\"C:\\video\\a.mp4\"");
+        actual.Should().NotContain("&& del ");
+        actual.Should().NotContain("move /Y");
     }
 
     private static H264CommandBuilder CreateSut()

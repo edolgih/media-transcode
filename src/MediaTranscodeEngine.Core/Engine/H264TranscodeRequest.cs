@@ -13,7 +13,8 @@ public sealed class H264TranscodeRequest
         int aqStrength,
         bool denoise,
         bool fixTimestamps,
-        bool outputMkv)
+        bool outputMkv,
+        bool keepSource)
     {
         InputPath = inputPath;
         Downscale = downscale;
@@ -26,6 +27,7 @@ public sealed class H264TranscodeRequest
         Denoise = denoise;
         FixTimestamps = fixTimestamps;
         OutputMkv = outputMkv;
+        KeepSource = keepSource;
     }
 
     public string InputPath { get; }
@@ -39,6 +41,7 @@ public sealed class H264TranscodeRequest
     public bool Denoise { get; }
     public bool FixTimestamps { get; }
     public bool OutputMkv { get; }
+    public bool KeepSource { get; }
 
     public static H264TranscodeRequest Create(
         string InputPath,
@@ -51,7 +54,8 @@ public sealed class H264TranscodeRequest
         int AqStrength = RequestContracts.H264.DefaultAqStrength,
         bool Denoise = false,
         bool FixTimestamps = false,
-        bool OutputMkv = false)
+        bool OutputMkv = false,
+        bool KeepSource = false)
     {
         var normalizedInputPath = RequireValue(InputPath, nameof(InputPath), "InputPath is required.");
         var normalizedDownscaleAlgo = RequireAllowedValue(
@@ -91,7 +95,8 @@ public sealed class H264TranscodeRequest
             aqStrength: AqStrength,
             denoise: Denoise,
             fixTimestamps: FixTimestamps,
-            outputMkv: OutputMkv);
+            outputMkv: OutputMkv,
+            keepSource: KeepSource);
     }
 
     private static string RequireValue(string? value, string paramName, string message)

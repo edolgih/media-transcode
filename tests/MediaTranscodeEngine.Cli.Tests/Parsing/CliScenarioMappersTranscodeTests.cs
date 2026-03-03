@@ -28,6 +28,18 @@ public class CliScenarioMappersTranscodeTests
         actual.Info.Should().Be(info);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void BuildToMkvRequest_WithKeepSourceFlag_ReturnsDomainRequestWithSameKeepSourceValue(bool keepSource)
+    {
+        var template = CreateTemplate(keepSource: keepSource);
+
+        var actual = CliScenarioMappers.BuildToMkvRequest(template, "C:\\video\\movie.mp4");
+
+        actual.KeepSource.Should().Be(keepSource);
+    }
+
     [Fact]
     public void BuildToMkvRequest_WithInvalidContentProfile_ThrowsArgumentException()
     {
@@ -43,12 +55,14 @@ public class CliScenarioMappersTranscodeTests
     private static RawTranscodeRequest CreateTemplate(
         bool info = false,
         string contentProfile = RequestContracts.Transcode.DefaultContentProfile,
-        int? cq = null)
+        int? cq = null,
+        bool keepSource = false)
     {
         return new RawTranscodeRequest(
             InputPath: "__input__",
             Info: info,
             ContentProfile: contentProfile,
-            Cq: cq);
+            Cq: cq,
+            KeepSource: keepSource);
     }
 }

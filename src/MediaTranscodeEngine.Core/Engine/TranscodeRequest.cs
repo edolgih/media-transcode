@@ -17,7 +17,8 @@ public sealed class TranscodeRequest
         double? maxrate,
         double? bufsize,
         string nvencPreset,
-        bool forceVideoEncode)
+        bool forceVideoEncode,
+        bool keepSource)
     {
         InputPath = inputPath;
         Info = info;
@@ -34,6 +35,7 @@ public sealed class TranscodeRequest
         Bufsize = bufsize;
         NvencPreset = nvencPreset;
         ForceVideoEncode = forceVideoEncode;
+        KeepSource = keepSource;
     }
 
     public string InputPath { get; }
@@ -51,6 +53,7 @@ public sealed class TranscodeRequest
     public double? Bufsize { get; }
     public string NvencPreset { get; }
     public bool ForceVideoEncode { get; }
+    public bool KeepSource { get; }
 
     public static TranscodeRequest Create(
         string InputPath,
@@ -67,7 +70,8 @@ public sealed class TranscodeRequest
         double? Maxrate = null,
         double? Bufsize = null,
         string NvencPreset = RequestContracts.Transcode.DefaultNvencPreset,
-        bool ForceVideoEncode = false)
+        bool ForceVideoEncode = false,
+        bool KeepSource = false)
     {
         var normalizedInputPath = RequireValue(InputPath, nameof(InputPath), "InputPath is required.");
         var normalizedContentProfile = RequireAllowedValue(
@@ -135,7 +139,8 @@ public sealed class TranscodeRequest
             maxrate: Maxrate,
             bufsize: Bufsize,
             nvencPreset: normalizedNvencPreset,
-            forceVideoEncode: ForceVideoEncode);
+            forceVideoEncode: ForceVideoEncode,
+            keepSource: KeepSource);
     }
 
     private static string RequireValue(string? value, string paramName, string message)

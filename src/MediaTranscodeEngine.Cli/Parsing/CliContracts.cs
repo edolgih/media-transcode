@@ -71,6 +71,7 @@ internal static class CliContracts
             "-h",
             "--input",
             "--scenario",
+            "--keep-source",
             "--info",
             "--overlay-bg",
             "--downscale",
@@ -93,6 +94,7 @@ internal static class CliContracts
             "-h",
             "--input",
             "--scenario",
+            "--keep-source",
             "--downscale",
             "--downscale-algo",
             "--keep-fps",
@@ -165,6 +167,17 @@ internal static class CliContracts
                     }
                 },
                 Usage: "--scenario <name>"),
+            ["--keep-source"] = new CliOptionDefinition(
+                Name: "--keep-source",
+                ValueKind: CliOptionValueKind.Flag,
+                IsRepeatable: false,
+                HelpText: "Keep input source file; write output to a new file.",
+                AppliesToScenarios: CommonScenarios,
+                ApplyValue: static (state, _) =>
+                {
+                    state.ToMkvTemplate = state.ToMkvTemplate with { KeepSource = true };
+                    state.ToH264Template = state.ToH264Template with { KeepSource = true };
+                }),
 
             ["--info"] = new CliOptionDefinition(
                 Name: "--info",

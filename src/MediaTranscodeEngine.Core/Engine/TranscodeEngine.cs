@@ -62,20 +62,8 @@ public sealed class TranscodeEngine
 
         var fileName = request.InputPath;
         var displayName = Path.GetFileName(fileName);
-        var directory = Path.GetDirectoryName(fileName);
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            directory = ".";
-        }
-
-        var baseName = Path.GetFileNameWithoutExtension(fileName);
         var ext = Path.GetExtension(fileName);
         var isMkv = ext.Equals(".mkv", StringComparison.OrdinalIgnoreCase);
-        var outFinal = Path.Combine(directory, $"{baseName}.mkv");
-        var outPath = isMkv ? Path.Combine(directory, $"{baseName}_temp.mkv") : outFinal;
-        var postOp = isMkv
-            ? $"&& del \"{fileName}\" && ren \"{outPath}\" \"{baseName}.mkv\""
-            : $"&& del \"{fileName}\"";
 
         if (request.Downscale.HasValue && request.Downscale.Value == 720)
         {
@@ -265,12 +253,20 @@ public sealed class TranscodeEngine
             return string.Empty;
         }
 
+        var (outputPath, postOperation) = ResolveOutputPathAndPostOperation(
+            inputPath: fileName,
+            isMkvInput: isMkv,
+            keepSource: request.KeepSource,
+            applyDownscale: applyDownscale,
+            downscaleTarget: downscaleTarget,
+            needVideoEncode: needVideoEncode);
+
         var defaultCq = profileSettings is not null ? profileSettings.Cq : applyDownscale ? 19 : 21;
         var sourceFps = ResolveSourceFps(video);
         var commandInput = new FfmpegCommandInput(
             InputPath: fileName,
-            OutputPath: outPath,
-            PostOperation: postOp,
+            OutputPath: outputPath,
+            PostOperation: postOperation,
             NeedVideoEncode: needVideoEncode,
             NeedAudioEncode: needAudioEncode,
             NeedContainer: needContainer,
@@ -288,6 +284,44 @@ public sealed class TranscodeEngine
             NvencPreset: request.NvencPreset);
 
         return _commandBuilder.Build(commandInput);
+    }
+
+    private static (string OutputPath, string PostOperation) ResolveOutputPathAndPostOperation(
+        string inputPath,
+        bool isMkvInput,
+        bool keepSource,
+        bool applyDownscale,
+        int downscaleTarget,
+        bool needVideoEncode)
+    {
+        if (keepSource)
+        {
+            var downscaleSuffix = applyDownscale && downscaleTarget > 0 ? $"{downscaleTarget}p" : null;
+            var codecSuffix = needVideoEncode ? "h264" : null;
+            var outputPath = OutputPathBuilder.BuildKeepSourceOutputPath(
+                inputPath,
+                outputExtension: ".mkv",
+                downscaleSuffix,
+                codecSuffix);
+            return (outputPath, string.Empty);
+        }
+
+        var directory = Path.GetDirectoryName(inputPath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            directory = ".";
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(inputPath);
+        var finalOutputPath = Path.Combine(directory, $"{baseName}.mkv");
+        if (!isMkvInput)
+        {
+            return (finalOutputPath, $"&& del \"{inputPath}\"");
+        }
+
+        var tempOutputPath = Path.Combine(directory, $"{baseName}_temp.mkv");
+        var postOperation = $"&& del \"{inputPath}\" && ren \"{tempOutputPath}\" \"{baseName}.mkv\"";
+        return (tempOutputPath, postOperation);
     }
 
     private static double? ResolveSourceFps(ProbeStream video)

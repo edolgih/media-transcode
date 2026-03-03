@@ -15,7 +15,8 @@ public sealed record RawTranscodeRequest(
     double? Maxrate = null,
     double? Bufsize = null,
     string NvencPreset = RequestContracts.Transcode.DefaultNvencPreset,
-    bool ForceVideoEncode = false)
+    bool ForceVideoEncode = false,
+    bool KeepSource = false)
 {
     public TranscodeRequest ToDomain()
     {
@@ -34,6 +35,7 @@ public sealed record RawTranscodeRequest(
             Maxrate: Maxrate,
             Bufsize: Bufsize,
             NvencPreset: NvencPreset,
-            ForceVideoEncode: ForceVideoEncode);
+            ForceVideoEncode: ForceVideoEncode,
+            KeepSource: KeepSource);
     }
 }

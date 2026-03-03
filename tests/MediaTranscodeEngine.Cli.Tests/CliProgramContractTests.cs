@@ -42,6 +42,7 @@ public class CliProgramContractTests
         result.StdOut.Should().Contain("Scenario: tomkvgpu");
         result.StdOut.Should().Contain("Scenario: toh264gpu");
         result.StdOut.Should().Contain("--scenario <name>");
+        result.StdOut.Should().Contain("--keep-source");
         result.StdOut.Should().Contain("--output-mkv");
     }
 

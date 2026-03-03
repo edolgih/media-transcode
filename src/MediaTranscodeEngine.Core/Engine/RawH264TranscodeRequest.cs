@@ -11,7 +11,8 @@ public sealed record RawH264TranscodeRequest(
     int AqStrength = RequestContracts.H264.DefaultAqStrength,
     bool Denoise = false,
     bool FixTimestamps = false,
-    bool OutputMkv = false)
+    bool OutputMkv = false,
+    bool KeepSource = false)
 {
     public H264TranscodeRequest ToDomain()
     {
@@ -26,6 +27,7 @@ public sealed record RawH264TranscodeRequest(
             AqStrength: AqStrength,
             Denoise: Denoise,
             FixTimestamps: FixTimestamps,
-            OutputMkv: OutputMkv);
+            OutputMkv: OutputMkv,
+            KeepSource: KeepSource);
     }
 }

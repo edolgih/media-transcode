@@ -67,6 +67,20 @@ public class CliArgumentParserParsingTests
         parsed.Inputs.Should().Equal("C:\\video\\1.mp4", "C:\\video\\2.mp4");
     }
 
+    [Fact]
+    public void TryParse_WithKeepSourceFlag_ReturnsTemplatesWithKeepSourceEnabled()
+    {
+        var ok = Parse(
+            args: ["--input", DefaultInputPath, "--keep-source"],
+            parsed: out var parsed,
+            errorText: out var errorText);
+
+        ok.Should().BeTrue();
+        errorText.Should().BeNull();
+        parsed.ToMkvRequestTemplate.KeepSource.Should().BeTrue();
+        parsed.ToH264RequestTemplate.KeepSource.Should().BeTrue();
+    }
+
     private static bool Parse(
         string[] args,
         out CliParseResult parsed,
