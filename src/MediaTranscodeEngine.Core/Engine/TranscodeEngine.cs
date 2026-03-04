@@ -1,6 +1,7 @@
 using MediaTranscodeEngine.Core.Abstractions;
 using MediaTranscodeEngine.Core.Commanding;
 using MediaTranscodeEngine.Core.Policy;
+using MediaTranscodeEngine.Core.Compatibility;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -19,6 +20,7 @@ public sealed class TranscodeEngine
     private readonly TranscodePolicy _policy;
     private readonly FfmpegCommandBuilder _commandBuilder;
     private readonly IAutoSampleReductionProvider? _autoSampleReductionProvider;
+    private readonly IStreamCompatibilityPolicy _streamCompatibilityPolicy;
     private readonly ILogger<TranscodeEngine> _logger;
 
     public TranscodeEngine(
@@ -27,6 +29,7 @@ public sealed class TranscodeEngine
         TranscodePolicy policy,
         FfmpegCommandBuilder commandBuilder,
         IAutoSampleReductionProvider? autoSampleReductionProvider = null,
+        IStreamCompatibilityPolicy? streamCompatibilityPolicy = null,
         ILogger<TranscodeEngine>? logger = null)
     {
         _probeReader = probeReader;
@@ -34,6 +37,7 @@ public sealed class TranscodeEngine
         _policy = policy;
         _commandBuilder = commandBuilder;
         _autoSampleReductionProvider = autoSampleReductionProvider;
+        _streamCompatibilityPolicy = streamCompatibilityPolicy ?? new DefaultStreamCompatibilityPolicy();
         _logger = logger ?? NullLogger<TranscodeEngine>.Instance;
     }
 
@@ -211,11 +215,17 @@ public sealed class TranscodeEngine
 
         var codecLower = video.CodecName.ToLowerInvariant();
         var needVideoEncode = !CopyVideoCodecs.Contains(codecLower) || request.OverlayBg || applyDownscale || request.ForceVideoEncode;
-        var needAudio = audioStreams.Any(static s => !s.CodecName.Equals("aac", StringComparison.OrdinalIgnoreCase));
-        var forceSyncAudio = request.SyncAudio;
-        var needAudioEncode = audioStreams.Length > 0 && (needAudio || needVideoEncode || forceSyncAudio);
-        var needContainer = !isMkv;
-        var onlyRemuxMkv = isMkv && !needVideoEncode && !needAudioEncode;
+        var compatibility = _streamCompatibilityPolicy.Decide(new StreamCompatibilityInput(
+            IsMkvInput: isMkv,
+            HasAudioStream: audioStreams.Length > 0,
+            IsVideoCopyCompatible: CopyVideoCodecs.Contains(codecLower),
+            HasNonAacAudio: audioStreams.Any(static s => !s.CodecName.Equals("aac", StringComparison.OrdinalIgnoreCase)),
+            ForceSyncAudio: request.SyncAudio,
+            NeedVideoEncode: needVideoEncode));
+        var needAudioEncode = compatibility.NeedAudioEncode;
+        var needContainer = compatibility.NeedContainerChange;
+        var onlyRemuxMkv = compatibility.IsCopyPath;
+        var forceSyncAudio = compatibility.ForceSyncAudio;
 
         if (request.Info)
         {
@@ -235,7 +245,7 @@ public sealed class TranscodeEngine
                 parts.Add("force video encode");
             }
 
-            if (needAudio)
+            if (compatibility.Reasons.Contains("audio non-aac", StringComparer.OrdinalIgnoreCase))
             {
                 parts.Add("audio non-AAC");
             }

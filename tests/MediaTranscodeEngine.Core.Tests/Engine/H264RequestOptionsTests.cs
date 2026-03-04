@@ -57,8 +57,8 @@ public class H264RequestOptionsTests
     }
 
     [Theory]
-    [InlineData(480)]
-    [InlineData(1080)]
+    [InlineData(0)]
+    [InlineData(-1)]
     public void Create_WhenDownscaleInvalid_ThrowsArgumentException(int downscale)
     {
         Action action = () => TranscodeRequest.Create(
@@ -67,7 +67,7 @@ public class H264RequestOptionsTests
 
         action.Should().Throw<ArgumentException>()
             .WithParameterName("Downscale")
-            .WithMessage("*Downscale must be 576 or 720.*");
+            .WithMessage("*Downscale must be greater than zero.*");
     }
 
     [Theory]

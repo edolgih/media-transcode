@@ -27,6 +27,9 @@ public static class ProfileConfigValidator
         {
             ValidateContentProfile(contentProfile.Key, contentProfile.Value);
         }
+
+        ValidateAutoSampling(config.AutoSampling);
+        ValidateDownscaleTargets(config.DownscaleTargets);
     }
 
     private static void ValidateContentProfile(string contentProfileName, ContentProfileSettings contentProfile)
@@ -82,6 +85,70 @@ public static class ProfileConfigValidator
             {
                 throw new InvalidOperationException(
                     $"Profile config is invalid: '{contentProfileName}/{quality}' has MaxrateMin > MaxrateMax.");
+            }
+        }
+    }
+
+    private static void ValidateAutoSampling(AutoSamplingSettings? autoSampling)
+    {
+        if (autoSampling is null)
+        {
+            return;
+        }
+
+        if (autoSampling.MaxIterations <= 0)
+        {
+            throw new InvalidOperationException("Profile config is invalid: AutoSampling.MaxIterations must be positive.");
+        }
+
+        if (autoSampling.HybridAccurateIterations <= 0)
+        {
+            throw new InvalidOperationException("Profile config is invalid: AutoSampling.HybridAccurateIterations must be positive.");
+        }
+
+        if (autoSampling.MediumVideoThresholdSeconds <= 0 || autoSampling.LongVideoThresholdSeconds <= 0)
+        {
+            throw new InvalidOperationException("Profile config is invalid: AutoSampling thresholds must be positive.");
+        }
+
+        if (autoSampling.LongVideoThresholdSeconds < autoSampling.MediumVideoThresholdSeconds)
+        {
+            throw new InvalidOperationException("Profile config is invalid: AutoSampling.LongVideoThresholdSeconds must be >= MediumVideoThresholdSeconds.");
+        }
+
+        ValidateAnchors("AutoSampling.LongVideoAnchors", autoSampling.LongVideoAnchors);
+        ValidateAnchors("AutoSampling.MediumVideoAnchors", autoSampling.MediumVideoAnchors);
+        ValidateAnchors("AutoSampling.ShortVideoAnchors", autoSampling.ShortVideoAnchors);
+    }
+
+    private static void ValidateDownscaleTargets(IReadOnlyDictionary<int, DownscaleTargetSettings>? targets)
+    {
+        if (targets is null)
+        {
+            return;
+        }
+
+        foreach (var entry in targets)
+        {
+            if (entry.Key <= 0)
+            {
+                throw new InvalidOperationException("Profile config is invalid: DownscaleTargets keys must be positive.");
+            }
+        }
+    }
+
+    private static void ValidateAnchors(string name, IReadOnlyList<double>? anchors)
+    {
+        if (anchors is null || anchors.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var anchor in anchors)
+        {
+            if (anchor <= 0 || anchor >= 1)
+            {
+                throw new InvalidOperationException($"Profile config is invalid: {name} values must be in range (0; 1).");
             }
         }
     }

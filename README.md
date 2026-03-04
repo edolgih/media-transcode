@@ -1,43 +1,44 @@
 # MediaTranscodeEngine
 
-`.NET 9` engine for media transcode command generation.
+`.NET 9` engine and CLI for building media transcode commands.
 
 ## Architecture
 
-- C# (`Core` + `Infrastructure`) contains business logic and profile policy.
-- PowerShell functions are thin wrappers over this engine.
-- Wrapper contract:
-  - normal path: outputs text command (`ffmpeg ...`) or `REM ...` for soft cases;
-  - config/contract errors (for example invalid content/quality profile): raise error, not `REM`.
-  - compatibility override: `ToMkvGPU -ForceVideoEncode` forces video re-encode even for copyable H.264.
+- Core owns domain rules and decision logic.
+- CLI is a thin wrapper (parse -> map -> call Core).
+- Main extension axes are explicit in project structure:
+  - `Codecs`
+  - `Resolutions`
+  - `Scenarios`
+  - `Quality`
+  - `Sampling`
+  - `Classification`
+  - `Compatibility`
+  - `Profiles`
 
-## Repository layout
+Key design points:
 
-- `src/MediaTranscodeEngine.Core` - engine, policy, command builder, infrastructure adapters
-- `src/MediaTranscodeEngine.Cli` - console host for engine commands (no in-process DLL loading in PowerShell)
-- `src/MediaTranscodeEngine.Core/Infrastructure/Profiles/ToMkvGPU.576.Profiles.yaml` - default 576 profile config
-- `tests/MediaTranscodeEngine.Core.Tests` - xUnit/NSubstitute/FluentAssertions tests
-- `docs/ToMkvGPU.Baseline.md` - baseline parity scenarios
+- Codec routing is polymorphic (`ITranscodeRoute` + selector).
+- Execution is strategy-based (`ICodecExecutionStrategy`).
+- Downscale support is data-driven via profile targets (`source -> target` policies).
+- Sampling window policy is configurable from profile data.
+
+## Repository Layout
+
+- `src/MediaTranscodeEngine.Core` - domain, policy, command builders, adapters
+- `src/MediaTranscodeEngine.Cli` - console host
+- `src/MediaTranscodeEngine.Core/Profiles/ToMkvGPU.576.Profiles.yaml` - default profile data
+- `tests/MediaTranscodeEngine.Core.Tests` - xUnit/NSubstitute/FluentAssertions
+- `tests/MediaTranscodeEngine.Cli.Tests` - CLI contract/integration tests
 - `MediaTranscodeEngine.sln` - solution
 
-## Runtime requirements
+## Runtime Requirements
 
-- `.NET SDK`: `9.0.x`
-- `ffprobe`: `6.x+` with JSON probe output support:
-  - `-print_format json`
-  - `-show_format`
-  - `-show_streams`
-- `ffmpeg`: `6.x+` build with required capabilities:
-  - NVENC encoder: `h264_nvenc`
-  - CUDA hwaccel path: `-hwaccel cuda`, `-hwaccel_output_format cuda`
-  - filters used by engine: `scale_cuda`, `overlay_cuda`, `overlay`, `aresample`
-  - NVENC rc options used by command builder: `-rc vbr_hq`, `-spatial_aq`, `-temporal_aq`, `-rc-lookahead`
+- `.NET SDK` `9.0.x`
+- `ffprobe` `6.x+` with JSON output support
+- `ffmpeg` `6.x+` with required filters/encoders (`h264_nvenc`, `scale_cuda`, etc.)
 
-Notes:
-- Specific build numbers are not pinned; compatibility is defined by available features.
-- `ffmpeg -encoders` / `ffmpeg -filters` can be used to verify capabilities on target host.
-
-## Build
+## Build And Test
 
 ```bash
 dotnet restore
@@ -45,17 +46,28 @@ dotnet build
 dotnet test
 ```
 
-## CLI usage
+## CLI Usage
 
-Generate ToMkvGPU commands from explicit files:
-
-```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- tomkvgpu --input "F:\2. Мульты\Зверополис.mkv" --force-video-encode
-```
-
-Generate commands from piped paths (one path per line):
+Show help:
 
 ```bash
-some_path_producer | dotnet run --project src/MediaTranscodeEngine.Cli -- tomkvgpu --info
+dotnet run --project src/MediaTranscodeEngine.Cli -- --help
 ```
-https://google.com
+
+Generate command with scenario preset:
+
+```bash
+dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\Src\movie.mkv" --scenario tomkvgpu
+```
+
+Preset with explicit override (`explicit > preset > defaults`):
+
+```bash
+dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\Src\movie.mkv" --scenario tomkvgpu --cq 21 --downscale 576
+```
+
+Generate info output for piped paths:
+
+```bash
+some_path_producer | dotnet run --project src/MediaTranscodeEngine.Cli -- --info --scenario tomkvgpu
+```

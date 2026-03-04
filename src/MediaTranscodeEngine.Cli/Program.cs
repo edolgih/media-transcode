@@ -1,9 +1,19 @@
 using MediaTranscodeEngine.Core.Abstractions;
 using MediaTranscodeEngine.Core.Commanding;
 using MediaTranscodeEngine.Core.Engine;
-using MediaTranscodeEngine.Core.Engine.Behaviors;
 using MediaTranscodeEngine.Core.Infrastructure;
 using MediaTranscodeEngine.Core.Policy;
+using MediaTranscodeEngine.Core;
+using MediaTranscodeEngine.Core.Classification;
+using MediaTranscodeEngine.Core.Codecs;
+using MediaTranscodeEngine.Core.Compatibility;
+using MediaTranscodeEngine.Core.Execution;
+using MediaTranscodeEngine.Core.Profiles;
+using MediaTranscodeEngine.Core.Quality;
+using MediaTranscodeEngine.Core.Resolutions;
+using MediaTranscodeEngine.Core.Sampling;
+using MediaTranscodeEngine.Core.Scenarios;
+using MediaTranscodeEngine.Cli.Processing;
 using MediaTranscodeEngine.Cli.Parsing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -67,6 +77,14 @@ public static class Program
             builder.Services.AddSingleton<IAutoSampleReductionProvider>(static services =>
             {
                 var options = services.GetRequiredService<IOptions<RuntimeValues>>().Value;
+                var profileConfig = services.GetRequiredService<IProfileRepository>().Get576Config();
+                var autoSampling = profileConfig.AutoSampling;
+                var sampleWindowPolicy = new SampleWindowPolicy(
+                    LongVideoThresholdSeconds: autoSampling?.LongVideoThresholdSeconds ?? SampleWindowPolicy.Default.LongVideoThresholdSeconds,
+                    MediumVideoThresholdSeconds: autoSampling?.MediumVideoThresholdSeconds ?? SampleWindowPolicy.Default.MediumVideoThresholdSeconds,
+                    LongVideoAnchors: autoSampling?.LongVideoAnchors ?? SampleWindowPolicy.Default.LongVideoAnchors,
+                    MediumVideoAnchors: autoSampling?.MediumVideoAnchors ?? SampleWindowPolicy.Default.MediumVideoAnchors,
+                    ShortVideoAnchors: autoSampling?.ShortVideoAnchors ?? SampleWindowPolicy.Default.ShortVideoAnchors);
                 return new FfmpegAutoSampleReductionProvider(
                     probeReader: services.GetRequiredService<IProbeReader>(),
                     processRunner: services.GetRequiredService<IProcessRunner>(),
@@ -76,11 +94,10 @@ public static class Program
                     sampleDurationSeconds: options.SampleDurationSeconds,
                     nvencPreset: options.AutoSampleNvencPreset!,
                     sampleEncodeMaxRetries: options.SampleEncodeMaxRetries,
+                    sampleWindowPolicy: sampleWindowPolicy,
                     logger: services.GetRequiredService<ILogger<FfmpegAutoSampleReductionProvider>>());
             });
-            builder.Services.AddSingleton<TranscodePolicy>();
             builder.Services.AddSingleton<FfmpegCommandBuilder>();
-            builder.Services.AddSingleton<TranscodeEngine>();
             builder.Services.AddSingleton<H264RemuxEligibilityPolicy>();
             builder.Services.AddSingleton<H264TimestampPolicy>();
             builder.Services.AddSingleton<H264AudioPolicy>();
@@ -89,13 +106,24 @@ public static class Program
             builder.Services.AddSingleton<IContainerPolicy, Mp4ContainerPolicy>();
             builder.Services.AddSingleton<ContainerPolicySelector>();
             builder.Services.AddSingleton<H264CommandBuilder>();
-            builder.Services.AddSingleton<H264TranscodeEngine>();
-            builder.Services.AddSingleton<TargetVideoCodecResolver>();
-            builder.Services.AddSingleton<ITranscodeBehavior, CopyTranscodeBehavior>();
-            builder.Services.AddSingleton<ITranscodeBehavior, H264GpuTranscodeBehavior>();
-            builder.Services.AddSingleton<ITranscodeBehavior, H264CpuNotImplementedBehavior>();
-            builder.Services.AddSingleton<TranscodeBehaviorSelector>();
-            builder.Services.AddSingleton<GeneralTranscodeEngine>();
+            builder.Services.AddSingleton<IScenarioPresetRepository, InMemoryScenarioPresetRepository>();
+            builder.Services.AddSingleton<ScenarioRequestMerger>();
+            builder.Services.AddSingleton<ITranscodeRoute, CopyRoute>();
+            builder.Services.AddSingleton<ITranscodeRoute, H264GpuRoute>();
+            builder.Services.AddSingleton<ITranscodeRoute, H264CpuNotImplementedRoute>();
+            builder.Services.AddSingleton<ICodecExecutionStrategy, CopyCodecExecutionStrategy>();
+            builder.Services.AddSingleton<ICodecExecutionStrategy, H264GpuCodecExecutionStrategy>();
+            builder.Services.AddSingleton<ITranscodeExecutionPipeline, TranscodeExecutionPipeline>();
+            builder.Services.AddSingleton<TranscodeRouteSelector>();
+            builder.Services.AddSingleton<TranscodeOrchestrator>();
+            builder.Services.AddSingleton<IProfileDefinitionRepository, LegacyPolicyConfigProfileRepository>();
+            builder.Services.AddSingleton<ProfilePolicy>();
+            builder.Services.AddSingleton<IResolutionPolicyRepository, ProfileBackedResolutionPolicyRepository>();
+            builder.Services.AddSingleton<IQualityStrategy, ProfileBackedQualityStrategy>();
+            builder.Services.AddSingleton<IAutoSamplingStrategy, PolicyDrivenAutoSamplingStrategy>();
+            builder.Services.AddSingleton<IInputClassifier, DefaultInputClassifier>();
+            builder.Services.AddSingleton<IStreamCompatibilityPolicy, DefaultStreamCompatibilityPolicy>();
+            builder.Services.AddSingleton<ITranscodeProcessor, PrimaryTranscodeProcessor>();
 
             using var host = builder.Build();
             var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
@@ -153,11 +181,27 @@ public static class Program
             return 1;
         }
 
-        var engine = services.GetRequiredService<GeneralTranscodeEngine>();
+        var scenarioMerger = services.GetRequiredService<ScenarioRequestMerger>();
+        RawTranscodeRequest mergedTemplate;
+        try
+        {
+            mergedTemplate = scenarioMerger.Merge(
+                parsed.RequestTemplate,
+                parsed.ExplicitTemplateFields);
+        }
+        catch (ArgumentException exception)
+        {
+            logger.LogWarning(exception, "Scenario merge failed.");
+            Console.Error.WriteLine(exception.Message);
+            return 1;
+        }
+
+        var processor = services.GetRequiredService<ITranscodeProcessor>();
+
         foreach (var input in parsed.Inputs)
         {
-            var request = CliRequestMappers.BuildRequest(parsed.RequestTemplate, input);
-            var line = engine.Process(request);
+            var request = CliRequestMappers.BuildRequest(mergedTemplate, input);
+            var line = processor.Process(request);
             if (!string.IsNullOrWhiteSpace(line))
             {
                 Console.WriteLine(line);

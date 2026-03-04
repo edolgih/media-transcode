@@ -65,6 +65,23 @@ public class ProfileConfigValidatorTests
             .WithMessage("*missing Limits*");
     }
 
+    [Fact]
+    public void Validate576Config_WhenDownscaleTargetKeyIsNotPositive_ThrowsInvalidOperationException()
+    {
+        var config = CreateValidConfig() with
+        {
+            DownscaleTargets = new Dictionary<int, DownscaleTargetSettings>
+            {
+                [0] = new DownscaleTargetSettings(Supported: true)
+            }
+        };
+
+        var action = () => ProfileConfigValidator.Validate576Config(config);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*DownscaleTargets keys must be positive*");
+    }
+
     private static TranscodePolicyConfig CreateValidConfig()
     {
         var contentProfiles = new Dictionary<string, ContentProfileSettings>(StringComparer.OrdinalIgnoreCase)

@@ -6,6 +6,11 @@
 # dotenv files
 .env
 
+# Local docs (keep files locally, do not track in repository)
+docs/
+implementation_plan.md
+refactoring_current.md
+
 # User-specific files
 *.rsuser
 *.suo

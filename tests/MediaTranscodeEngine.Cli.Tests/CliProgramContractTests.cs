@@ -24,12 +24,12 @@ public class CliProgramContractTests
     }
 
     [Fact]
-    public async Task Main_WithScenarioOption_ReturnsExitCodeOneAndWritesUnknownOptionToStdErr()
+    public async Task Main_WithUnknownScenario_ReturnsExitCodeOneAndWritesScenarioValidationErrorToStdErr()
     {
         var result = await RunCliAsync("--scenario", "unknown", "--input", "C:\\video\\movie.mp4");
 
         result.ExitCode.Should().Be(1);
-        result.StdErr.Should().Contain("Unknown option: --scenario");
+        result.StdErr.Should().Contain("Unknown scenario: unknown");
     }
 
     [Fact]

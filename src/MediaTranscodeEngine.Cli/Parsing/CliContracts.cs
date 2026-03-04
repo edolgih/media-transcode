@@ -23,14 +23,33 @@ internal sealed record CliOptionDefinition(
     string HelpText,
     Action<CliMutableParseState, CliParsedValue> ApplyValue,
     string? InvalidValueError = null,
-    string? Usage = null);
+    string? Usage = null,
+    IReadOnlyList<string>? AffectedTemplateFields = null);
 
 internal sealed class CliMutableParseState
 {
     public List<string> Inputs { get; } = [];
 
+    public HashSet<string> ExplicitTemplateFields { get; } = new(StringComparer.Ordinal);
+
     public RawTranscodeRequest RequestTemplate { get; set; } =
         new(InputPath: "__input__");
+
+    public void MarkExplicitFields(IReadOnlyList<string>? fieldNames)
+    {
+        if (fieldNames is null)
+        {
+            return;
+        }
+
+        foreach (var fieldName in fieldNames)
+        {
+            if (!string.IsNullOrWhiteSpace(fieldName))
+            {
+                ExplicitTemplateFields.Add(fieldName);
+            }
+        }
+    }
 }
 
 internal static class CliContracts
@@ -77,7 +96,19 @@ internal static class CliContracts
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Keep input source file; write output to a new file.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { KeepSource = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { KeepSource = true },
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.KeepSource)]),
+            ["--scenario"] = new CliOptionDefinition(
+                Name: "--scenario",
+                ValueKind: CliOptionValueKind.String,
+                IsRepeatable: false,
+                HelpText: "Scenario preset name.",
+                ApplyValue: static (state, value) =>
+                {
+                    state.RequestTemplate = state.RequestTemplate with { Scenario = value.StringValue };
+                },
+                Usage: "--scenario <name>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.Scenario)]),
             ["--container"] = new CliOptionDefinition(
                 Name: "--container",
                 ValueKind: CliOptionValueKind.String,
@@ -93,7 +124,12 @@ internal static class CliContracts
                         PreferH264 = state.RequestTemplate.PreferH264 || preferH264
                     };
                 },
-                Usage: "--container <mkv|mp4>"),
+                Usage: "--container <mkv|mp4>",
+                AffectedTemplateFields:
+                [
+                    nameof(RawTranscodeRequest.TargetContainer),
+                    nameof(RawTranscodeRequest.PreferH264)
+                ]),
             ["--compute"] = new CliOptionDefinition(
                 Name: "--compute",
                 ValueKind: CliOptionValueKind.String,
@@ -103,7 +139,8 @@ internal static class CliContracts
                 {
                     state.RequestTemplate = state.RequestTemplate with { ComputeMode = value.StringValue ?? string.Empty };
                 },
-                Usage: "--compute <gpu|cpu>"),
+                Usage: "--compute <gpu|cpu>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.ComputeMode)]),
             ["--preset"] = new CliOptionDefinition(
                 Name: "--preset",
                 ValueKind: CliOptionValueKind.String,
@@ -113,7 +150,8 @@ internal static class CliContracts
                 {
                     state.RequestTemplate = state.RequestTemplate with { VideoPreset = value.StringValue ?? string.Empty };
                 },
-                Usage: "--preset <value>"),
+                Usage: "--preset <value>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.VideoPreset)]),
             ["--nvenc-preset"] = new CliOptionDefinition(
                 Name: "--nvenc-preset",
                 ValueKind: CliOptionValueKind.String,
@@ -123,20 +161,23 @@ internal static class CliContracts
                 {
                     state.RequestTemplate = state.RequestTemplate with { VideoPreset = value.StringValue ?? string.Empty };
                 },
-                Usage: "--nvenc-preset <value>"),
+                Usage: "--nvenc-preset <value>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.VideoPreset)]),
 
             ["--info"] = new CliOptionDefinition(
                 Name: "--info",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Info mode.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { Info = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { Info = true },
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.Info)]),
             ["--overlay-bg"] = new CliOptionDefinition(
                 Name: "--overlay-bg",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Enable overlay background mode.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { OverlayBg = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { OverlayBg = true },
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.OverlayBg)]),
             ["--downscale"] = new CliOptionDefinition(
                 Name: "--downscale",
                 ValueKind: CliOptionValueKind.Int,
@@ -144,53 +185,61 @@ internal static class CliContracts
                 HelpText: "Downscale target.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { Downscale = value.IntValue },
                 InvalidValueError: "--downscale must be an integer.",
-                Usage: "--downscale <int>"),
+                Usage: "--downscale <int>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.Downscale)]),
             ["--downscale-algo"] = new CliOptionDefinition(
                 Name: "--downscale-algo",
                 ValueKind: CliOptionValueKind.String,
                 IsRepeatable: false,
                 HelpText: "Downscale algorithm.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { DownscaleAlgo = value.StringValue },
-                Usage: "--downscale-algo <value>"),
+                Usage: "--downscale-algo <value>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.DownscaleAlgo)]),
             ["--content-profile"] = new CliOptionDefinition(
                 Name: "--content-profile",
                 ValueKind: CliOptionValueKind.String,
                 IsRepeatable: false,
                 HelpText: "Content profile.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { ContentProfile = value.StringValue ?? state.RequestTemplate.ContentProfile },
-                Usage: "--content-profile <value>"),
+                Usage: "--content-profile <value>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.ContentProfile)]),
             ["--quality-profile"] = new CliOptionDefinition(
                 Name: "--quality-profile",
                 ValueKind: CliOptionValueKind.String,
                 IsRepeatable: false,
                 HelpText: "Quality profile.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { QualityProfile = value.StringValue ?? state.RequestTemplate.QualityProfile },
-                Usage: "--quality-profile <value>"),
+                Usage: "--quality-profile <value>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.QualityProfile)]),
             ["--no-auto-sample"] = new CliOptionDefinition(
                 Name: "--no-auto-sample",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Disable auto sample.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { NoAutoSample = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { NoAutoSample = true },
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.NoAutoSample)]),
             ["--auto-sample-mode"] = new CliOptionDefinition(
                 Name: "--auto-sample-mode",
                 ValueKind: CliOptionValueKind.String,
                 IsRepeatable: false,
                 HelpText: "Auto sample mode.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { AutoSampleMode = value.StringValue ?? state.RequestTemplate.AutoSampleMode },
-                Usage: "--auto-sample-mode <value>"),
+                Usage: "--auto-sample-mode <value>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.AutoSampleMode)]),
             ["--sync-audio"] = new CliOptionDefinition(
                 Name: "--sync-audio",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Force audio sync path.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { SyncAudio = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { SyncAudio = true },
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.SyncAudio)]),
             ["--force-video-encode"] = new CliOptionDefinition(
                 Name: "--force-video-encode",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Force video encode.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { ForceVideoEncode = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { ForceVideoEncode = true },
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.ForceVideoEncode)]),
             ["--cq"] = new CliOptionDefinition(
                 Name: "--cq",
                 ValueKind: CliOptionValueKind.Int,
@@ -198,7 +247,8 @@ internal static class CliContracts
                 HelpText: "CQ override.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { Cq = value.IntValue },
                 InvalidValueError: "--cq must be an integer.",
-                Usage: "--cq <int>"),
+                Usage: "--cq <int>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.Cq)]),
             ["--maxrate"] = new CliOptionDefinition(
                 Name: "--maxrate",
                 ValueKind: CliOptionValueKind.Double,
@@ -206,7 +256,8 @@ internal static class CliContracts
                 HelpText: "Maxrate override.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { Maxrate = value.DoubleValue },
                 InvalidValueError: "--maxrate must be a number.",
-                Usage: "--maxrate <number>"),
+                Usage: "--maxrate <number>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.Maxrate)]),
             ["--bufsize"] = new CliOptionDefinition(
                 Name: "--bufsize",
                 ValueKind: CliOptionValueKind.Double,
@@ -214,20 +265,31 @@ internal static class CliContracts
                 HelpText: "Bufsize override.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { Bufsize = value.DoubleValue },
                 InvalidValueError: "--bufsize must be a number.",
-                Usage: "--bufsize <number>"),
+                Usage: "--bufsize <number>",
+                AffectedTemplateFields: [nameof(RawTranscodeRequest.Bufsize)]),
 
             ["--keep-fps"] = new CliOptionDefinition(
                 Name: "--keep-fps",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Keep source FPS.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { KeepFps = true, PreferH264 = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { KeepFps = true, PreferH264 = true },
+                AffectedTemplateFields:
+                [
+                    nameof(RawTranscodeRequest.KeepFps),
+                    nameof(RawTranscodeRequest.PreferH264)
+                ]),
             ["--use-aq"] = new CliOptionDefinition(
                 Name: "--use-aq",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Enable AQ.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { UseAq = true, PreferH264 = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { UseAq = true, PreferH264 = true },
+                AffectedTemplateFields:
+                [
+                    nameof(RawTranscodeRequest.UseAq),
+                    nameof(RawTranscodeRequest.PreferH264)
+                ]),
             ["--aq-strength"] = new CliOptionDefinition(
                 Name: "--aq-strength",
                 ValueKind: CliOptionValueKind.Int,
@@ -239,19 +301,34 @@ internal static class CliContracts
                     PreferH264 = true
                 },
                 InvalidValueError: "--aq-strength must be an integer.",
-                Usage: "--aq-strength <int>"),
+                Usage: "--aq-strength <int>",
+                AffectedTemplateFields:
+                [
+                    nameof(RawTranscodeRequest.AqStrength),
+                    nameof(RawTranscodeRequest.PreferH264)
+                ]),
             ["--denoise"] = new CliOptionDefinition(
                 Name: "--denoise",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Enable denoise.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { Denoise = true, PreferH264 = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { Denoise = true, PreferH264 = true },
+                AffectedTemplateFields:
+                [
+                    nameof(RawTranscodeRequest.Denoise),
+                    nameof(RawTranscodeRequest.PreferH264)
+                ]),
             ["--fix-timestamps"] = new CliOptionDefinition(
                 Name: "--fix-timestamps",
                 ValueKind: CliOptionValueKind.Flag,
                 IsRepeatable: false,
                 HelpText: "Force timestamp fixes.",
-                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { FixTimestamps = true, PreferH264 = true }),
+                ApplyValue: static (state, _) => state.RequestTemplate = state.RequestTemplate with { FixTimestamps = true, PreferH264 = true },
+                AffectedTemplateFields:
+                [
+                    nameof(RawTranscodeRequest.FixTimestamps),
+                    nameof(RawTranscodeRequest.PreferH264)
+                ]),
             ["--output-mkv"] = new CliOptionDefinition(
                 Name: "--output-mkv",
                 ValueKind: CliOptionValueKind.Flag,
@@ -261,7 +338,12 @@ internal static class CliContracts
                 {
                     TargetContainer = RequestContracts.General.MkvContainer,
                     PreferH264 = true
-                })
+                },
+                AffectedTemplateFields:
+                [
+                    nameof(RawTranscodeRequest.TargetContainer),
+                    nameof(RawTranscodeRequest.PreferH264)
+                ])
         };
     }
 

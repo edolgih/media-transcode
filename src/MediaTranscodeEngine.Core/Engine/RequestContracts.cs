@@ -19,7 +19,6 @@ public static class RequestContracts
         public static readonly IReadOnlyCollection<string> ComputeModes = new[] { GpuComputeMode, CpuComputeMode };
         public static readonly IReadOnlyCollection<string> VideoPresets = new[] { "p1", "p2", "p3", "p4", "p5", "p6", "p7" };
         public static readonly IReadOnlyCollection<string> DownscaleAlgorithms = new[] { "bicubic", "lanczos", "bilinear" };
-        public static readonly IReadOnlyCollection<int> DownscaleTargets = new[] { 576, 720 };
     }
 
     public static class Transcode
@@ -35,7 +34,6 @@ public static class RequestContracts
         public static readonly IReadOnlyCollection<string> AutoSampleModes = new[] { "accurate", "fast", "hybrid" };
         public static readonly IReadOnlyCollection<string> NvencPresets = new[] { "p1", "p2", "p3", "p4", "p5", "p6", "p7" };
         public static readonly IReadOnlyCollection<string> DownscaleAlgorithms = new[] { "bicubic", "lanczos", "bilinear" };
-        public static readonly IReadOnlyCollection<int> DownscaleTargets = new[] { 576, 720 };
     }
 
 }

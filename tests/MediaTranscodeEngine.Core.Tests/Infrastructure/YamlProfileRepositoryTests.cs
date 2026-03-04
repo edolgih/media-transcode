@@ -21,6 +21,11 @@ public class YamlProfileRepositoryTests
         actual.SourceBuckets.Should().NotBeNull();
         actual.SourceBuckets!.Count.Should().Be(2);
         actual.SourceBuckets[1].Name.Should().Be("fhd_1080");
+        actual.DownscaleTargets.Should().NotBeNull();
+        actual.DownscaleTargets![576].Supported.Should().BeTrue();
+        actual.DownscaleTargets[720].Supported.Should().BeFalse();
+        actual.AutoSampling.Should().NotBeNull();
+        actual.AutoSampling!.LongVideoAnchors.Should().ContainInOrder(0.15, 0.50, 0.85);
     }
 
     [Fact]

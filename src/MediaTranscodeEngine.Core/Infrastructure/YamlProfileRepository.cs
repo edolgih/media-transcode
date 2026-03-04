@@ -68,7 +68,8 @@ public sealed class YamlProfileRepository : IProfileRepository
             QualityRanges: MapQualityRanges(source.QualityRanges),
             ContentQualityRanges: MapContentQualityRanges(source.ContentQualityRanges),
             SourceBuckets: MapSourceBuckets(source.SourceBuckets),
-            AutoSampling: MapAutoSampling(source.AutoSampling));
+            AutoSampling: MapAutoSampling(source.AutoSampling),
+            DownscaleTargets: MapDownscaleTargets(source.DownscaleTargets));
     }
 
     private static IReadOnlyDictionary<string, ContentProfileSettings> MapContentProfiles(
@@ -253,7 +254,32 @@ public sealed class YamlProfileRepository : IProfileRepository
             EnabledByDefault: source.EnabledByDefault ?? true,
             MaxIterations: source.MaxIterations ?? 8,
             ModeDefault: source.ModeDefault ?? "accurate",
-            HybridAccurateIterations: source.HybridAccurateIterations ?? 2);
+            HybridAccurateIterations: source.HybridAccurateIterations ?? 2,
+            LongVideoThresholdSeconds: source.LongVideoThresholdSeconds ?? 5_400,
+            MediumVideoThresholdSeconds: source.MediumVideoThresholdSeconds ?? 1_800,
+            LongVideoAnchors: source.LongVideoAnchors,
+            MediumVideoAnchors: source.MediumVideoAnchors,
+            ShortVideoAnchors: source.ShortVideoAnchors);
+    }
+
+    private static IReadOnlyDictionary<int, DownscaleTargetSettings>? MapDownscaleTargets(
+        IDictionary<int, YamlDownscaleTargetSettings>? source)
+    {
+        if (source is null)
+        {
+            return null;
+        }
+
+        var result = new Dictionary<int, DownscaleTargetSettings>();
+        foreach (var entry in source)
+        {
+            var settings = entry.Value ?? new YamlDownscaleTargetSettings();
+            result[entry.Key] = new DownscaleTargetSettings(
+                Supported: settings.Supported ?? true,
+                UnsupportedReason: settings.UnsupportedReason);
+        }
+
+        return result;
     }
 
     private static ReductionRange MapReductionRange(YamlReductionRange source)
@@ -273,6 +299,7 @@ public sealed class YamlProfileRepository : IProfileRepository
         public Dictionary<string, Dictionary<string, YamlReductionRange>>? ContentQualityRanges { get; set; }
         public List<YamlSourceBucket>? SourceBuckets { get; set; }
         public YamlAutoSamplingSettings? AutoSampling { get; set; }
+        public Dictionary<int, YamlDownscaleTargetSettings>? DownscaleTargets { get; set; }
     }
 
     private sealed class YamlRateModelSettings
@@ -334,5 +361,16 @@ public sealed class YamlProfileRepository : IProfileRepository
         public int? MaxIterations { get; set; }
         public string? ModeDefault { get; set; }
         public int? HybridAccurateIterations { get; set; }
+        public double? LongVideoThresholdSeconds { get; set; }
+        public double? MediumVideoThresholdSeconds { get; set; }
+        public List<double>? LongVideoAnchors { get; set; }
+        public List<double>? MediumVideoAnchors { get; set; }
+        public List<double>? ShortVideoAnchors { get; set; }
+    }
+
+    private sealed class YamlDownscaleTargetSettings
+    {
+        public bool? Supported { get; set; }
+        public string? UnsupportedReason { get; set; }
     }
 }

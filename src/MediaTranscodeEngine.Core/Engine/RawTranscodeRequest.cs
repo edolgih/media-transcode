@@ -2,6 +2,7 @@ namespace MediaTranscodeEngine.Core.Engine;
 
 public sealed record RawTranscodeRequest(
     string InputPath,
+    string? Scenario = null,
     string TargetContainer = RequestContracts.General.DefaultContainer,
     string ComputeMode = RequestContracts.General.DefaultComputeMode,
     string VideoPreset = RequestContracts.General.DefaultVideoPreset,

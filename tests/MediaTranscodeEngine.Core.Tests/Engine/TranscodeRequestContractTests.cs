@@ -168,9 +168,9 @@ public class TranscodeRequestContractTests
     }
 
     [Theory]
-    [InlineData(480)]
-    [InlineData(1080)]
-    public void Create_WhenDownscaleUnsupported_ThrowsArgumentException(int downscale)
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Create_WhenDownscaleNotPositive_ThrowsArgumentException(int downscale)
     {
         Action action = () => TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
@@ -178,7 +178,7 @@ public class TranscodeRequestContractTests
 
         action.Should().Throw<ArgumentException>()
             .WithParameterName("Downscale")
-            .WithMessage("*Downscale must be 576 or 720.*");
+            .WithMessage("*Downscale must be greater than zero.*");
     }
 
     [Theory]

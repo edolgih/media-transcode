@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\src\MediaTranscodeEngine.Core\Infrastructure\Profiles\ToMkvGPU.576.Profiles.yaml">
+    <None Include="..\..\src\MediaTranscodeEngine.Core\Profiles\ToMkvGPU.576.Profiles.yaml">
       <Link>TestData\ToMkvGPU.576.Profiles.yaml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

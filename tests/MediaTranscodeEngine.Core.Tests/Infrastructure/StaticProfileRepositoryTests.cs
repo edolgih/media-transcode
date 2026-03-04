@@ -38,4 +38,34 @@ public class StaticProfileRepositoryTests
         actual.SourceBuckets[1].Match!.MinHeightInclusive.Should().Be(1000);
         actual.SourceBuckets[1].Match!.MaxHeightInclusive.Should().Be(1300);
     }
+
+    [Fact]
+    public void Get576Config_WhenCalled_ReturnsDownscaleTargetPolicies()
+    {
+        var sut = new StaticProfileRepository();
+
+        var actual = sut.Get576Config();
+
+        actual.DownscaleTargets.Should().NotBeNull();
+        actual.DownscaleTargets!.ContainsKey(576).Should().BeTrue();
+        actual.DownscaleTargets[576].Supported.Should().BeTrue();
+        actual.DownscaleTargets.ContainsKey(720).Should().BeTrue();
+        actual.DownscaleTargets[720].Supported.Should().BeFalse();
+        actual.DownscaleTargets[720].UnsupportedReason.Should().Contain("not implemented");
+    }
+
+    [Fact]
+    public void Get576Config_WhenCalled_ReturnsSamplingWindowPolicy()
+    {
+        var sut = new StaticProfileRepository();
+
+        var actual = sut.Get576Config();
+
+        actual.AutoSampling.Should().NotBeNull();
+        actual.AutoSampling!.LongVideoThresholdSeconds.Should().Be(5400);
+        actual.AutoSampling.MediumVideoThresholdSeconds.Should().Be(1800);
+        actual.AutoSampling.LongVideoAnchors.Should().ContainInOrder(0.15, 0.50, 0.85);
+        actual.AutoSampling.MediumVideoAnchors.Should().ContainInOrder(0.30, 0.70);
+        actual.AutoSampling.ShortVideoAnchors.Should().ContainSingle().Which.Should().Be(0.50);
+    }
 }

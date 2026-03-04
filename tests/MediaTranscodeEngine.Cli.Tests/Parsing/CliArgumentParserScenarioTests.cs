@@ -9,15 +9,17 @@ public class CliArgumentParserScenarioTests
     private const string DefaultInputPath = "C:\\video\\movie.mp4";
 
     [Fact]
-    public void TryParse_WhenScenarioOptionProvided_ReturnsFalseAndUnknownOptionError()
+    public void TryParse_WhenScenarioOptionProvided_ReturnsTemplateWithScenario()
     {
         var ok = Parse(
             args: ["--scenario", "tomkvgpu", "--input", DefaultInputPath],
-            parsed: out _,
+            parsed: out var parsed,
             errorText: out var errorText);
 
-        ok.Should().BeFalse();
-        errorText.Should().Be("Unknown option: --scenario");
+        ok.Should().BeTrue();
+        errorText.Should().BeNull();
+        parsed.RequestTemplate.Scenario.Should().Be("tomkvgpu");
+        parsed.ExplicitTemplateFields.Should().Contain(nameof(RawTranscodeRequest.Scenario));
     }
 
     [Fact]

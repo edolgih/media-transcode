@@ -174,6 +174,18 @@ public sealed class StaticProfileRepository : IProfileRepository
                 EnabledByDefault: true,
                 MaxIterations: 8,
                 ModeDefault: "accurate",
-                HybridAccurateIterations: 2));
+                HybridAccurateIterations: 2,
+                LongVideoThresholdSeconds: 5_400,
+                MediumVideoThresholdSeconds: 1_800,
+                LongVideoAnchors: [0.15, 0.50, 0.85],
+                MediumVideoAnchors: [0.30, 0.70],
+                ShortVideoAnchors: [0.50]),
+            DownscaleTargets: new Dictionary<int, DownscaleTargetSettings>
+            {
+                [576] = new DownscaleTargetSettings(Supported: true),
+                [720] = new DownscaleTargetSettings(
+                    Supported: false,
+                    UnsupportedReason: "Downscale 720 not implemented.")
+            });
     }
 }

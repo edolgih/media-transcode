@@ -1,5 +1,6 @@
 using System.Globalization;
 using MediaTranscodeEngine.Core.Abstractions;
+using MediaTranscodeEngine.Core.Sampling;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -17,6 +18,7 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
     private readonly int _sampleDurationSeconds;
     private readonly string _nvencPreset;
     private readonly int _sampleEncodeMaxRetries;
+    private readonly SampleWindowPolicy _sampleWindowPolicy;
     private readonly ILogger<FfmpegAutoSampleReductionProvider> _logger;
 
     public FfmpegAutoSampleReductionProvider(
@@ -28,6 +30,7 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         int sampleDurationSeconds = 15,
         string nvencPreset = "p6",
         int sampleEncodeMaxRetries = 0,
+        SampleWindowPolicy? sampleWindowPolicy = null,
         ILogger<FfmpegAutoSampleReductionProvider>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(probeReader);
@@ -54,6 +57,20 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
             throw new ArgumentOutOfRangeException(nameof(sampleEncodeMaxRetries), "Retry count cannot be negative.");
         }
 
+        var effectiveWindowPolicy = sampleWindowPolicy ?? SampleWindowPolicy.Default;
+        if (effectiveWindowPolicy.MediumVideoThresholdSeconds <= 0 ||
+            effectiveWindowPolicy.LongVideoThresholdSeconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sampleWindowPolicy), "Window thresholds must be greater than zero.");
+        }
+
+        if (effectiveWindowPolicy.LongVideoThresholdSeconds < effectiveWindowPolicy.MediumVideoThresholdSeconds)
+        {
+            throw new ArgumentException(
+                "LongVideoThresholdSeconds must be greater than or equal to MediumVideoThresholdSeconds.",
+                nameof(sampleWindowPolicy));
+        }
+
         if (!IsOneOf(nvencPreset, "p1", "p2", "p3", "p4", "p5", "p6", "p7"))
         {
             throw new ArgumentException("nvencPreset must be p1..p7.", nameof(nvencPreset));
@@ -67,6 +84,18 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         _sampleDurationSeconds = sampleDurationSeconds;
         _nvencPreset = nvencPreset;
         _sampleEncodeMaxRetries = sampleEncodeMaxRetries;
+        _sampleWindowPolicy = effectiveWindowPolicy with
+        {
+            LongVideoAnchors = NormalizeAnchors(
+                effectiveWindowPolicy.LongVideoAnchors,
+                SampleWindowPolicy.Default.LongVideoAnchors),
+            MediumVideoAnchors = NormalizeAnchors(
+                effectiveWindowPolicy.MediumVideoAnchors,
+                SampleWindowPolicy.Default.MediumVideoAnchors),
+            ShortVideoAnchors = NormalizeAnchors(
+                effectiveWindowPolicy.ShortVideoAnchors,
+                SampleWindowPolicy.Default.ShortVideoAnchors)
+        };
         _logger = logger ?? NullLogger<FfmpegAutoSampleReductionProvider>.Instance;
     }
 
@@ -309,12 +338,12 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         var windowDuration = Math.Min(_sampleDurationSeconds, durationSeconds);
         var anchors = durationSeconds switch
         {
-            >= 5_400 => new[] { 0.15, 0.50, 0.85 },
-            >= 1_800 => new[] { 0.30, 0.70 },
-            _ => new[] { 0.50 }
+            _ when durationSeconds >= _sampleWindowPolicy.LongVideoThresholdSeconds => _sampleWindowPolicy.LongVideoAnchors,
+            _ when durationSeconds >= _sampleWindowPolicy.MediumVideoThresholdSeconds => _sampleWindowPolicy.MediumVideoAnchors,
+            _ => _sampleWindowPolicy.ShortVideoAnchors
         };
 
-        var result = new List<SampleWindow>(anchors.Length);
+        var result = new List<SampleWindow>(anchors.Count);
         foreach (var anchor in anchors)
         {
             var center = durationSeconds * anchor;
@@ -338,6 +367,25 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
     private static bool IsOneOf(string value, params string[] options)
     {
         return options.Any(option => option.Equals(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyList<double> NormalizeAnchors(
+        IReadOnlyList<double>? anchors,
+        IReadOnlyList<double> fallback)
+    {
+        var source = anchors is null || anchors.Count == 0
+            ? fallback
+            : anchors;
+
+        var normalized = source
+            .Where(static anchor => anchor > 0 && anchor < 1)
+            .Distinct()
+            .OrderBy(static anchor => anchor)
+            .ToArray();
+
+        return normalized.Length > 0
+            ? normalized
+            : fallback;
     }
 
     private static string Quote(string value)

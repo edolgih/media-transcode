@@ -12,7 +12,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Include="Infrastructure\Profiles\ToMkvGPU.576.Profiles.yaml">
+	  <None Include="Profiles\ToMkvGPU.576.Profiles.yaml">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	    <TargetPath>Profiles\ToMkvGPU.576.Profiles.yaml</TargetPath>
 	  </None>

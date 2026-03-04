@@ -148,9 +148,9 @@ public sealed class TranscodeRequest
             "AutoSampleMode must be one of: accurate, fast, hybrid.",
             RequestContracts.Transcode.AutoSampleModes);
 
-        if (Downscale.HasValue && !RequestContracts.General.DownscaleTargets.Contains(Downscale.Value))
+        if (Downscale.HasValue && Downscale.Value <= 0)
         {
-            throw new ArgumentException("Downscale must be 576 or 720.", nameof(Downscale));
+            throw new ArgumentException("Downscale must be greater than zero.", nameof(Downscale));
         }
 
         if (Cq.HasValue && Cq.Value is < 0 or > 51)

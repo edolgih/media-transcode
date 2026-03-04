@@ -3,6 +3,7 @@ using FluentAssertions;
 using MediaTranscodeEngine.Core.Abstractions;
 using MediaTranscodeEngine.Core.Engine;
 using MediaTranscodeEngine.Core.Infrastructure;
+using MediaTranscodeEngine.Core.Sampling;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -174,6 +175,43 @@ public class FfmpegAutoSampleReductionProviderTests
 
             actual.Should().NotBeNull();
             processRunner.Calls.Count.Should().Be(expectedWindowCount);
+        }
+        finally
+        {
+            TryDelete(inputPath);
+        }
+    }
+
+    [Fact]
+    public void EstimateAccurate_WhenCustomWindowPolicyProvided_UsesConfiguredAnchorCount()
+    {
+        var inputPath = CreateTempFileWithLength(24_000_000);
+        try
+        {
+            var probeReader = Substitute.For<IProbeReader>();
+            probeReader.Read(inputPath).Returns(new ProbeResult(
+                Format: new ProbeFormat(DurationSeconds: 1_200, BitrateBps: 4_000_000),
+                Streams: [new ProbeStream("video", "h264", Width: 1920, Height: 1080)]));
+
+            var processRunner = new ScriptedProcessRunner(encodedSampleSizesBytes: [300_000, 300_000, 300_000, 300_000]);
+            var sut = CreateSut(
+                probeReader,
+                processRunner,
+                sampleWindowPolicy: new SampleWindowPolicy(
+                    LongVideoThresholdSeconds: 600,
+                    MediumVideoThresholdSeconds: 300,
+                    LongVideoAnchors: [0.15, 0.35, 0.65, 0.85],
+                    MediumVideoAnchors: [0.30, 0.70],
+                    ShortVideoAnchors: [0.50]));
+
+            var actual = sut.EstimateAccurate(new AutoSampleReductionInput(
+                InputPath: inputPath,
+                Cq: 23,
+                Maxrate: 2.0,
+                Bufsize: 4.0));
+
+            actual.Should().NotBeNull();
+            processRunner.Calls.Count.Should().Be(4);
         }
         finally
         {
@@ -361,6 +399,7 @@ public class FfmpegAutoSampleReductionProviderTests
         IProbeReader probeReader,
         IProcessRunner processRunner,
         int sampleEncodeMaxRetries = 0,
+        SampleWindowPolicy? sampleWindowPolicy = null,
         ILogger<FfmpegAutoSampleReductionProvider>? logger = null)
     {
         return new FfmpegAutoSampleReductionProvider(
@@ -372,6 +411,7 @@ public class FfmpegAutoSampleReductionProviderTests
             sampleDurationSeconds: 60,
             nvencPreset: "p6",
             sampleEncodeMaxRetries: sampleEncodeMaxRetries,
+            sampleWindowPolicy: sampleWindowPolicy,
             logger: logger);
     }
 

@@ -4,7 +4,8 @@ namespace MediaTranscodeEngine.Cli.Parsing;
 
 internal sealed record CliParseResult(
     IReadOnlyList<string> Inputs,
-    RawTranscodeRequest RequestTemplate);
+    RawTranscodeRequest RequestTemplate,
+    IReadOnlySet<string> ExplicitTemplateFields);
 
 internal static class CliArgumentParser
 {
@@ -52,11 +53,13 @@ internal static class CliArgumentParser
             }
 
             option.ApplyValue(state, value);
+            state.MarkExplicitFields(option.AffectedTemplateFields);
         }
 
         parsed = new CliParseResult(
             Inputs: state.Inputs,
-            RequestTemplate: state.RequestTemplate);
+            RequestTemplate: state.RequestTemplate,
+            ExplicitTemplateFields: state.ExplicitTemplateFields);
         return true;
     }
 

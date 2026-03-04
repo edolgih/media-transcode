@@ -43,7 +43,16 @@ public sealed record AutoSamplingSettings(
     bool EnabledByDefault = true,
     int MaxIterations = 8,
     string ModeDefault = "accurate",
-    int HybridAccurateIterations = 2);
+    int HybridAccurateIterations = 2,
+    double LongVideoThresholdSeconds = 5_400,
+    double MediumVideoThresholdSeconds = 1_800,
+    IReadOnlyList<double>? LongVideoAnchors = null,
+    IReadOnlyList<double>? MediumVideoAnchors = null,
+    IReadOnlyList<double>? ShortVideoAnchors = null);
+
+public sealed record DownscaleTargetSettings(
+    bool Supported = true,
+    string? UnsupportedReason = null);
 
 public sealed record TranscodePolicyConfig(
     IReadOnlyDictionary<string, ContentProfileSettings> ContentProfiles,
@@ -51,7 +60,8 @@ public sealed record TranscodePolicyConfig(
     IReadOnlyDictionary<string, ReductionRange>? QualityRanges = null,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, ReductionRange>>? ContentQualityRanges = null,
     IReadOnlyList<SourceBucketSettings>? SourceBuckets = null,
-    AutoSamplingSettings? AutoSampling = null);
+    AutoSamplingSettings? AutoSampling = null,
+    IReadOnlyDictionary<int, DownscaleTargetSettings>? DownscaleTargets = null);
 
 public sealed record TranscodePolicyInput(
     string ContentProfile,
