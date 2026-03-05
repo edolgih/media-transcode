@@ -41,7 +41,7 @@ public class RouteParityTests
             .Should().Be(pipeline.ProcessByKeyWithProbeResult(CodecExecutionKeys.H264Gpu, h264Request, probe));
         var unsupported = () => orchestrator.ProcessWithProbeResult(cpuRequest, probe);
         unsupported.Should().Throw<NotSupportedException>()
-            .WithMessage("*encoder backend 'cpu'*codec 'h264'*");
+            .WithMessage("*codec 'h264'*backend 'cpu'*");
     }
 
     private static (TranscodeOrchestrator Orchestrator, ITranscodeExecutionPipeline Pipeline, IProbeReader ProbeReader) CreateSut()
@@ -74,13 +74,19 @@ public class RouteParityTests
                 profileDefinitionRepository,
                 profilePolicy),
             streamCompatibilityPolicy: new DefaultStreamCompatibilityPolicy());
+        var descriptorRegistry = new InMemoryCodecDescriptorRegistry();
+        var backendRegistry = new InMemoryEncoderBackendRegistry();
+        var registeredStrategyKeys = new[]
+        {
+            CodecExecutionKeys.Copy,
+            CodecExecutionKeys.H264Gpu
+        };
         var orchestrator = new TranscodeOrchestrator(
             new TranscodeRouteSelector(
-            [
-                new CopyRoute(pipeline),
-                new GpuEncodeRoute(pipeline)
-            ],
-                new StrategyBackedTranscodeCapabilityPolicy([CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu])));
+                descriptorRegistry,
+                backendRegistry,
+                registeredStrategyKeys),
+            pipeline);
 
         return (orchestrator, pipeline, probeReader);
     }

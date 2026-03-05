@@ -16,6 +16,7 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
     private readonly int _timeoutMs;
     private readonly int _sampleEncodeInactivityTimeoutMs;
     private readonly int _sampleDurationSeconds;
+    private readonly string _sampleVideoEncoder;
     private readonly string _nvencPreset;
     private readonly int _sampleEncodeMaxRetries;
     private readonly SampleWindowPolicy _sampleWindowPolicy;
@@ -28,6 +29,7 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         int timeoutMs = 30_000,
         int sampleEncodeInactivityTimeoutMs = 12_000,
         int sampleDurationSeconds = 15,
+        string sampleVideoEncoder = "h264_nvenc",
         string nvencPreset = "p6",
         int sampleEncodeMaxRetries = 0,
         SampleWindowPolicy? sampleWindowPolicy = null,
@@ -36,6 +38,7 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         ArgumentNullException.ThrowIfNull(probeReader);
         ArgumentNullException.ThrowIfNull(processRunner);
         ArgumentException.ThrowIfNullOrWhiteSpace(ffmpegPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sampleVideoEncoder);
         ArgumentException.ThrowIfNullOrWhiteSpace(nvencPreset);
         if (timeoutMs <= 0)
         {
@@ -82,6 +85,7 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         _timeoutMs = timeoutMs;
         _sampleEncodeInactivityTimeoutMs = sampleEncodeInactivityTimeoutMs;
         _sampleDurationSeconds = sampleDurationSeconds;
+        _sampleVideoEncoder = sampleVideoEncoder;
         _nvencPreset = nvencPreset;
         _sampleEncodeMaxRetries = sampleEncodeMaxRetries;
         _sampleWindowPolicy = effectiveWindowPolicy with
@@ -324,7 +328,7 @@ public sealed class FfmpegAutoSampleReductionProvider : IAutoSampleReductionProv
         var cqToken = input.Cq.ToString(CultureInfo.InvariantCulture);
 
         return $"-hide_banner -y -ss {startToken} -t {durationToken} -i {Quote(inputPath)} " +
-               $"-map 0:v:0 -c:v h264_nvenc -preset {_nvencPreset} -rc vbr_hq -cq {cqToken} -b:v 0 " +
+               $"-map 0:v:0 -c:v {_sampleVideoEncoder} -preset {_nvencPreset} -rc vbr_hq -cq {cqToken} -b:v 0 " +
                $"-maxrate {ToRateToken(input.Maxrate)} -bufsize {ToRateToken(input.Bufsize)} -an -sn {Quote(outputPath)}";
     }
 

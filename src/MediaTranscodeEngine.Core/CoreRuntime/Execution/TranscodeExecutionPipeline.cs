@@ -44,6 +44,7 @@ public sealed class TranscodeExecutionPipeline : ITranscodeExecutionPipeline
                     qualityStrategy,
                     autoSamplingStrategy,
                     streamCompatibilityPolicy,
+                    encodedOutputCodecSuffix: RequestContracts.General.H264VideoCodec,
                     autoSampleReductionProvider),
                 new H264GpuCodecExecutionStrategy(
                     probeReader,

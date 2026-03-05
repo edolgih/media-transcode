@@ -12,7 +12,7 @@ public class H264RequestOptionsTests
             InputPath: " C:\\video\\movie.mp4 ",
             TargetContainer: RequestContracts.General.MkvContainer,
             EncoderBackend: RequestContracts.General.GpuEncoderBackend,
-            PreferH264: true,
+            TargetVideoCodec: RequestContracts.General.H264VideoCodec,
             Downscale: 576,
             KeepFps: true,
             DownscaleAlgo: "lanczos",
@@ -27,7 +27,6 @@ public class H264RequestOptionsTests
         actual.InputPath.Should().Be("C:\\video\\movie.mp4");
         actual.TargetContainer.Should().Be(RequestContracts.General.MkvContainer);
         actual.EncoderBackend.Should().Be(RequestContracts.General.GpuEncoderBackend);
-        actual.PreferH264.Should().BeTrue();
         actual.TargetVideoCodec.Should().Be(RequestContracts.General.H264VideoCodec);
         actual.Downscale.Should().Be(576);
         actual.KeepFps.Should().BeTrue();

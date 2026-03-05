@@ -4,6 +4,14 @@ namespace MediaTranscodeEngine.Core.Policy;
 
 public sealed class MkvContainerPolicy : IContainerPolicy
 {
+    private readonly string _encodedCodecSuffix;
+
+    public MkvContainerPolicy(string encodedCodecSuffix = RequestContracts.General.H264VideoCodec)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(encodedCodecSuffix);
+        _encodedCodecSuffix = encodedCodecSuffix.Trim().ToLowerInvariant();
+    }
+
     public string Container => RequestContracts.General.MkvContainer;
     public string OutputExtension => ".mkv";
     public string MuxArguments => string.Empty;
@@ -22,7 +30,7 @@ public sealed class MkvContainerPolicy : IContainerPolicy
             var downscaleSuffix = useDownscale && downscaleTarget.HasValue
                 ? $"{downscaleTarget.Value}p"
                 : null;
-            var codecSuffix = willEncode ? "h264" : null;
+            var codecSuffix = willEncode ? _encodedCodecSuffix : null;
             var outputPath = OutputPathBuilder.BuildKeepSourceOutputPath(
                 inputPath,
                 outputExtension: OutputExtension,
@@ -40,7 +48,7 @@ public sealed class MkvContainerPolicy : IContainerPolicy
         var baseName = Path.GetFileNameWithoutExtension(inputPath);
         return new ContainerOutputPaths(
             OutputPath: Path.Combine(directory, $"{baseName}{OutputExtension}"),
-            TempOutputPath: Path.Combine(directory, $"{baseName} (h264){OutputExtension}"));
+            TempOutputPath: Path.Combine(directory, $"{baseName} ({_encodedCodecSuffix}){OutputExtension}"));
     }
 
     public string BuildPostOperation(

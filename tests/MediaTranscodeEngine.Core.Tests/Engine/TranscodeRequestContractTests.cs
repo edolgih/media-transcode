@@ -58,11 +58,11 @@ public class TranscodeRequestContractTests
     }
 
     [Fact]
-    public void Create_WhenTargetVideoCodecMissingAndPreferH264True_UsesH264Codec()
+    public void Create_WhenTargetVideoCodecMissingAndTargetContainerIsNotMkv_UsesH264Codec()
     {
         var actual = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
-            PreferH264: true);
+            TargetContainer: RequestContracts.General.Mp4Container);
 
         actual.TargetVideoCodec.Should().Be(RequestContracts.General.H264VideoCodec);
     }
@@ -167,8 +167,8 @@ public class TranscodeRequestContractTests
     }
 
     [Theory]
-    [InlineData("bad")]
-    [InlineData("vp9")]
+    [InlineData("h264@nvenc")]
+    [InlineData("h264 nvenc")]
     public void Create_WhenTargetVideoCodecInvalid_ThrowsArgumentException(string targetVideoCodec)
     {
         Action action = () => TranscodeRequest.Create(
@@ -177,7 +177,7 @@ public class TranscodeRequestContractTests
 
         action.Should().Throw<ArgumentException>()
             .WithParameterName("TargetVideoCodec")
-            .WithMessage("*TargetVideoCodec must be one of: copy, h264, h265.*");
+            .WithMessage("*TargetVideoCodec contains invalid characters*");
     }
 
     [Theory]

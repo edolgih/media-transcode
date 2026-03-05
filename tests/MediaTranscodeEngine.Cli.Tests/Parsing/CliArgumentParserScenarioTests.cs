@@ -41,7 +41,6 @@ public class CliArgumentParserScenarioTests
         parsed.RequestTemplate.TargetContainer.Should().Be("mp4");
         parsed.RequestTemplate.EncoderBackend.Should().Be("gpu");
         parsed.RequestTemplate.VideoPreset.Should().Be("p5");
-        parsed.RequestTemplate.PreferH264.Should().BeTrue();
         parsed.RequestTemplate.TargetVideoCodec.Should().Be(RequestContracts.General.H264VideoCodec);
     }
 
@@ -64,7 +63,7 @@ public class CliArgumentParserScenarioTests
     }
 
     [Fact]
-    public void TryParse_WithH264Option_ReturnsTemplateWithPreferH264Enabled()
+    public void TryParse_WithKeepFpsOption_ReturnsTemplateWithH264TargetCodec()
     {
         var ok = Parse(
             args: ["--input", DefaultInputPath, "--keep-fps"],
@@ -73,7 +72,6 @@ public class CliArgumentParserScenarioTests
 
         ok.Should().BeTrue();
         errorText.Should().BeNull();
-        parsed.RequestTemplate.PreferH264.Should().BeTrue();
         parsed.RequestTemplate.TargetVideoCodec.Should().Be(RequestContracts.General.H264VideoCodec);
     }
 

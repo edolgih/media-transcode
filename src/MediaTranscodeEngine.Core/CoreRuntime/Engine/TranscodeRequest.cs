@@ -8,7 +8,6 @@ public sealed class TranscodeRequest
         string encoderBackend,
         string videoPreset,
         string targetVideoCodec,
-        bool preferH264,
         bool info,
         bool overlayBg,
         int? downscale,
@@ -35,7 +34,6 @@ public sealed class TranscodeRequest
         EncoderBackend = encoderBackend;
         VideoPreset = videoPreset;
         TargetVideoCodec = targetVideoCodec;
-        PreferH264 = preferH264;
         Info = info;
         OverlayBg = overlayBg;
         Downscale = downscale;
@@ -63,7 +61,6 @@ public sealed class TranscodeRequest
     public string EncoderBackend { get; }
     public string VideoPreset { get; }
     public string TargetVideoCodec { get; }
-    public bool PreferH264 { get; }
     public bool Info { get; }
     public bool OverlayBg { get; }
     public int? Downscale { get; }
@@ -91,7 +88,6 @@ public sealed class TranscodeRequest
         string EncoderBackend = RequestContracts.General.DefaultEncoderBackend,
         string VideoPreset = RequestContracts.General.DefaultVideoPreset,
         string? TargetVideoCodec = null,
-        bool PreferH264 = false,
         bool Info = false,
         bool OverlayBg = false,
         int? Downscale = null,
@@ -130,8 +126,7 @@ public sealed class TranscodeRequest
             RequestContracts.General.VideoPresets);
         var normalizedTargetVideoCodec = ResolveTargetVideoCodec(
             targetVideoCodec: TargetVideoCodec,
-            targetContainer: normalizedTargetContainer,
-            preferH264: PreferH264);
+            targetContainer: normalizedTargetContainer);
         var downscaleAlgoOverridden = !string.IsNullOrWhiteSpace(DownscaleAlgo);
         var normalizedDownscaleAlgo = downscaleAlgoOverridden
             ? RequireAllowedValue(
@@ -181,18 +176,12 @@ public sealed class TranscodeRequest
             throw new ArgumentException("AqStrength must be in range 1..15.", nameof(AqStrength));
         }
 
-        var preferH264Effective = PreferH264 ||
-                                  normalizedTargetVideoCodec.Equals(
-                                      RequestContracts.General.H264VideoCodec,
-                                      StringComparison.OrdinalIgnoreCase);
-
         return new TranscodeRequest(
             inputPath: normalizedInputPath,
             targetContainer: normalizedTargetContainer,
             encoderBackend: normalizedEncoderBackend,
             videoPreset: normalizedVideoPreset,
             targetVideoCodec: normalizedTargetVideoCodec,
-            preferH264: preferH264Effective,
             info: Info,
             overlayBg: OverlayBg,
             downscale: Downscale,
@@ -217,29 +206,38 @@ public sealed class TranscodeRequest
 
     private static string ResolveTargetVideoCodec(
         string? targetVideoCodec,
-        string targetContainer,
-        bool preferH264)
+        string targetContainer)
     {
         if (!string.IsNullOrWhiteSpace(targetVideoCodec))
         {
-            var normalizedTargetVideoCodec = RequireAllowedValue(
+            return RequireCodecToken(
                 RequireValue(targetVideoCodec, nameof(TargetVideoCodec), "TargetVideoCodec is required."),
                 nameof(TargetVideoCodec),
-                "TargetVideoCodec must be one of: copy, h264, h265.",
-                RequestContracts.General.TargetVideoCodecs);
-            if (!preferH264 ||
-                !normalizedTargetVideoCodec.Equals(RequestContracts.General.CopyVideoCodec, StringComparison.OrdinalIgnoreCase))
-            {
-                return normalizedTargetVideoCodec;
-            }
+                "TargetVideoCodec contains invalid characters. Use letters, digits, '.', '_' or '-'.");
         }
 
-        if (preferH264 || !targetContainer.Equals(RequestContracts.General.MkvContainer, StringComparison.OrdinalIgnoreCase))
+        if (!targetContainer.Equals(RequestContracts.General.MkvContainer, StringComparison.OrdinalIgnoreCase))
         {
             return RequestContracts.General.H264VideoCodec;
         }
 
         return RequestContracts.General.DefaultTargetVideoCodec;
+    }
+
+    private static string RequireCodecToken(string value, string paramName, string message)
+    {
+        var normalized = value.Trim().ToLowerInvariant();
+        foreach (var character in normalized)
+        {
+            if (char.IsLetterOrDigit(character) || character is '.' or '_' or '-')
+            {
+                continue;
+            }
+
+            throw new ArgumentException(message, paramName);
+        }
+
+        return normalized;
     }
 
     private static string RequireValue(string? value, string paramName, string message)

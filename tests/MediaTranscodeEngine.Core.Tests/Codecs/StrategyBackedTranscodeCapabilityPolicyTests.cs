@@ -5,82 +5,125 @@ using MediaTranscodeEngine.Core.Execution;
 
 namespace MediaTranscodeEngine.Core.Tests.Codecs;
 
-public class StrategyBackedTranscodeCapabilityPolicyTests
+public class TranscodeRouteSelectorCapabilityTests
 {
     [Fact]
-    public void Decide_WhenGpuCopyToMkvAndCopyStrategyRegistered_ReturnsSupported()
+    public void SelectStrategyKey_WhenGpuCopyToMkvAndCopyStrategyRegistered_ReturnsCopy()
     {
-        var policy = new StrategyBackedTranscodeCapabilityPolicy([CodecExecutionKeys.Copy]);
+        var selector = new TranscodeRouteSelector(
+            new InMemoryCodecDescriptorRegistry(),
+            new InMemoryEncoderBackendRegistry(),
+            [CodecExecutionKeys.Copy]);
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.GpuEncoderBackend,
             TargetContainer: RequestContracts.General.MkvContainer,
             TargetVideoCodec: RequestContracts.General.CopyVideoCodec);
 
-        var decision = policy.Decide(request);
+        var strategyKey = selector.SelectStrategyKey(request);
 
-        decision.IsSupported.Should().BeTrue();
-        decision.Reason.Should().BeNull();
+        strategyKey.Should().Be(CodecExecutionKeys.Copy);
     }
 
     [Fact]
-    public void Decide_WhenGpuCopyToMp4_ReturnsUnsupported()
+    public void SelectStrategyKey_WhenGpuCopyToMp4_ThrowsNotSupported()
     {
-        var policy = new StrategyBackedTranscodeCapabilityPolicy([CodecExecutionKeys.Copy]);
+        var selector = new TranscodeRouteSelector(
+            new InMemoryCodecDescriptorRegistry(),
+            new InMemoryEncoderBackendRegistry(),
+            [CodecExecutionKeys.Copy]);
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.GpuEncoderBackend,
             TargetContainer: RequestContracts.General.Mp4Container,
             TargetVideoCodec: RequestContracts.General.CopyVideoCodec);
 
-        var decision = policy.Decide(request);
+        var act = () => selector.SelectStrategyKey(request);
 
-        decision.IsSupported.Should().BeFalse();
-        decision.Reason.Should().Contain("copy").And.Contain("mkv");
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("*copy*mp4*");
     }
 
     [Fact]
-    public void Decide_WhenGpuH265AndStrategyMissing_ReturnsUnsupported()
+    public void SelectStrategyKey_WhenGpuH265AndStrategyMissing_ThrowsNotSupported()
     {
-        var policy = new StrategyBackedTranscodeCapabilityPolicy([CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu]);
+        var selector = new TranscodeRouteSelector(
+            new InMemoryCodecDescriptorRegistry(),
+            new InMemoryEncoderBackendRegistry(),
+            [CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu]);
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.GpuEncoderBackend,
             TargetVideoCodec: RequestContracts.General.H265VideoCodec);
 
-        var decision = policy.Decide(request);
+        var act = () => selector.SelectStrategyKey(request);
 
-        decision.IsSupported.Should().BeFalse();
-        decision.Reason.Should().Contain("h265").And.Contain("gpu");
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("*h265*g*");
     }
 
     [Fact]
-    public void Decide_WhenGpuH265AndStrategyRegistered_ReturnsSupported()
+    public void SelectStrategyKey_WhenGpuH265AndStrategyRegistered_ReturnsSupported()
     {
-        var policy = new StrategyBackedTranscodeCapabilityPolicy([CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu, "h265-gpu"]);
+        var selector = new TranscodeRouteSelector(
+            new InMemoryCodecDescriptorRegistry(),
+            new InMemoryEncoderBackendRegistry(),
+            [CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu, "h265-gpu"]);
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.GpuEncoderBackend,
             TargetVideoCodec: RequestContracts.General.H265VideoCodec);
 
-        var decision = policy.Decide(request);
+        var strategyKey = selector.SelectStrategyKey(request);
 
-        decision.IsSupported.Should().BeTrue();
-        decision.Reason.Should().BeNull();
+        strategyKey.Should().Be("h265-gpu");
     }
 
     [Fact]
-    public void Decide_WhenCpuBackend_ReturnsUnsupported()
+    public void SelectStrategyKey_WhenCustomCodecDescriptorAndStrategyRegistered_ReturnsSupported()
     {
-        var policy = new StrategyBackedTranscodeCapabilityPolicy([CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu]);
+        var descriptorRegistry = new InMemoryCodecDescriptorRegistry(
+        [
+            new CodecDescriptor(
+                codecId: "h266",
+                supportedContainers: [RequestContracts.General.MkvContainer, RequestContracts.General.Mp4Container])
+        ]);
+        var backendRegistry = new InMemoryEncoderBackendRegistry(
+        [
+            new EncoderBackendDescriptor(
+                backendId: RequestContracts.General.GpuEncoderBackend,
+                codecStrategyKeys: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["h266"] = "h266-gpu"
+                })
+        ]);
+        var selector = new TranscodeRouteSelector(descriptorRegistry, backendRegistry, ["h266-gpu"]);
+        var request = TranscodeRequest.Create(
+            InputPath: "C:\\video\\movie.mp4",
+            EncoderBackend: RequestContracts.General.GpuEncoderBackend,
+            TargetContainer: RequestContracts.General.Mp4Container,
+            TargetVideoCodec: "h266");
+
+        var strategyKey = selector.SelectStrategyKey(request);
+
+        strategyKey.Should().Be("h266-gpu");
+    }
+
+    [Fact]
+    public void SelectStrategyKey_WhenCpuBackend_ThrowsNotSupported()
+    {
+        var selector = new TranscodeRouteSelector(
+            new InMemoryCodecDescriptorRegistry(),
+            new InMemoryEncoderBackendRegistry(),
+            [CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu]);
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.CpuEncoderBackend,
             TargetVideoCodec: RequestContracts.General.H264VideoCodec);
 
-        var decision = policy.Decide(request);
+        var act = () => selector.SelectStrategyKey(request);
 
-        decision.IsSupported.Should().BeFalse();
-        decision.Reason.Should().Contain("cpu");
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("*cpu*");
     }
 }

@@ -5,61 +5,81 @@ using MediaTranscodeEngine.Core.Execution;
 
 namespace MediaTranscodeEngine.Core.Tests.Codecs;
 
-public class GpuEncodeRouteTests
+public class CodecDescriptorRoutingTests
 {
     [Fact]
-    public void CanHandle_WhenGpuAndCodecIsNotCopy_ReturnsTrue()
+    public void SelectStrategyKey_WhenGpuAndCodecIsNotCopy_ReturnsCodecBasedKey()
     {
-        var route = new GpuEncodeRoute(new SpyPipeline());
+        var selector = new TranscodeRouteSelector(
+            new InMemoryCodecDescriptorRegistry(),
+            new InMemoryEncoderBackendRegistry(),
+            [CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu, "h265-gpu"]);
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.GpuEncoderBackend,
             TargetVideoCodec: RequestContracts.General.H265VideoCodec);
 
-        var actual = route.CanHandle(request);
+        var strategyKey = selector.SelectStrategyKey(request);
 
-        actual.Should().BeTrue();
+        strategyKey.Should().Be("h265-gpu");
     }
 
     [Fact]
-    public void Process_WhenCodecIsH265_UsesCodecBasedStrategyKey()
+    public void SelectStrategyKey_WhenCustomCodecDescriptorRegistered_UsesDescriptorStrategyKey()
     {
-        var pipeline = new SpyPipeline();
-        var route = new GpuEncodeRoute(pipeline);
+        var registry = new InMemoryCodecDescriptorRegistry(
+        [
+            new CodecDescriptor(
+                codecId: "h266",
+                supportedContainers: [RequestContracts.General.MkvContainer, RequestContracts.General.Mp4Container])
+        ]);
+        var backendRegistry = new InMemoryEncoderBackendRegistry(
+        [
+            new EncoderBackendDescriptor(
+                backendId: RequestContracts.General.GpuEncoderBackend,
+                codecStrategyKeys: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["h266"] = "h266-gpu"
+                })
+        ]);
+        var selector = new TranscodeRouteSelector(registry, backendRegistry, ["h266-gpu"]);
         var request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.GpuEncoderBackend,
-            TargetVideoCodec: RequestContracts.General.H265VideoCodec);
+            TargetVideoCodec: "h266");
 
-        var actual = route.Process(request);
+        var strategyKey = selector.SelectStrategyKey(request);
 
-        actual.Should().Be("h265-gpu");
-        pipeline.LastStrategyKey.Should().Be("h265-gpu");
+        strategyKey.Should().Be("h266-gpu");
     }
 
-    private sealed class SpyPipeline : ITranscodeExecutionPipeline
+    [Fact]
+    public void SelectStrategyKey_WhenCustomCodecHasNoStrategy_ThrowsNotSupportedException()
     {
-        public string? LastStrategyKey { get; private set; }
+        var registry = new InMemoryCodecDescriptorRegistry(
+        [
+            new CodecDescriptor(
+                codecId: "h266",
+                supportedContainers: [RequestContracts.General.MkvContainer, RequestContracts.General.Mp4Container])
+        ]);
+        var backendRegistry = new InMemoryEncoderBackendRegistry(
+        [
+            new EncoderBackendDescriptor(
+                backendId: RequestContracts.General.GpuEncoderBackend,
+                codecStrategyKeys: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["h266"] = "h266-gpu"
+                })
+        ]);
+        var selector = new TranscodeRouteSelector(registry, backendRegistry, [CodecExecutionKeys.Copy]);
+        var request = TranscodeRequest.Create(
+            InputPath: "C:\\video\\movie.mp4",
+            EncoderBackend: RequestContracts.General.GpuEncoderBackend,
+            TargetVideoCodec: "h266");
 
-        public string ProcessByKey(string strategyKey, TranscodeRequest request)
-        {
-            _ = request;
-            LastStrategyKey = strategyKey;
-            return strategyKey;
-        }
+        var act = () => selector.SelectStrategyKey(request);
 
-        public string ProcessByKeyWithProbeResult(string strategyKey, TranscodeRequest request, ProbeResult? probe)
-        {
-            _ = (request, probe);
-            LastStrategyKey = strategyKey;
-            return strategyKey;
-        }
-
-        public string ProcessByKeyWithProbeJson(string strategyKey, TranscodeRequest request, string? probeJson)
-        {
-            _ = (request, probeJson);
-            LastStrategyKey = strategyKey;
-            return strategyKey;
-        }
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("*h266-gpu*");
     }
 }

@@ -27,6 +27,7 @@ public sealed class CopyCodecExecutionStrategy : ICodecExecutionStrategy
     private readonly IAutoSamplingStrategy _autoSamplingStrategy;
     private readonly IStreamCompatibilityPolicy _streamCompatibilityPolicy;
     private readonly IAutoSampleReductionProvider? _autoSampleReductionProvider;
+    private readonly string _encodedOutputCodecSuffix;
     private readonly ILogger<CopyCodecExecutionStrategy> _logger;
 
     public CopyCodecExecutionStrategy(
@@ -37,6 +38,7 @@ public sealed class CopyCodecExecutionStrategy : ICodecExecutionStrategy
         IQualityStrategy qualityStrategy,
         IAutoSamplingStrategy autoSamplingStrategy,
         IStreamCompatibilityPolicy streamCompatibilityPolicy,
+        string encodedOutputCodecSuffix = RequestContracts.General.H264VideoCodec,
         IAutoSampleReductionProvider? autoSampleReductionProvider = null,
         ILogger<CopyCodecExecutionStrategy>? logger = null)
     {
@@ -47,6 +49,7 @@ public sealed class CopyCodecExecutionStrategy : ICodecExecutionStrategy
         _qualityStrategy = qualityStrategy;
         _autoSamplingStrategy = autoSamplingStrategy;
         _streamCompatibilityPolicy = streamCompatibilityPolicy;
+        _encodedOutputCodecSuffix = encodedOutputCodecSuffix;
         _autoSampleReductionProvider = autoSampleReductionProvider;
         _logger = logger ?? NullLogger<CopyCodecExecutionStrategy>.Instance;
     }
@@ -206,7 +209,8 @@ public sealed class CopyCodecExecutionStrategy : ICodecExecutionStrategy
             keepSource: request.KeepSource,
             applyDownscale: applyDownscale,
             downscaleTarget: downscaleTarget,
-            needVideoEncode: needVideoEncode);
+            needVideoEncode: needVideoEncode,
+            encodedOutputCodecSuffix: _encodedOutputCodecSuffix);
 
         var commandInput = new FfmpegCommandInput(
             InputPath: fileName,
@@ -237,14 +241,15 @@ public sealed class CopyCodecExecutionStrategy : ICodecExecutionStrategy
         bool keepSource,
         bool applyDownscale,
         int downscaleTarget,
-        bool needVideoEncode)
+        bool needVideoEncode,
+        string encodedOutputCodecSuffix)
     {
         if (keepSource)
         {
             var downscaleSuffix = applyDownscale && downscaleTarget > 0
                 ? $"{downscaleTarget}p"
                 : null;
-            var codecSuffix = needVideoEncode ? "h264" : null;
+            var codecSuffix = needVideoEncode ? encodedOutputCodecSuffix : null;
             var outputPath = OutputPathBuilder.BuildKeepSourceOutputPath(
                 inputPath,
                 outputExtension: ".mkv",

@@ -53,11 +53,6 @@ public sealed class ScenarioRequestMerger
                 defaultValue: RequestContracts.General.DefaultTargetVideoCodec,
                 presetValue: preset.TargetVideoCodec,
                 isExplicit: IsExplicit(explicitFields, nameof(RawTranscodeRequest.TargetVideoCodec))),
-            PreferH264 = ResolveBool(
-                explicitValue: request.PreferH264,
-                defaultValue: false,
-                presetValue: preset.PreferH264,
-                isExplicit: IsExplicit(explicitFields, nameof(RawTranscodeRequest.PreferH264))),
             OverlayBg = ResolveBool(
                 explicitValue: request.OverlayBg,
                 defaultValue: false,

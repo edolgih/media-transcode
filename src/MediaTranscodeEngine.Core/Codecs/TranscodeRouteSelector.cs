@@ -1,41 +1,78 @@
 using MediaTranscodeEngine.Core.Engine;
+using MediaTranscodeEngine.Core.Execution;
 
 namespace MediaTranscodeEngine.Core.Codecs;
 
 public sealed class TranscodeRouteSelector
 {
-    private readonly IReadOnlyList<ITranscodeRoute> _routes;
-    private readonly ITranscodeCapabilityPolicy _capabilityPolicy;
+    private readonly ICodecDescriptorRegistry _descriptorRegistry;
+    private readonly IEncoderBackendRegistry _backendRegistry;
+    private readonly HashSet<string> _strategyKeys;
 
     public TranscodeRouteSelector(
-        IEnumerable<ITranscodeRoute> routes,
-        ITranscodeCapabilityPolicy capabilityPolicy)
+        ICodecDescriptorRegistry descriptorRegistry,
+        IEncoderBackendRegistry backendRegistry,
+        IEnumerable<string> strategyKeys)
     {
-        ArgumentNullException.ThrowIfNull(routes);
-        ArgumentNullException.ThrowIfNull(capabilityPolicy);
-        _routes = routes.ToArray();
-        _capabilityPolicy = capabilityPolicy;
+        ArgumentNullException.ThrowIfNull(descriptorRegistry);
+        ArgumentNullException.ThrowIfNull(backendRegistry);
+        ArgumentNullException.ThrowIfNull(strategyKeys);
+        _descriptorRegistry = descriptorRegistry;
+        _backendRegistry = backendRegistry;
+        _strategyKeys = new HashSet<string>(strategyKeys, StringComparer.OrdinalIgnoreCase);
     }
 
-    public ITranscodeRoute Select(TranscodeRequest request)
+    public string SelectStrategyKey(TranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var capability = _capabilityPolicy.Decide(request);
-        if (!capability.IsSupported)
+        if (request.TargetVideoCodec.Equals(RequestContracts.General.CopyVideoCodec, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!request.TargetContainer.Equals(RequestContracts.General.MkvContainer, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new NotSupportedException(
+                    $"Unsupported transcode combination: codec 'copy' with container '{request.TargetContainer}'.");
+            }
+
+            if (!_strategyKeys.Contains(CodecExecutionKeys.Copy))
+            {
+                throw new NotSupportedException(
+                    $"Unsupported transcode combination: codec 'copy' has no registered strategy ('{CodecExecutionKeys.Copy}').");
+            }
+
+            return CodecExecutionKeys.Copy;
+        }
+
+        if (!_descriptorRegistry.TryGet(request.TargetVideoCodec, out var codecDescriptor))
         {
             throw new NotSupportedException(
-                capability.Reason ??
                 $"Unsupported transcode combination: encoder backend '{request.EncoderBackend}', codec '{request.TargetVideoCodec}' and container '{request.TargetContainer}'.");
         }
 
-        var route = _routes.FirstOrDefault(candidate => candidate.CanHandle(request));
-        if (route is null)
+        if (!codecDescriptor.SupportsContainer(request.TargetContainer))
         {
-            throw new InvalidOperationException(
-                $"No transcode route was found for encoder backend '{request.EncoderBackend}', codec '{request.TargetVideoCodec}' and container '{request.TargetContainer}'.");
+            throw new NotSupportedException(
+                $"Unsupported transcode combination: codec '{request.TargetVideoCodec}' with backend '{request.EncoderBackend}' does not support container '{request.TargetContainer}'.");
         }
 
-        return route;
+        if (!_backendRegistry.TryGet(request.EncoderBackend, out var backendDescriptor))
+        {
+            throw new NotSupportedException(
+                $"Unsupported transcode combination: encoder backend '{request.EncoderBackend}' is not registered.");
+        }
+
+        if (!backendDescriptor.TryGetStrategyKey(request.TargetVideoCodec, out var strategyKey))
+        {
+            throw new NotSupportedException(
+                $"Unsupported transcode combination: codec '{request.TargetVideoCodec}' is not supported by backend '{request.EncoderBackend}'.");
+        }
+
+        if (!_strategyKeys.Contains(strategyKey))
+        {
+            throw new NotSupportedException(
+                $"Unsupported transcode combination: codec '{request.TargetVideoCodec}', encoder backend '{request.EncoderBackend}' has no registered strategy ('{strategyKey}').");
+        }
+
+        return strategyKey;
     }
 }

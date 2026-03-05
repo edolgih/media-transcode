@@ -75,13 +75,14 @@ public class GeneralRoutingBaselineTests
                 profileDefinitionRepository,
                 profilePolicy),
             streamCompatibilityPolicy: new DefaultStreamCompatibilityPolicy());
+        var descriptorRegistry = new InMemoryCodecDescriptorRegistry();
+        var backendRegistry = new InMemoryEncoderBackendRegistry();
         var sut = new TranscodeOrchestrator(
             new TranscodeRouteSelector(
-            [
-                new CopyRoute(pipeline),
-                new GpuEncodeRoute(pipeline)
-            ],
-                new StrategyBackedTranscodeCapabilityPolicy([CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu])));
+                descriptorRegistry,
+                backendRegistry,
+                [CodecExecutionKeys.Copy, CodecExecutionKeys.H264Gpu]),
+            pipeline);
 
         return (sut, probeReader);
     }
