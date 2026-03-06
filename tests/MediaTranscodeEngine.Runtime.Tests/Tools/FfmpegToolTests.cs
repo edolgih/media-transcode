@@ -106,8 +106,8 @@ public sealed class FfmpegToolTests
 
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
-        actual.Commands[0].Should().Contain("-cq 19");
-        actual.Commands[0].Should().Contain("-maxrate 3M -bufsize 6M");
+        actual.Commands[0].Should().Contain("-cq 26");
+        actual.Commands[0].Should().Contain("-maxrate 3.4M -bufsize 6.9M");
     }
 
     [Fact]

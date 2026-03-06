@@ -1,5 +1,6 @@
 using System.Globalization;
 using MediaTranscodeEngine.Runtime.Plans;
+using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 using MediaTranscodeEngine.Runtime.Videos;
 
 namespace MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
@@ -9,6 +10,7 @@ namespace MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 /// </summary>
 public sealed class FfmpegTool : ITranscodeTool
 {
+    private static readonly ToMkvGpuDownscaleProfiles DownscaleProfiles = ToMkvGpuDownscaleProfiles.Default;
     private readonly string _ffmpegPath;
 
     /// <summary>
@@ -210,30 +212,28 @@ public sealed class FfmpegTool : ITranscodeTool
         }
 
         var encoder = ResolveVideoEncoder(plan);
-        var cq = plan.TargetHeight.HasValue ? 19 : 21;
-        var maxrate = plan.TargetHeight.HasValue ? "3M" : "4M";
-        var bufsize = plan.TargetHeight.HasValue ? "6M" : "8M";
+        var settings = ResolveVideoSettings(plan);
         var fpsToken = ResolveFrameRateToken(video, plan);
         var gop = ResolveGop(video, plan);
         var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32";
 
         if (plan.ApplyOverlayBackground)
         {
-            var filter = BuildOverlayFilter(video, plan.TargetHeight);
+            var filter = BuildOverlayFilter(video, plan.TargetHeight, settings.DownscaleAlgorithm);
             return $"-filter_complex {Quote(filter)} -map \"[v]\" -fps_mode:v cfr " +
-                   $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {cq} -b:v 0 -maxrate {maxrate} -bufsize {bufsize} {aqPart} " +
+                   $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
                    $"-pix_fmt yuv420p -profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
         }
 
         if (plan.TargetHeight.HasValue)
         {
-            return $"-map 0:v:0 -fps_mode:v cfr -vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo=bilinear:format=nv12\" " +
-                   $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {cq} -b:v 0 -maxrate {maxrate} -bufsize {bufsize} {aqPart} " +
+            return $"-map 0:v:0 -fps_mode:v cfr -vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo={settings.DownscaleAlgorithm}:format=nv12\" " +
+                   $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
                    $"-profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
         }
 
         return $"-map 0:v:0 -fps_mode:v cfr " +
-               $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {cq} -b:v 0 -maxrate {maxrate} -bufsize {bufsize} {aqPart} " +
+               $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
                $"-pix_fmt yuv420p -profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
     }
 
@@ -270,7 +270,29 @@ public sealed class FfmpegTool : ITranscodeTool
         return (int)Math.Max(12, Math.Round(fps * 2.0));
     }
 
-    private static string BuildOverlayFilter(SourceVideo video, int? targetHeight)
+    private static ToMkvGpuDownscaleDefaults ResolveVideoSettings(TranscodePlan plan)
+    {
+        if (plan.TargetHeight == 576)
+        {
+            var profile = DownscaleProfiles.GetRequiredProfile(576);
+            return profile.ResolveDefaults(contentProfile: null, qualityProfile: null);
+        }
+
+        return new ToMkvGpuDownscaleDefaults(
+            ContentProfile: "default",
+            QualityProfile: "default",
+            Cq: 21,
+            Maxrate: 4m,
+            Bufsize: 8m,
+            DownscaleAlgorithm: "bilinear");
+    }
+
+    private static string FormatRate(decimal value)
+    {
+        return $"{value.ToString("0.###", CultureInfo.InvariantCulture)}M";
+    }
+
+    private static string BuildOverlayFilter(SourceVideo video, int? targetHeight, string downscaleAlgorithm)
     {
         var outputWidth = video.Width;
         var outputHeight = video.Height;
@@ -300,8 +322,8 @@ public sealed class FfmpegTool : ITranscodeTool
         if (targetHeight.HasValue)
         {
             return "[0:v]split=2[bg0][fg0];" +
-                   $"[bg0]scale_cuda={outputWidth}:-2:interp_algo=bilinear:format=nv12,hwdownload,format=nv12,crop={outputWidth}:{outputHeight},hwupload_cuda[bg];" +
-                   $"[fg0]scale_cuda=-2:{outputHeight}:interp_algo=bilinear:format=nv12[fg];" +
+                   $"[bg0]scale_cuda={outputWidth}:-2:interp_algo={downscaleAlgorithm}:format=nv12,hwdownload,format=nv12,crop={outputWidth}:{outputHeight},hwupload_cuda[bg];" +
+                   $"[fg0]scale_cuda=-2:{outputHeight}:interp_algo={downscaleAlgorithm}:format=nv12[fg];" +
                    "[bg][fg]overlay_cuda=(W-w)/2:0[v]";
         }
 
