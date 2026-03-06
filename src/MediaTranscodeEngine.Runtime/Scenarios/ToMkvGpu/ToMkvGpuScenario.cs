@@ -14,6 +14,12 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         "mpeg4"
     };
 
+    private static readonly HashSet<string> TimestampSensitiveExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".wmv",
+        ".asf"
+    };
+
     /// <summary>
     /// Initializes a ToMkvGpu scenario with optional runtime directives.
     /// </summary>
@@ -72,7 +78,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         }
 
         var applyDownscale = DownscaleTarget.HasValue && video.Height > DownscaleTarget.Value;
+        var requiresTimestampFix = TimestampSensitiveExtensions.Contains(video.FileExtension);
         var copyVideo = VideoCopyCodecs.Contains(video.VideoCodec) &&
+                        !requiresTimestampFix &&
                         !OverlayBackground &&
                         !applyDownscale;
         var copyAudio = !SynchronizeAudio &&
@@ -88,9 +96,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             useFrameInterpolation: false,
             copyVideo: copyVideo,
             copyAudio: copyAudio,
-            fixTimestamps: !copyVideo,
+            fixTimestamps: requiresTimestampFix || !copyVideo,
             keepSource: KeepSource,
-            outputPath: ResolveOutputPath(video),
+            outputPath: ResolveOutputPath(video, copyVideo, copyAudio),
             applyOverlayBackground: OverlayBackground,
             synchronizeAudio: SynchronizeAudio);
     }
@@ -105,7 +113,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         return audioCodecs.All(codec => codec.Equals("aac", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string ResolveOutputPath(SourceVideo video)
+    private string ResolveOutputPath(SourceVideo video, bool copyVideo, bool copyAudio)
     {
         var directory = Path.GetDirectoryName(video.FilePath);
         if (string.IsNullOrWhiteSpace(directory))
@@ -113,6 +121,14 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             directory = ".";
         }
 
-        return Path.Combine(directory, $"{video.FileNameWithoutExtension}.mkv");
+        var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.mkv");
+        if (!KeepSource ||
+            !video.Container.Equals("mkv", StringComparison.OrdinalIgnoreCase) ||
+            (copyVideo && copyAudio))
+        {
+            return outputPath;
+        }
+
+        return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.mkv");
     }
 }

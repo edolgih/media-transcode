@@ -36,6 +36,35 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildPlan_WhenKeepSourceAndMkvInputRequiresEncode_ReturnsDistinctOutputPath()
+    {
+        var sut = CreateSut(keepSource: true);
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", filePath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildPlan(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        actual.OutputPath.Should().Be(@"C:\video\input_out.mkv");
+    }
+
+    [Theory]
+    [InlineData(@"C:\video\input.wmv")]
+    [InlineData(@"C:\video\input.asf")]
+    public void BuildPlan_WhenInputIsAsfFamily_ForcesEncodeAndTimestampFix(string filePath)
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(container: Path.GetExtension(filePath).TrimStart('.'), videoCodec: "h264", audioCodecs: ["aac"], filePath: filePath);
+
+        var actual = sut.BuildPlan(video);
+
+        actual.CopyVideo.Should().BeFalse();
+        actual.CopyAudio.Should().BeFalse();
+        actual.FixTimestamps.Should().BeTrue();
+        actual.TargetVideoCodec.Should().Be("h264");
+    }
+
+    [Fact]
     public void BuildPlan_WhenVideoCodecIsNotCopyCompatible_UsesH264GpuEncodePlan()
     {
         var sut = CreateSut();
