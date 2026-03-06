@@ -1,0 +1,103 @@
+using FluentAssertions;
+using MediaTranscodeEngine.Runtime.Plans;
+using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
+using MediaTranscodeEngine.Runtime.Videos;
+
+namespace MediaTranscodeEngine.Runtime.Tests.Scenarios;
+
+public sealed class ToMkvGpuInfoFormatterTests
+{
+    [Fact]
+    public void Format_WhenPlanDoesNothing_ReturnsEmptyString()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
+        var plan = CreatePlan(copyVideo: true, copyAudio: true, outputPath: video.FilePath);
+
+        var actual = sut.Format(video, plan);
+
+        actual.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Format_WhenContainerAndVideoAndAudioNeedChanges_ReturnsExpectedMarkers()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(filePath: @"C:\video\input.mp4", container: "mp4", videoCodec: "av1", audioCodecs: ["ac3"]);
+        var plan = CreatePlan(copyVideo: false, copyAudio: false, targetVideoCodec: "h264", preferredBackend: "gpu", outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.Format(video, plan);
+
+        actual.Should().Be("input.mp4: [container .mp4→mkv] [vcodec av1] [audio non-AAC]");
+    }
+
+    [Fact]
+    public void Format_WhenSyncAudioIsRequested_ReturnsSyncAudioMarker()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
+        var plan = CreatePlan(copyVideo: true, copyAudio: false, outputPath: video.FilePath, synchronizeAudio: true);
+
+        var actual = sut.Format(video, plan);
+
+        actual.Should().Be("input.mkv: [sync audio]");
+    }
+
+    [Fact]
+    public void Format_WhenPathContainsDirectories_UsesOnlyFileName()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(filePath: @"C:\nested\folder\input.mp4", container: "mp4", videoCodec: "av1", audioCodecs: ["aac"]);
+        var plan = CreatePlan(copyVideo: false, copyAudio: false, targetVideoCodec: "h264", preferredBackend: "gpu", outputPath: @"C:\nested\folder\input.mkv");
+
+        var actual = sut.Format(video, plan);
+
+        actual.Should().StartWith("input.mp4:");
+        actual.Should().NotContain(@"C:\nested\folder");
+    }
+
+    private static ToMkvGpuInfoFormatter CreateSut()
+    {
+        return new ToMkvGpuInfoFormatter();
+    }
+
+    private static SourceVideo CreateVideo(
+        string filePath,
+        string container,
+        string videoCodec,
+        IReadOnlyList<string> audioCodecs)
+    {
+        return new SourceVideo(
+            filePath: filePath,
+            container: container,
+            videoCodec: videoCodec,
+            audioCodecs: audioCodecs,
+            width: 1920,
+            height: 1080,
+            framesPerSecond: 29.97,
+            duration: TimeSpan.FromMinutes(10));
+    }
+
+    private static TranscodePlan CreatePlan(
+        bool copyVideo,
+        bool copyAudio,
+        string outputPath,
+        string? targetVideoCodec = null,
+        string? preferredBackend = null,
+        bool synchronizeAudio = false)
+    {
+        return new TranscodePlan(
+            targetContainer: "mkv",
+            targetVideoCodec: targetVideoCodec,
+            preferredBackend: preferredBackend,
+            targetHeight: null,
+            targetFramesPerSecond: null,
+            useFrameInterpolation: false,
+            copyVideo: copyVideo,
+            copyAudio: copyAudio,
+            fixTimestamps: false,
+            keepSource: false,
+            outputPath: outputPath,
+            synchronizeAudio: synchronizeAudio);
+    }
+}

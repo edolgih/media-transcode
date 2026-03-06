@@ -9,14 +9,37 @@ namespace MediaTranscodeEngine.Runtime.Scenarios;
 public abstract class TranscodeScenario
 {
     /// <summary>
+    /// Initializes a named scenario.
+    /// </summary>
+    /// <param name="name">Stable scenario name.</param>
+    protected TranscodeScenario(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Name = name.Trim();
+    }
+
+    /// <summary>
     /// Gets the stable scenario name used by callers to select this behavior.
     /// </summary>
-    public abstract string Name { get; }
+    public string Name { get; }
 
     /// <summary>
     /// Builds a tool-agnostic transcode plan for the provided source video.
     /// </summary>
     /// <param name="video">Source video facts used by the scenario.</param>
     /// <returns>A tool-agnostic transcode plan.</returns>
-    public abstract TranscodePlan BuildPlan(SourceVideo video);
+    public TranscodePlan BuildPlan(SourceVideo video)
+    {
+        ArgumentNullException.ThrowIfNull(video);
+
+        var plan = BuildPlanCore(video);
+        return plan ?? throw new InvalidOperationException($"Scenario '{Name}' returned null transcode plan.");
+    }
+
+    /// <summary>
+    /// Builds a tool-agnostic transcode plan for the supplied source video.
+    /// </summary>
+    /// <param name="video">Source video facts used by the scenario.</param>
+    /// <returns>A tool-agnostic transcode plan.</returns>
+    protected abstract TranscodePlan BuildPlanCore(SourceVideo video);
 }
