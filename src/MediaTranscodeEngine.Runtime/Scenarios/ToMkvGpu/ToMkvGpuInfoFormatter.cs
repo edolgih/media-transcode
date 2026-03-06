@@ -9,6 +9,18 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 public sealed class ToMkvGpuInfoFormatter
 {
     /// <summary>
+    /// Builds the standard info marker used when probe data could not be loaded.
+    /// </summary>
+    /// <param name="filePath">Path to the source file that could not be probed.</param>
+    /// <returns>A single-line ffprobe failure marker.</returns>
+    public string FormatProbeFailure(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        return $"{Path.GetFileName(filePath.Trim())}: [ffprobe failed]";
+    }
+
+    /// <summary>
     /// Builds a single-line summary of the actions requested by ToMkvGpu for the supplied video and plan.
     /// </summary>
     /// <param name="video">Inspected source video facts.</param>

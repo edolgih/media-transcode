@@ -56,6 +56,16 @@ public sealed class ToMkvGpuInfoFormatterTests
         actual.Should().NotContain(@"C:\nested\folder");
     }
 
+    [Fact]
+    public void FormatProbeFailure_WhenCalled_ReturnsFileNameMarker()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatProbeFailure(@"C:\nested\folder\input.mp4");
+
+        actual.Should().Be("input.mp4: [ffprobe failed]");
+    }
+
     private static ToMkvGpuInfoFormatter CreateSut()
     {
         return new ToMkvGpuInfoFormatter();
