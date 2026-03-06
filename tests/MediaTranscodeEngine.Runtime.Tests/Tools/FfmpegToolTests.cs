@@ -581,6 +581,29 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
+    public void BuildExecution_WhenOverlayBackgroundAndDownscale576AreRequested_UsesOverlayCudaAndProfileAlgorithm()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(width: 1920, height: 1080, container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            targetHeight: 576,
+            downscale: new DownscaleRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", noAutoSample: true),
+            outputPath: @"C:\video\input.mkv",
+            applyOverlayBackground: true);
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-filter_complex");
+        actual.Commands[0].Should().Contain("overlay_cuda");
+        actual.Commands[0].Should().Contain("scale_cuda=1024:-2:interp_algo=bilinear:format=nv12");
+        actual.Commands[0].Should().Contain("crop=1024:576");
+    }
+
+    [Fact]
     public void BuildExecution_WhenReplacingMkvInPlace_UsesTemporaryOutputAndMoveStep()
     {
         var sut = CreateSut();
@@ -610,6 +633,9 @@ public sealed class FfmpegToolTests
         var actual = sut.BuildExecution(video, plan);
 
         actual.Commands[0].Should().Contain("-c:v copy");
+        actual.Commands[0].Should().Contain("-c:a aac");
+        actual.Commands[0].Should().Contain("-af \"aresample=async=1:first_pts=0\"");
+        actual.Commands[0].Should().NotContain("-c:a copy");
         actual.Commands[0].Should().Contain("-fflags +genpts -avoid_negative_ts make_zero");
         actual.Commands[0].Should().NotContain("+igndts");
     }
@@ -627,6 +653,21 @@ public sealed class FfmpegToolTests
         actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
         actual.Commands[0].Should().NotContain("-fflags +genpts");
         actual.Commands[0].Should().NotContain("+igndts");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenSyncAudioIsRequestedWithCopiedVideo_ForcesAacEncodeAndAsyncResample()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
+        var plan = CreatePlan(copyVideo: true, copyAudio: false, outputPath: @"C:\video\input_out.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-c:v copy");
+        actual.Commands[0].Should().Contain("-c:a aac");
+        actual.Commands[0].Should().Contain("-af \"aresample=async=1:first_pts=0\"");
+        actual.Commands[0].Should().NotContain("-c:a copy");
     }
 
     [Fact]
