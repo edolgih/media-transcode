@@ -125,8 +125,7 @@ public sealed class TranscodeRequest
             "VideoPreset must be one of: p1, p2, p3, p4, p5, p6, p7.",
             RequestContracts.General.VideoPresets);
         var normalizedTargetVideoCodec = ResolveTargetVideoCodec(
-            targetVideoCodec: TargetVideoCodec,
-            targetContainer: normalizedTargetContainer);
+            targetVideoCodec: TargetVideoCodec);
         var downscaleAlgoOverridden = !string.IsNullOrWhiteSpace(DownscaleAlgo);
         var normalizedDownscaleAlgo = downscaleAlgoOverridden
             ? RequireAllowedValue(
@@ -205,8 +204,7 @@ public sealed class TranscodeRequest
     }
 
     private static string ResolveTargetVideoCodec(
-        string? targetVideoCodec,
-        string targetContainer)
+        string? targetVideoCodec)
     {
         if (!string.IsNullOrWhiteSpace(targetVideoCodec))
         {
@@ -214,11 +212,6 @@ public sealed class TranscodeRequest
                 RequireValue(targetVideoCodec, nameof(TargetVideoCodec), "TargetVideoCodec is required."),
                 nameof(TargetVideoCodec),
                 "TargetVideoCodec contains invalid characters. Use letters, digits, '.', '_' or '-'.");
-        }
-
-        if (!targetContainer.Equals(RequestContracts.General.MkvContainer, StringComparison.OrdinalIgnoreCase))
-        {
-            return RequestContracts.General.H264VideoCodec;
         }
 
         return RequestContracts.General.DefaultTargetVideoCodec;

@@ -4,26 +4,25 @@ using MediaTranscodeEngine.Core.Scenarios;
 
 namespace MediaTranscodeEngine.Core.Tests.Scenarios;
 
-public class ScenarioRequestMergerTests
+public class TranscodeScenarioCatalogApplyTests
 {
     [Fact]
-    public void Merge_WhenPresetProvided_UsesPresetValues()
+    public void Apply_WhenScenarioProvided_UsesScenarioValues()
     {
-        var repository = new InMemoryScenarioPresetRepository(
+        var catalog = new TranscodeScenarioCatalog(
         [
-            new ScenarioPreset(
-                Name: "custom",
-                TargetContainer: RequestContracts.General.Mp4Container,
-                EncoderBackend: RequestContracts.General.CpuEncoderBackend,
-                TargetVideoCodec: RequestContracts.General.H264VideoCodec,
-                QualityProfile: "high")
+            new TranscodeScenario(
+                name: "custom",
+                targetContainer: RequestContracts.General.Mp4Container,
+                encoderBackend: RequestContracts.General.CpuEncoderBackend,
+                targetVideoCodec: RequestContracts.General.H264VideoCodec,
+                qualityProfile: "high")
         ]);
-        var sut = new ScenarioRequestMerger(repository);
         var request = new RawTranscodeRequest(
             InputPath: "C:\\video\\movie.mp4",
             Scenario: "custom");
 
-        var actual = sut.Merge(request);
+        var actual = catalog.Apply(request);
 
         actual.TargetContainer.Should().Be(RequestContracts.General.Mp4Container);
         actual.EncoderBackend.Should().Be(RequestContracts.General.CpuEncoderBackend);
@@ -32,17 +31,16 @@ public class ScenarioRequestMergerTests
     }
 
     [Fact]
-    public void Merge_WhenExplicitOverridesPreset_UsesExplicitValues()
+    public void Apply_WhenExplicitOverridesScenario_UsesExplicitValues()
     {
-        var repository = new InMemoryScenarioPresetRepository(
+        var catalog = new TranscodeScenarioCatalog(
         [
-            new ScenarioPreset(
-                Name: "custom",
-                TargetContainer: RequestContracts.General.Mp4Container,
-                EncoderBackend: RequestContracts.General.CpuEncoderBackend,
-                QualityProfile: "high")
+            new TranscodeScenario(
+                name: "custom",
+                targetContainer: RequestContracts.General.Mp4Container,
+                encoderBackend: RequestContracts.General.CpuEncoderBackend,
+                qualityProfile: "high")
         ]);
-        var sut = new ScenarioRequestMerger(repository);
         var request = new RawTranscodeRequest(
             InputPath: "C:\\video\\movie.mp4",
             Scenario: "custom",
@@ -56,7 +54,7 @@ public class ScenarioRequestMergerTests
             nameof(RawTranscodeRequest.QualityProfile)
         };
 
-        var actual = sut.Merge(request, explicitFields);
+        var actual = catalog.Apply(request, explicitFields);
 
         actual.TargetContainer.Should().Be(RequestContracts.General.MkvContainer);
         actual.EncoderBackend.Should().Be(RequestContracts.General.GpuEncoderBackend);
@@ -64,15 +62,14 @@ public class ScenarioRequestMergerTests
     }
 
     [Fact]
-    public void Merge_WhenTargetVideoCodecExplicit_ExplicitWinsOverPreset()
+    public void Apply_WhenTargetVideoCodecExplicit_ExplicitWinsOverScenario()
     {
-        var repository = new InMemoryScenarioPresetRepository(
+        var catalog = new TranscodeScenarioCatalog(
         [
-            new ScenarioPreset(
-                Name: "custom",
-                TargetVideoCodec: RequestContracts.General.H264VideoCodec)
+            new TranscodeScenario(
+                name: "custom",
+                targetVideoCodec: RequestContracts.General.H264VideoCodec)
         ]);
-        var sut = new ScenarioRequestMerger(repository);
         var request = new RawTranscodeRequest(
             InputPath: "C:\\video\\movie.mp4",
             Scenario: "custom",
@@ -82,51 +79,83 @@ public class ScenarioRequestMergerTests
             nameof(RawTranscodeRequest.TargetVideoCodec)
         };
 
-        var actual = sut.Merge(request, explicitFields);
+        var actual = catalog.Apply(request, explicitFields);
 
         actual.TargetVideoCodec.Should().Be(RequestContracts.General.CopyVideoCodec);
     }
 
     [Fact]
-    public void Merge_WhenPresetUsesH265Codec_UsesPresetCodecValue()
+    public void Apply_WhenScenarioUsesH265Codec_UsesScenarioCodecValue()
     {
-        var repository = new InMemoryScenarioPresetRepository(
+        var catalog = new TranscodeScenarioCatalog(
         [
-            new ScenarioPreset(
-                Name: "custom",
-                TargetVideoCodec: RequestContracts.General.H265VideoCodec)
+            new TranscodeScenario(
+                name: "custom",
+                targetVideoCodec: RequestContracts.General.H265VideoCodec)
         ]);
-        var sut = new ScenarioRequestMerger(repository);
         var request = new RawTranscodeRequest(
             InputPath: "C:\\video\\movie.mp4",
             Scenario: "custom");
 
-        var actual = sut.Merge(request);
+        var actual = catalog.Apply(request);
 
         actual.TargetVideoCodec.Should().Be(RequestContracts.General.H265VideoCodec);
     }
 
     [Fact]
-    public void Merge_WhenNoPreset_UsesSystemDefaults()
+    public void Apply_WhenNoScenario_ReturnsOriginalRequest()
     {
-        var sut = new ScenarioRequestMerger(new InMemoryScenarioPresetRepository());
+        var catalog = new TranscodeScenarioCatalog([]);
         var request = new RawTranscodeRequest(
             InputPath: "C:\\video\\movie.mp4");
 
-        var actual = sut.Merge(request);
+        var actual = catalog.Apply(request);
 
         actual.Should().Be(request);
     }
 
     [Fact]
-    public void Merge_WhenScenarioUnknown_ThrowsArgumentException()
+    public void Apply_WhenToMkvGpuAndContainerMp4AndCodecNotExplicit_UsesH264Codec()
     {
-        var sut = new ScenarioRequestMerger(new InMemoryScenarioPresetRepository());
+        var catalog = new TranscodeScenarioCatalog([TranscodeScenario.CreateToMkvGpu()]);
+        var request = new RawTranscodeRequest(
+            InputPath: "C:\\video\\movie.mp4",
+            Scenario: "tomkvgpu",
+            TargetContainer: RequestContracts.General.Mp4Container);
+
+        var actual = catalog.Apply(request);
+
+        actual.TargetVideoCodec.Should().Be(RequestContracts.General.H264VideoCodec);
+    }
+
+    [Fact]
+    public void Apply_WhenToMkvGpuAndCodecExplicit_KeepsExplicitCodec()
+    {
+        var catalog = new TranscodeScenarioCatalog([TranscodeScenario.CreateToMkvGpu()]);
+        var request = new RawTranscodeRequest(
+            InputPath: "C:\\video\\movie.mp4",
+            Scenario: "tomkvgpu",
+            TargetContainer: RequestContracts.General.Mp4Container,
+            TargetVideoCodec: RequestContracts.General.CopyVideoCodec);
+        var explicitFields = new HashSet<string>(StringComparer.Ordinal)
+        {
+            nameof(RawTranscodeRequest.TargetVideoCodec)
+        };
+
+        var actual = catalog.Apply(request, explicitFields);
+
+        actual.TargetVideoCodec.Should().Be(RequestContracts.General.CopyVideoCodec);
+    }
+
+    [Fact]
+    public void Apply_WhenScenarioUnknown_ThrowsArgumentException()
+    {
+        var catalog = new TranscodeScenarioCatalog([]);
         var request = new RawTranscodeRequest(
             InputPath: "C:\\video\\movie.mp4",
             Scenario: "missing");
 
-        var act = () => sut.Merge(request);
+        var act = () => catalog.Apply(request);
 
         act.Should().Throw<ArgumentException>()
             .WithMessage("*Unknown scenario: missing*");

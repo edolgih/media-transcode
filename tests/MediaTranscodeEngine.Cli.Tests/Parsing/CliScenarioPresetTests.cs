@@ -8,15 +8,15 @@ namespace MediaTranscodeEngine.Cli.Tests.Parsing;
 public class CliScenarioPresetTests
 {
     [Fact]
-    public void Parse_WhenScenarioTomkvgpuProvided_AppliesPreset()
+    public void Parse_WhenScenarioTomkvgpuProvided_AppliesScenario()
     {
         var ok = CliArgumentParser.TryParse(
             ["--input", "C:\\video\\movie.mp4", "--scenario", "tomkvgpu"],
             out var parsed,
             out var errorText);
-        var merger = new ScenarioRequestMerger(new InMemoryScenarioPresetRepository());
+        var catalog = new TranscodeScenarioCatalog([TranscodeScenario.CreateToMkvGpu()]);
 
-        var merged = merger.Merge(parsed.RequestTemplate, parsed.ExplicitTemplateFields);
+        var merged = catalog.Apply(parsed.RequestTemplate, parsed.ExplicitTemplateFields);
 
         ok.Should().BeTrue();
         errorText.Should().BeNull();
@@ -29,19 +29,18 @@ public class CliScenarioPresetTests
     [Fact]
     public void Parse_WhenScenarioAndExplicitCq_ExplicitWins()
     {
-        var repository = new InMemoryScenarioPresetRepository(
+        var catalog = new TranscodeScenarioCatalog(
         [
-            new ScenarioPreset(
-                Name: "custom",
-                Cq: 24)
+            new TranscodeScenario(
+                name: "custom",
+                cq: 24)
         ]);
         var ok = CliArgumentParser.TryParse(
             ["--input", "C:\\video\\movie.mp4", "--scenario", "custom", "--cq", "19"],
             out var parsed,
             out var errorText);
-        var merger = new ScenarioRequestMerger(repository);
 
-        var merged = merger.Merge(parsed.RequestTemplate, parsed.ExplicitTemplateFields);
+        var merged = catalog.Apply(parsed.RequestTemplate, parsed.ExplicitTemplateFields);
 
         ok.Should().BeTrue();
         errorText.Should().BeNull();
@@ -55,13 +54,29 @@ public class CliScenarioPresetTests
             ["--input", "C:\\video\\movie.mp4", "--scenario", "missing"],
             out var parsed,
             out var errorText);
-        var merger = new ScenarioRequestMerger(new InMemoryScenarioPresetRepository());
+        var catalog = new TranscodeScenarioCatalog([]);
 
-        var act = () => merger.Merge(parsed.RequestTemplate, parsed.ExplicitTemplateFields);
+        var act = () => catalog.Apply(parsed.RequestTemplate, parsed.ExplicitTemplateFields);
 
         ok.Should().BeTrue();
         errorText.Should().BeNull();
         act.Should().Throw<ArgumentException>()
             .WithMessage("*Unknown scenario: missing*");
+    }
+
+    [Fact]
+    public void Parse_WhenScenarioToMkvGpuAndContainerMp4_UsesH264CodecByScenarioRule()
+    {
+        var ok = CliArgumentParser.TryParse(
+            ["--input", "C:\\video\\movie.mp4", "--scenario", "tomkvgpu", "--container", "mp4"],
+            out var parsed,
+            out var errorText);
+        var catalog = new TranscodeScenarioCatalog([TranscodeScenario.CreateToMkvGpu()]);
+
+        var merged = catalog.Apply(parsed.RequestTemplate, parsed.ExplicitTemplateFields);
+
+        ok.Should().BeTrue();
+        errorText.Should().BeNull();
+        merged.TargetVideoCodec.Should().Be(RequestContracts.General.H264VideoCodec);
     }
 }

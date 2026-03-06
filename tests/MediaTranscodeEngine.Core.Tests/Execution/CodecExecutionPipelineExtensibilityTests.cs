@@ -12,19 +12,6 @@ public class CodecExecutionPipelineExtensibilityTests
         const string strategyKey = "h265-gpu";
         const string expected = "custom h265 strategy output";
         var pipeline = new TranscodeExecutionPipeline(
-            probeReader: null!,
-            ffmpegCommandBuilder: null!,
-            h264CommandBuilder: null!,
-            remuxEligibilityPolicy: null!,
-            timestampPolicy: null!,
-            audioPolicy: null!,
-            rateControlPolicy: null!,
-            containerPolicySelector: null!,
-            inputClassifier: null!,
-            resolutionPolicyRepository: null!,
-            qualityStrategy: null!,
-            autoSamplingStrategy: null!,
-            streamCompatibilityPolicy: null!,
             codecExecutionStrategies:
             [
                 new NamedStrategy(strategyKey, expected)

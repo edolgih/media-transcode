@@ -1,6 +1,7 @@
 using MediaTranscodeEngine.Core.Abstractions;
 using MediaTranscodeEngine.Core.Commanding;
 using MediaTranscodeEngine.Core.Engine;
+using MediaTranscodeEngine.Core.Execution;
 using MediaTranscodeEngine.Core.Classification;
 using MediaTranscodeEngine.Core.Compatibility;
 using MediaTranscodeEngine.Core.Quality;
@@ -9,7 +10,7 @@ using MediaTranscodeEngine.Core.Sampling;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace MediaTranscodeEngine.Core.Execution;
+namespace MediaTranscodeEngine.Core.Scenarios.ToMkvGpu;
 
 public sealed class CopyCodecExecutionStrategy : ICodecExecutionStrategy
 {

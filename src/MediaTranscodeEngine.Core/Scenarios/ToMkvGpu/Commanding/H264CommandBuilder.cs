@@ -1,6 +1,4 @@
-using MediaTranscodeEngine.Core.Policy;
-
-namespace MediaTranscodeEngine.Core.Commanding;
+namespace MediaTranscodeEngine.Core.Scenarios.ToMkvGpu;
 
 public sealed record H264RemuxCommandInput(
     string InputPath,

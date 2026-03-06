@@ -1,12 +1,4 @@
-using MediaTranscodeEngine.Core.Abstractions;
-using MediaTranscodeEngine.Core.Commanding;
 using MediaTranscodeEngine.Core.Engine;
-using MediaTranscodeEngine.Core.Policy;
-using MediaTranscodeEngine.Core.Classification;
-using MediaTranscodeEngine.Core.Compatibility;
-using MediaTranscodeEngine.Core.Quality;
-using MediaTranscodeEngine.Core.Resolutions;
-using MediaTranscodeEngine.Core.Sampling;
 
 namespace MediaTranscodeEngine.Core.Execution;
 
@@ -15,52 +7,14 @@ public sealed class TranscodeExecutionPipeline : ITranscodeExecutionPipeline
     private readonly IReadOnlyDictionary<string, ICodecExecutionStrategy> _strategies;
 
     public TranscodeExecutionPipeline(
-        IProbeReader probeReader,
-        FfmpegCommandBuilder ffmpegCommandBuilder,
-        H264CommandBuilder h264CommandBuilder,
-        H264RemuxEligibilityPolicy remuxEligibilityPolicy,
-        H264TimestampPolicy timestampPolicy,
-        H264AudioPolicy audioPolicy,
-        H264RateControlPolicy rateControlPolicy,
-        ContainerPolicySelector containerPolicySelector,
-        IInputClassifier inputClassifier,
-        IResolutionPolicyRepository resolutionPolicyRepository,
-        IQualityStrategy qualityStrategy,
-        IAutoSamplingStrategy autoSamplingStrategy,
-        IStreamCompatibilityPolicy streamCompatibilityPolicy,
-        IAutoSampleReductionProvider? autoSampleReductionProvider = null,
-        IEnumerable<ICodecExecutionStrategy>? codecExecutionStrategies = null)
+        IEnumerable<ICodecExecutionStrategy> codecExecutionStrategies)
     {
-        var strategies = codecExecutionStrategies?.ToArray();
-        if (strategies is null || strategies.Length == 0)
+        ArgumentNullException.ThrowIfNull(codecExecutionStrategies);
+
+        var strategies = codecExecutionStrategies.ToArray();
+        if (strategies.Length == 0)
         {
-            strategies =
-            [
-                new CopyCodecExecutionStrategy(
-                    probeReader,
-                    ffmpegCommandBuilder,
-                    inputClassifier,
-                    resolutionPolicyRepository,
-                    qualityStrategy,
-                    autoSamplingStrategy,
-                    streamCompatibilityPolicy,
-                    encodedOutputCodecSuffix: RequestContracts.General.H264VideoCodec,
-                    autoSampleReductionProvider),
-                new H264GpuCodecExecutionStrategy(
-                    probeReader,
-                    h264CommandBuilder,
-                    remuxEligibilityPolicy,
-                    timestampPolicy,
-                    audioPolicy,
-                    rateControlPolicy,
-                    containerPolicySelector,
-                    inputClassifier,
-                    resolutionPolicyRepository,
-                    qualityStrategy,
-                    autoSamplingStrategy,
-                    streamCompatibilityPolicy,
-                    autoSampleReductionProvider)
-            ];
+            throw new ArgumentException("At least one codec execution strategy must be registered.", nameof(codecExecutionStrategies));
         }
 
         _strategies = strategies.ToDictionary(

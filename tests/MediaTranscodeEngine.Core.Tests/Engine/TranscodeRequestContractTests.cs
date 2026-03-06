@@ -58,13 +58,13 @@ public class TranscodeRequestContractTests
     }
 
     [Fact]
-    public void Create_WhenTargetVideoCodecMissingAndTargetContainerIsNotMkv_UsesH264Codec()
+    public void Create_WhenTargetVideoCodecMissing_UsesDefaultCodec()
     {
         var actual = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             TargetContainer: RequestContracts.General.Mp4Container);
 
-        actual.TargetVideoCodec.Should().Be(RequestContracts.General.H264VideoCodec);
+        actual.TargetVideoCodec.Should().Be(RequestContracts.General.DefaultTargetVideoCodec);
     }
 
     [Fact]

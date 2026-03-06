@@ -1,4 +1,4 @@
-namespace MediaTranscodeEngine.Core.Policy;
+namespace MediaTranscodeEngine.Core.Scenarios.ToMkvGpu;
 
 public sealed record H264RemuxEligibilityInput(
     string InputExtension,

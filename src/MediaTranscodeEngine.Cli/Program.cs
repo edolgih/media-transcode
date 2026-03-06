@@ -2,7 +2,6 @@ using MediaTranscodeEngine.Core.Abstractions;
 using MediaTranscodeEngine.Core.Commanding;
 using MediaTranscodeEngine.Core.Engine;
 using MediaTranscodeEngine.Core.Infrastructure;
-using MediaTranscodeEngine.Core.Policy;
 using MediaTranscodeEngine.Core;
 using MediaTranscodeEngine.Core.Classification;
 using MediaTranscodeEngine.Core.Codecs;
@@ -13,8 +12,10 @@ using MediaTranscodeEngine.Core.Quality;
 using MediaTranscodeEngine.Core.Resolutions;
 using MediaTranscodeEngine.Core.Sampling;
 using MediaTranscodeEngine.Core.Scenarios;
+using MediaTranscodeEngine.Core.Scenarios.ToMkvGpu;
 using MediaTranscodeEngine.Cli.Processing;
 using MediaTranscodeEngine.Cli.Parsing;
+using MediaTranscodeEngine.Cli.Scenarios;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -98,19 +99,12 @@ public static class Program
                     logger: services.GetRequiredService<ILogger<FfmpegAutoSampleReductionProvider>>());
             });
             builder.Services.AddSingleton<FfmpegCommandBuilder>();
-            builder.Services.AddSingleton<H264RemuxEligibilityPolicy>();
-            builder.Services.AddSingleton<H264TimestampPolicy>();
-            builder.Services.AddSingleton<H264AudioPolicy>();
-            builder.Services.AddSingleton<H264RateControlPolicy>();
             builder.Services.AddSingleton<IContainerPolicy, MkvContainerPolicy>();
             builder.Services.AddSingleton<IContainerPolicy, Mp4ContainerPolicy>();
             builder.Services.AddSingleton<ContainerPolicySelector>();
-            builder.Services.AddSingleton<H264CommandBuilder>();
-            builder.Services.AddSingleton<IScenarioPresetRepository, InMemoryScenarioPresetRepository>();
-            builder.Services.AddSingleton<ScenarioRequestMerger>();
+            builder.Services.AddToMkvGpuScenario();
             builder.Services.AddSingleton<TranscodeCatalog>();
-            builder.Services.AddSingleton<ICodecExecutionStrategy, CopyCodecExecutionStrategy>();
-            builder.Services.AddSingleton<ICodecExecutionStrategy, H264GpuCodecExecutionStrategy>();
+            builder.Services.AddSingleton<TranscodeScenarioCatalog>();
             builder.Services.AddSingleton<ITranscodeExecutionPipeline, TranscodeExecutionPipeline>();
             builder.Services.AddSingleton(services =>
                 new TranscodeRouteSelector(
@@ -182,11 +176,11 @@ public static class Program
             return 1;
         }
 
-        var scenarioMerger = services.GetRequiredService<ScenarioRequestMerger>();
+        var scenarioCatalog = services.GetRequiredService<TranscodeScenarioCatalog>();
         RawTranscodeRequest mergedTemplate;
         try
         {
-            mergedTemplate = scenarioMerger.Merge(
+            mergedTemplate = scenarioCatalog.Apply(
                 parsed.RequestTemplate,
                 parsed.ExplicitTemplateFields);
         }

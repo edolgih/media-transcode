@@ -1,6 +1,6 @@
 using FluentAssertions;
 using MediaTranscodeEngine.Core.Engine;
-using MediaTranscodeEngine.Core.Policy;
+using MediaTranscodeEngine.Core.Scenarios.ToMkvGpu;
 
 namespace MediaTranscodeEngine.Core.Tests.Policy;
 

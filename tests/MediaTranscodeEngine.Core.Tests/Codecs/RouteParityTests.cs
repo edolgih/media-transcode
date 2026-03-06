@@ -3,7 +3,6 @@ using MediaTranscodeEngine.Core.Abstractions;
 using MediaTranscodeEngine.Core.Commanding;
 using MediaTranscodeEngine.Core.Engine;
 using MediaTranscodeEngine.Core.Infrastructure;
-using MediaTranscodeEngine.Core.Policy;
 using MediaTranscodeEngine.Core;
 using MediaTranscodeEngine.Core.Classification;
 using MediaTranscodeEngine.Core.Codecs;
@@ -13,6 +12,7 @@ using MediaTranscodeEngine.Core.Profiles;
 using MediaTranscodeEngine.Core.Quality;
 using MediaTranscodeEngine.Core.Resolutions;
 using MediaTranscodeEngine.Core.Sampling;
+using MediaTranscodeEngine.Core.Scenarios.ToMkvGpu;
 using NSubstitute;
 
 namespace MediaTranscodeEngine.Core.Tests.Codecs;
@@ -29,7 +29,8 @@ public class RouteParityTests
         var copyRequest = TranscodeRequest.Create(InputPath: "C:\\video\\movie.mp4");
         var h264Request = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mkv",
-            TargetContainer: RequestContracts.General.Mp4Container);
+            TargetContainer: RequestContracts.General.Mp4Container,
+            TargetVideoCodec: RequestContracts.General.H264VideoCodec);
         var cpuRequest = TranscodeRequest.Create(
             InputPath: "C:\\video\\movie.mp4",
             EncoderBackend: RequestContracts.General.CpuEncoderBackend,
@@ -54,26 +55,42 @@ public class RouteParityTests
         ]);
         var profileDefinitionRepository = new LegacyPolicyConfigProfileRepository(new StaticProfileRepository());
         var profilePolicy = new ProfilePolicy();
+        var inputClassifier = new DefaultInputClassifier();
+        var resolutionPolicyRepository = new ProfileBackedResolutionPolicyRepository(
+            profileDefinitionRepository,
+            profilePolicy);
+        var qualityStrategy = new ProfileBackedQualityStrategy(
+            profileDefinitionRepository,
+            profilePolicy);
+        var autoSamplingStrategy = new PolicyDrivenAutoSamplingStrategy(
+            profileDefinitionRepository,
+            profilePolicy);
+        var streamCompatibilityPolicy = new DefaultStreamCompatibilityPolicy();
         ITranscodeExecutionPipeline pipeline = new TranscodeExecutionPipeline(
-            probeReader: probeReader,
-            ffmpegCommandBuilder: new FfmpegCommandBuilder(),
-            h264CommandBuilder: new H264CommandBuilder(),
-            remuxEligibilityPolicy: new H264RemuxEligibilityPolicy(),
-            timestampPolicy: new H264TimestampPolicy(),
-            audioPolicy: new H264AudioPolicy(),
-            rateControlPolicy: new H264RateControlPolicy(),
-            containerPolicySelector: containerPolicySelector,
-            inputClassifier: new DefaultInputClassifier(),
-            resolutionPolicyRepository: new ProfileBackedResolutionPolicyRepository(
-                profileDefinitionRepository,
-                profilePolicy),
-            qualityStrategy: new ProfileBackedQualityStrategy(
-                profileDefinitionRepository,
-                profilePolicy),
-            autoSamplingStrategy: new PolicyDrivenAutoSamplingStrategy(
-                profileDefinitionRepository,
-                profilePolicy),
-            streamCompatibilityPolicy: new DefaultStreamCompatibilityPolicy());
+            codecExecutionStrategies:
+            [
+                new CopyCodecExecutionStrategy(
+                    probeReader: probeReader,
+                    ffmpegCommandBuilder: new FfmpegCommandBuilder(),
+                    inputClassifier: inputClassifier,
+                    resolutionPolicyRepository: resolutionPolicyRepository,
+                    qualityStrategy: qualityStrategy,
+                    autoSamplingStrategy: autoSamplingStrategy,
+                    streamCompatibilityPolicy: streamCompatibilityPolicy),
+                new H264GpuCodecExecutionStrategy(
+                    probeReader: probeReader,
+                    h264CommandBuilder: new H264CommandBuilder(),
+                    remuxEligibilityPolicy: new H264RemuxEligibilityPolicy(),
+                    timestampPolicy: new H264TimestampPolicy(),
+                    audioPolicy: new H264AudioPolicy(),
+                    rateControlPolicy: new H264RateControlPolicy(),
+                    containerPolicySelector: containerPolicySelector,
+                    inputClassifier: inputClassifier,
+                    resolutionPolicyRepository: resolutionPolicyRepository,
+                    qualityStrategy: qualityStrategy,
+                    autoSamplingStrategy: autoSamplingStrategy,
+                    streamCompatibilityPolicy: streamCompatibilityPolicy)
+            ]);
         var catalog = new TranscodeCatalog();
         var registeredStrategyKeys = new[]
         {
