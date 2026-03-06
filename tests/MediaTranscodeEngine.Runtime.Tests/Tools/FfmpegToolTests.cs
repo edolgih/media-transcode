@@ -78,6 +78,43 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
+    public void BuildExecution_WhenEncoderPresetIsOverridden_UsesRequestedPreset()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            encoderPreset: "p5",
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-preset p5");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenEncodeCqIsOverriddenWithoutDownscale_UsesRequestedCq()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            downscale: new DownscaleRequest(cq: 23),
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-cq 23");
+        actual.Commands[0].Should().Contain("-maxrate 4M -bufsize 8M");
+    }
+
+    [Fact]
     public void BuildExecution_WhenAudioTracksAreMissing_UsesOptionalAudioCopyPath()
     {
         var sut = CreateSut();
@@ -188,6 +225,26 @@ public sealed class FfmpegToolTests
         var actual = sut.BuildExecution(video, plan);
 
         actual.Commands[0].Should().Contain("-maxrate 2.5M -bufsize 5M");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenDownscaleCqIsOverridden_UsesRateModelAndClamp()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            targetHeight: 576,
+            downscale: new DownscaleRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", cq: 21),
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-cq 21");
+        actual.Commands[0].Should().Contain("-maxrate 3M -bufsize 6M");
     }
 
     [Fact]
@@ -324,6 +381,7 @@ public sealed class FfmpegToolTests
         DownscaleRequest? downscale = null,
         bool fixTimestamps = false,
         bool keepSource = false,
+        string? encoderPreset = null,
         string outputPath = @"C:\video\input.mkv",
         bool applyOverlayBackground = false,
         bool synchronizeAudio = false)
@@ -340,6 +398,7 @@ public sealed class FfmpegToolTests
             copyAudio: copyAudio,
             fixTimestamps: fixTimestamps,
             keepSource: keepSource,
+            encoderPreset: encoderPreset,
             outputPath: outputPath,
             applyOverlayBackground: applyOverlayBackground,
             synchronizeAudio: synchronizeAudio);

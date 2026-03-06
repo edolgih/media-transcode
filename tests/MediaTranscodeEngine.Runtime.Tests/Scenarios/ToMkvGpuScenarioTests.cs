@@ -159,6 +159,22 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildPlan_WhenEncodeOverridesAreRequestedWithoutResize_PreservesOverridesForToolRendering()
+    {
+        var sut = new ToMkvGpuScenario(new ToMkvGpuRequest(
+            downscale: new DownscaleRequest(cq: 23),
+            nvencPreset: "p5"));
+        var video = CreateVideo(container: "mp4", videoCodec: "av1", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
+
+        var actual = sut.BuildPlan(video);
+
+        actual.CopyVideo.Should().BeFalse();
+        actual.Downscale.Should().NotBeNull();
+        actual.Downscale!.Cq.Should().Be(23);
+        actual.EncoderPreset.Should().Be("p5");
+    }
+
+    [Fact]
     public void BuildPlan_WhenDownscale720Requested_ThrowsNotSupportedException()
     {
         var sut = CreateSut(downscaleTarget: 720);
@@ -168,6 +184,64 @@ public sealed class ToMkvGpuScenarioTests
 
         action.Should().Throw<NotSupportedException>()
             .WithMessage("*720*");
+    }
+
+    [Fact]
+    public void BuildPlan_WhenDownscale576SourceBucketIsMissing_ThrowsInformativeError()
+    {
+        var profile = new DownscaleProfile(
+            targetHeight: 576,
+            defaultContentProfile: "film",
+            defaultQualityProfile: "default",
+            rateModel: new DownscaleRateModel(0.4m, 2.0m),
+            sourceBuckets:
+            [
+                new SourceHeightBucket(
+                    "fhd_1080",
+                    MinHeight: 1000,
+                    MaxHeight: 1300,
+                    Ranges: CreateCompleteRanges())
+            ],
+            defaults: CreateDefaults());
+        var sut = new ToMkvGpuScenario(
+            new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576)),
+            DownscaleProfiles.Create(profile));
+        var video = CreateVideo(container: "mp4", height: 900, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
+
+        var action = () => sut.BuildPlan(video);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*576 source bucket missing*")
+            .WithMessage("*add SourceBuckets*");
+    }
+
+    [Fact]
+    public void BuildPlan_WhenDownscale576BucketRangesAreIncomplete_ThrowsInformativeError()
+    {
+        var profile = new DownscaleProfile(
+            targetHeight: 576,
+            defaultContentProfile: "film",
+            defaultQualityProfile: "default",
+            rateModel: new DownscaleRateModel(0.4m, 2.0m),
+            sourceBuckets:
+            [
+                new SourceHeightBucket(
+                    "fhd_1080",
+                    MinHeight: 1000,
+                    MaxHeight: 1300,
+                    Ranges: CreateCompleteRanges().Where(static range => !(range.ContentProfile == "mult" && range.QualityProfile == "low")).ToArray())
+            ],
+            defaults: CreateDefaults());
+        var sut = new ToMkvGpuScenario(
+            new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576)),
+            DownscaleProfiles.Create(profile));
+        var video = CreateVideo(container: "mp4", height: 1080, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
+
+        var action = () => sut.BuildPlan(video);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*576 source bucket invalid*")
+            .WithMessage("*mult/low*");
     }
 
     private static ToMkvGpuScenario CreateSut(
@@ -201,5 +275,37 @@ public sealed class ToMkvGpuScenarioTests
             height: height,
             framesPerSecond: framesPerSecond,
             duration: TimeSpan.FromMinutes(10));
+    }
+
+    private static DownscaleDefaults[] CreateDefaults()
+    {
+        return
+        [
+            new DownscaleDefaults("anime", "high", 22, 3.3m, 6.5m, "bilinear", 19, 24, 2.4m, 4.2m),
+            new DownscaleDefaults("anime", "default", 23, 2.4m, 4.8m, "bilinear", 20, 26, 2.0m, 3.0m),
+            new DownscaleDefaults("anime", "low", 29, 2.1m, 4.1m, "bilinear", 24, 35, 1.0m, 3.2m),
+            new DownscaleDefaults("mult", "high", 24, 2.7m, 5.3m, "bilinear", 21, 26, 2.4m, 3.2m),
+            new DownscaleDefaults("mult", "default", 26, 2.4m, 4.8m, "bilinear", 23, 29, 2.0m, 2.8m),
+            new DownscaleDefaults("mult", "low", 29, 1.7m, 3.5m, "bilinear", 26, 31, 1.6m, 2.0m),
+            new DownscaleDefaults("film", "high", 24, 3.7m, 7.4m, "bilinear", 16, 33, 2.0m, 8.0m),
+            new DownscaleDefaults("film", "default", 26, 3.4m, 6.9m, "bilinear", 18, 35, 1.6m, 8.0m),
+            new DownscaleDefaults("film", "low", 30, 2.2m, 4.5m, "bilinear", 20, 38, 1.2m, 4.0m)
+        ];
+    }
+
+    private static DownscaleRange[] CreateCompleteRanges()
+    {
+        return
+        [
+            new DownscaleRange("anime", "high", MinInclusive: 30.0m, MaxInclusive: 45.0m),
+            new DownscaleRange("anime", "default", MinInclusive: 45.0m, MaxInclusive: 60.0m),
+            new DownscaleRange("anime", "low", MinInclusive: 60.0m, MaxInclusive: 80.0m),
+            new DownscaleRange("mult", "high", MinInclusive: 28.0m, MaxInclusive: 42.0m),
+            new DownscaleRange("mult", "default", MinInclusive: 42.0m, MaxInclusive: 57.0m),
+            new DownscaleRange("mult", "low", MinInclusive: 57.0m, MaxInclusive: 77.0m),
+            new DownscaleRange("film", "high", MinInclusive: 20.0m, MaxInclusive: 35.0m),
+            new DownscaleRange("film", "default", MinInclusive: 35.0m, MaxInclusive: 50.0m),
+            new DownscaleRange("film", "low", MinInclusive: 50.0m, MaxInclusive: 70.0m)
+        ];
     }
 }

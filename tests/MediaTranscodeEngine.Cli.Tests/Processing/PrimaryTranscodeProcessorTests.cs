@@ -99,6 +99,40 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
+    public void Process_WhenDownscale576SourceBucketIsMissing_ReturnsLegacyBucketRemLine()
+    {
+        var sut = new PrimaryTranscodeProcessor(
+            CreateThrowingInspector(new InvalidOperationException("576 source bucket missing: height 900; add SourceBuckets")),
+            new StubTool(),
+            new ToMkvGpuInfoFormatter());
+
+        var actual = sut.Process(new CliTranscodeRequest(
+            InputPath: @"C:\video\a.mp4",
+            ScenarioName: "tomkvgpu",
+            Info: false,
+            ToMkvGpu: new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576))));
+
+        actual.Should().Be("REM 576 source bucket missing: height 900; add SourceBuckets");
+    }
+
+    [Fact]
+    public void Process_WhenDownscale576SourceBucketMatrixIsIncomplete_ReturnsLegacyBucketRemLine()
+    {
+        var sut = new PrimaryTranscodeProcessor(
+            CreateThrowingInspector(new InvalidOperationException("576 source bucket invalid: missing corridor 'mult/low'")),
+            new StubTool(),
+            new ToMkvGpuInfoFormatter());
+
+        var actual = sut.Process(new CliTranscodeRequest(
+            InputPath: @"C:\video\a.mp4",
+            ScenarioName: "tomkvgpu",
+            Info: false,
+            ToMkvGpu: new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576))));
+
+        actual.Should().Be("REM 576 source bucket invalid: missing corridor 'mult/low'");
+    }
+
+    [Fact]
     public void Process_WhenInfoModeProbeFails_ReturnsInfoMarker()
     {
         var sut = new PrimaryTranscodeProcessor(

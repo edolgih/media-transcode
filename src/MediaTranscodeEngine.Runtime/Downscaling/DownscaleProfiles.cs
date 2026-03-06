@@ -7,7 +7,7 @@ internal sealed class DownscaleProfiles
 {
     private readonly IReadOnlyDictionary<int, DownscaleProfile> _profilesByTargetHeight;
 
-    private DownscaleProfiles(IReadOnlyDictionary<int, DownscaleProfile> profilesByTargetHeight)
+    internal DownscaleProfiles(IReadOnlyDictionary<int, DownscaleProfile> profilesByTargetHeight)
     {
         _profilesByTargetHeight = profilesByTargetHeight;
     }
@@ -24,35 +24,14 @@ internal sealed class DownscaleProfiles
         throw new InvalidOperationException($"Downscale profile '{targetHeight}' is not configured.");
     }
 
+    internal static DownscaleProfiles Create(params DownscaleProfile[] profiles)
+    {
+        return new DownscaleProfiles(profiles.ToDictionary(static profile => profile.TargetHeight));
+    }
+
     private static DownscaleProfiles CreateDefault()
     {
-        var profile576 = new DownscaleProfile(
-            targetHeight: 576,
-            defaultContentProfile: "film",
-            defaultQualityProfile: "default",
-            sourceBuckets:
-            [
-                new SourceHeightBucket("hd_720", MinHeight: 650, MaxHeight: 899),
-                new SourceHeightBucket("fhd_1080", MinHeight: 1000, MaxHeight: 1300)
-            ],
-            defaults:
-            [
-                new DownscaleDefaults("anime", "high", Cq: 22, Maxrate: 3.3m, Bufsize: 6.5m, Algorithm: "bilinear"),
-                new DownscaleDefaults("anime", "default", Cq: 23, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: "bilinear"),
-                new DownscaleDefaults("anime", "low", Cq: 29, Maxrate: 2.1m, Bufsize: 4.1m, Algorithm: "bilinear"),
-                new DownscaleDefaults("mult", "high", Cq: 24, Maxrate: 2.7m, Bufsize: 5.3m, Algorithm: "bilinear"),
-                new DownscaleDefaults("mult", "default", Cq: 26, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: "bilinear"),
-                new DownscaleDefaults("mult", "low", Cq: 29, Maxrate: 1.7m, Bufsize: 3.5m, Algorithm: "bilinear"),
-                new DownscaleDefaults("film", "high", Cq: 24, Maxrate: 3.7m, Bufsize: 7.4m, Algorithm: "bilinear"),
-                new DownscaleDefaults("film", "default", Cq: 26, Maxrate: 3.4m, Bufsize: 6.9m, Algorithm: "bilinear"),
-                new DownscaleDefaults("film", "low", Cq: 30, Maxrate: 2.2m, Bufsize: 4.5m, Algorithm: "bilinear")
-            ]);
-
-        return new DownscaleProfiles(
-            new Dictionary<int, DownscaleProfile>
-            {
-                [profile576.TargetHeight] = profile576
-            });
+        return Create(Downscale576Profile.Create());
     }
 }
 
@@ -62,26 +41,33 @@ internal sealed class DownscaleProfiles
 internal sealed class DownscaleProfile
 {
     private readonly IReadOnlyDictionary<string, DownscaleDefaults> _defaultsByProfile;
+    private readonly string[] _supportedContentProfiles;
+    private readonly string[] _supportedQualityProfiles;
 
     public DownscaleProfile(
         int targetHeight,
         string defaultContentProfile,
         string defaultQualityProfile,
+        DownscaleRateModel rateModel,
         IReadOnlyList<SourceHeightBucket> sourceBuckets,
         IReadOnlyList<DownscaleDefaults> defaults)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultContentProfile);
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultQualityProfile);
+        ArgumentNullException.ThrowIfNull(rateModel);
 
         TargetHeight = targetHeight;
         DefaultContentProfile = defaultContentProfile.Trim().ToLowerInvariant();
         DefaultQualityProfile = defaultQualityProfile.Trim().ToLowerInvariant();
+        RateModel = rateModel;
         SourceBuckets = sourceBuckets;
         Defaults = defaults;
         _defaultsByProfile = defaults.ToDictionary(
             static entry => BuildDefaultsKey(entry.ContentProfile, entry.QualityProfile),
             StringComparer.OrdinalIgnoreCase);
+        _supportedContentProfiles = defaults.Select(static entry => entry.ContentProfile).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        _supportedQualityProfiles = defaults.Select(static entry => entry.QualityProfile).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     public int TargetHeight { get; }
@@ -90,18 +76,37 @@ internal sealed class DownscaleProfile
 
     public string DefaultQualityProfile { get; }
 
+    public DownscaleRateModel RateModel { get; }
+
     public IReadOnlyList<SourceHeightBucket> SourceBuckets { get; }
 
     public IReadOnlyList<DownscaleDefaults> Defaults { get; }
 
     public string? ResolveSourceBucket(int? sourceHeight)
     {
+        return ResolveSourceBucketDefinition(sourceHeight)?.Name;
+    }
+
+    public string? ResolveSourceBucketIssue(int? sourceHeight)
+    {
         if (!sourceHeight.HasValue)
         {
-            return null;
+            return $"{TargetHeight} source bucket missing: height is unknown; add SourceBuckets";
         }
 
-        return SourceBuckets.FirstOrDefault(bucket => bucket.Matches(sourceHeight.Value))?.Name;
+        var bucket = ResolveSourceBucketDefinition(sourceHeight);
+        if (bucket is null)
+        {
+            return $"{TargetHeight} source bucket missing: height {sourceHeight.Value}; add SourceBuckets";
+        }
+
+        var missingRange = bucket.ResolveMissingRange(_supportedContentProfiles, _supportedQualityProfiles);
+        if (missingRange is not null)
+        {
+            return $"{TargetHeight} source bucket invalid: missing corridor '{missingRange}'";
+        }
+
+        return null;
     }
 
     public DownscaleDefaults ResolveDefaults(string? contentProfile, string? qualityProfile)
@@ -116,6 +121,16 @@ internal sealed class DownscaleProfile
 
         throw new InvalidOperationException(
             $"Downscale defaults are not configured for content '{effectiveContentProfile}' and quality '{effectiveQualityProfile}'.");
+    }
+
+    private SourceHeightBucket? ResolveSourceBucketDefinition(int? sourceHeight)
+    {
+        if (!sourceHeight.HasValue)
+        {
+            return null;
+        }
+
+        return SourceBuckets.FirstOrDefault(bucket => bucket.Matches(sourceHeight.Value));
     }
 
     private static string? NormalizeProfileName(string? value)
@@ -143,7 +158,11 @@ internal sealed record DownscaleDefaults(
     int Cq,
     decimal Maxrate,
     decimal Bufsize,
-    string Algorithm)
+    string Algorithm,
+    int CqMin,
+    int CqMax,
+    decimal MaxrateMin,
+    decimal MaxrateMax)
 {
     public string ContentProfile { get; init; } = NormalizeRequiredToken(ContentProfile, nameof(ContentProfile));
 
@@ -163,6 +182,22 @@ internal sealed record DownscaleDefaults(
 
     public string Algorithm { get; init; } = NormalizeRequiredToken(Algorithm, nameof(Algorithm));
 
+    public int CqMin { get; init; } = CqMin > 0
+        ? CqMin
+        : throw new ArgumentOutOfRangeException(nameof(CqMin), CqMin, "CQ minimum must be greater than zero.");
+
+    public int CqMax { get; init; } = CqMax >= CqMin
+        ? CqMax
+        : throw new ArgumentOutOfRangeException(nameof(CqMax), CqMax, "CQ maximum must be greater than or equal to minimum.");
+
+    public decimal MaxrateMin { get; init; } = MaxrateMin > 0m
+        ? MaxrateMin
+        : throw new ArgumentOutOfRangeException(nameof(MaxrateMin), MaxrateMin, "Maxrate minimum must be greater than zero.");
+
+    public decimal MaxrateMax { get; init; } = MaxrateMax >= MaxrateMin
+        ? MaxrateMax
+        : throw new ArgumentOutOfRangeException(nameof(MaxrateMax), MaxrateMax, "Maxrate maximum must be greater than or equal to minimum.");
+
     private static string NormalizeRequiredToken(string? value, string paramName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
@@ -171,9 +206,71 @@ internal sealed record DownscaleDefaults(
 }
 
 /// <summary>
+/// Stores the shared rate-model constants used when CQ is overridden.
+/// </summary>
+internal sealed record DownscaleRateModel(decimal CqStepToMaxrateStep, decimal BufsizeMultiplier)
+{
+    public decimal CqStepToMaxrateStep { get; init; } = CqStepToMaxrateStep > 0m
+        ? CqStepToMaxrateStep
+        : throw new ArgumentOutOfRangeException(nameof(CqStepToMaxrateStep), CqStepToMaxrateStep, "CQ step must be greater than zero.");
+
+    public decimal BufsizeMultiplier { get; init; } = BufsizeMultiplier > 0m
+        ? BufsizeMultiplier
+        : throw new ArgumentOutOfRangeException(nameof(BufsizeMultiplier), BufsizeMultiplier, "Bufsize multiplier must be greater than zero.");
+}
+
+/// <summary>
+/// Represents one content+quality reduction corridor entry.
+/// </summary>
+internal sealed record DownscaleRange(
+    string ContentProfile,
+    string QualityProfile,
+    decimal? MinExclusive = null,
+    decimal? MinInclusive = null,
+    decimal? MaxExclusive = null,
+    decimal? MaxInclusive = null)
+{
+    public string ContentProfile { get; init; } = NormalizeRequiredToken(ContentProfile, nameof(ContentProfile));
+
+    public string QualityProfile { get; init; } = NormalizeRequiredToken(QualityProfile, nameof(QualityProfile));
+
+    public decimal? MinExclusive { get; init; } = NormalizeOptional(MinExclusive, nameof(MinExclusive));
+
+    public decimal? MinInclusive { get; init; } = NormalizeOptional(MinInclusive, nameof(MinInclusive));
+
+    public decimal? MaxExclusive { get; init; } = NormalizeOptional(MaxExclusive, nameof(MaxExclusive));
+
+    public decimal? MaxInclusive { get; init; } = NormalizeOptional(MaxInclusive, nameof(MaxInclusive));
+
+    public bool Matches(string contentProfile, string qualityProfile)
+    {
+        return ContentProfile.Equals(contentProfile, StringComparison.OrdinalIgnoreCase) &&
+               QualityProfile.Equals(qualityProfile, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeRequiredToken(string? value, string paramName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
+        return value.Trim().ToLowerInvariant();
+    }
+
+    private static decimal? NormalizeOptional(decimal? value, string paramName)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        return value.Value >= 0m
+            ? value.Value
+            : throw new ArgumentOutOfRangeException(paramName, value.Value, "Range value must not be negative.");
+    }
+}
+
+/// <summary>
 /// Represents one source-height bucket used by downscale profiles.
 /// </summary>
-internal sealed record SourceHeightBucket(string Name, int MinHeight, int MaxHeight)
+internal sealed record SourceHeightBucket(string Name, int MinHeight, int MaxHeight, IReadOnlyList<DownscaleRange>? Ranges = null)
 {
     public string Name { get; init; } = NormalizeRequiredToken(Name, nameof(Name));
 
@@ -185,9 +282,27 @@ internal sealed record SourceHeightBucket(string Name, int MinHeight, int MaxHei
         ? MaxHeight
         : throw new ArgumentOutOfRangeException(nameof(MaxHeight), MaxHeight, "Maximum height must be greater than or equal to minimum height.");
 
+    public IReadOnlyList<DownscaleRange> Ranges { get; init; } = Ranges ?? Array.Empty<DownscaleRange>();
+
     public bool Matches(int height)
     {
         return height >= MinHeight && height <= MaxHeight;
+    }
+
+    public string? ResolveMissingRange(IEnumerable<string> supportedContentProfiles, IEnumerable<string> supportedQualityProfiles)
+    {
+        foreach (var contentProfile in supportedContentProfiles)
+        {
+            foreach (var qualityProfile in supportedQualityProfiles)
+            {
+                if (!Ranges.Any(range => range.Matches(contentProfile, qualityProfile)))
+                {
+                    return $"{contentProfile}/{qualityProfile}";
+                }
+            }
+        }
+
+        return null;
     }
 
     private static string NormalizeRequiredToken(string? value, string paramName)

@@ -21,6 +21,7 @@ public sealed record TranscodePlan
     /// <param name="copyAudio">Whether compatible audio streams should be copied.</param>
     /// <param name="fixTimestamps">Whether timestamp normalization is requested.</param>
     /// <param name="keepSource">Whether the source file should be preserved.</param>
+    /// <param name="encoderPreset">Optional encoder preset preference.</param>
     /// <param name="outputPath">Optional explicit output path.</param>
     /// <param name="applyOverlayBackground">Whether the plan requests background overlay during video encoding.</param>
     /// <param name="synchronizeAudio">Whether the plan requests the sync-safe audio path.</param>
@@ -36,6 +37,7 @@ public sealed record TranscodePlan
         bool copyAudio,
         bool fixTimestamps,
         bool keepSource,
+        string? encoderPreset = null,
         string? outputPath = null,
         bool applyOverlayBackground = false,
         bool synchronizeAudio = false)
@@ -50,6 +52,7 @@ public sealed record TranscodePlan
         KeepSource = keepSource;
         UseFrameInterpolation = useFrameInterpolation;
         PreferredBackend = NormalizeOptionalToken(preferredBackend);
+        EncoderPreset = NormalizeOptionalToken(encoderPreset);
         OutputPath = NormalizeOptionalPath(outputPath);
         ApplyOverlayBackground = applyOverlayBackground;
         SynchronizeAudio = synchronizeAudio;
@@ -138,6 +141,11 @@ public sealed record TranscodePlan
     /// Gets a value indicating whether the source file should be preserved.
     /// </summary>
     public bool KeepSource { get; }
+
+    /// <summary>
+    /// Gets the preferred encoder preset when the scenario wants to influence encode speed/quality tradeoffs.
+    /// </summary>
+    public string? EncoderPreset { get; }
 
     /// <summary>
     /// Gets an explicit output path when the scenario chooses one.

@@ -102,6 +102,30 @@ public sealed class ToMkvGpuInfoFormatterTests
         actual.Should().Be("input.mp4: [downscale not supported]");
     }
 
+    [Fact]
+    public void FormatFailure_WhenDownscaleSourceBucketIsMissing_ReturnsBucketHint()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatFailure(
+            @"C:\nested\folder\input.mp4",
+            new InvalidOperationException("576 source bucket missing: height 900; add SourceBuckets"));
+
+        actual.Should().Be("input.mp4: [576 source bucket missing: height 900; add SourceBuckets]");
+    }
+
+    [Fact]
+    public void FormatFailure_WhenDownscaleSourceBucketIsInvalid_ReturnsBucketHint()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatFailure(
+            @"C:\nested\folder\input.mp4",
+            new InvalidOperationException("576 source bucket invalid: missing corridor 'mult/low'"));
+
+        actual.Should().Be("input.mp4: [576 source bucket invalid: missing corridor 'mult/low']");
+    }
+
     private static ToMkvGpuInfoFormatter CreateSut()
     {
         return new ToMkvGpuInfoFormatter();

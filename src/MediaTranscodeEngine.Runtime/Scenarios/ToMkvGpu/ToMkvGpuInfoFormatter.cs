@@ -89,6 +89,12 @@ public sealed class ToMkvGpuInfoFormatter
             return "no video stream";
         }
 
+        if (message.Contains("source bucket missing", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("source bucket invalid", StringComparison.OrdinalIgnoreCase))
+        {
+            return message;
+        }
+
         if (message.Contains("downscale", StringComparison.OrdinalIgnoreCase))
         {
             return "downscale not supported";

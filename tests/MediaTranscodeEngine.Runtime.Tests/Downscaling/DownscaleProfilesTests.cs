@@ -80,4 +80,23 @@ public sealed class DownscaleProfilesTests
 
         actual.Should().Be(expectedBucket);
     }
+
+    [Fact]
+    public void ResolveSourceBucketIssue_WhenBucketIsMissing_ReturnsHint()
+    {
+        var sut = DownscaleProfiles.Default.GetRequiredProfile(576);
+
+        var actual = sut.ResolveSourceBucketIssue(900);
+
+        actual.Should().Be("576 source bucket missing: height 900; add SourceBuckets");
+    }
+
+    [Fact]
+    public void Default_When576ProfileIsRequested_ReturnsConfiguredRateModel()
+    {
+        var sut = DownscaleProfiles.Default.GetRequiredProfile(576);
+
+        sut.RateModel.CqStepToMaxrateStep.Should().Be(0.4m);
+        sut.RateModel.BufsizeMultiplier.Should().Be(2.0m);
+    }
 }

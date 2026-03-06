@@ -1,3 +1,4 @@
+using MediaTranscodeEngine.Runtime.Downscaling;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Videos;
 
@@ -20,14 +21,22 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         ".asf"
     };
 
+    private readonly DownscaleProfiles _downscaleProfiles;
+
     /// <summary>
     /// Initializes a ToMkvGpu scenario with scenario-specific directives.
     /// </summary>
     /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
     public ToMkvGpuScenario(ToMkvGpuRequest? request = null)
+        : this(request, DownscaleProfiles.Default)
+    {
+    }
+
+    internal ToMkvGpuScenario(ToMkvGpuRequest? request, DownscaleProfiles downscaleProfiles)
         : base("tomkvgpu")
     {
         Request = request ?? new ToMkvGpuRequest();
+        _downscaleProfiles = downscaleProfiles ?? throw new ArgumentNullException(nameof(downscaleProfiles));
     }
 
     /// <summary>
@@ -49,6 +58,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
 
         var applyDownscale = Request.Downscale?.TargetHeight.HasValue == true &&
                              video.Height > Request.Downscale.TargetHeight.Value;
+        ValidateDownscale(video, applyDownscale);
+
+        var effectiveDownscale = ResolveEffectiveDownscale(applyDownscale);
         var requiresTimestampFix = TimestampSensitiveExtensions.Contains(video.FileExtension);
         var copyVideo = VideoCopyCodecs.Contains(video.VideoCodec) &&
                         !requiresTimestampFix &&
@@ -65,14 +77,50 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             targetHeight: applyDownscale ? Request.Downscale!.TargetHeight : null,
             targetFramesPerSecond: null,
             useFrameInterpolation: false,
-            downscale: applyDownscale ? Request.Downscale : null,
+            downscale: effectiveDownscale,
             copyVideo: copyVideo,
             copyAudio: copyAudio,
             fixTimestamps: requiresTimestampFix || !copyVideo,
             keepSource: Request.KeepSource,
+            encoderPreset: Request.NvencPreset,
             outputPath: ResolveOutputPath(video, copyVideo, copyAudio),
             applyOverlayBackground: Request.OverlayBackground,
             synchronizeAudio: Request.SynchronizeAudio);
+    }
+
+    private void ValidateDownscale(SourceVideo video, bool applyDownscale)
+    {
+        if (!applyDownscale || Request.Downscale?.TargetHeight != 576)
+        {
+            return;
+        }
+
+        var profile = _downscaleProfiles.GetRequiredProfile(576);
+        var issue = profile.ResolveSourceBucketIssue(video.Height);
+        if (!string.IsNullOrWhiteSpace(issue))
+        {
+            throw new InvalidOperationException(issue);
+        }
+    }
+
+    private DownscaleRequest? ResolveEffectiveDownscale(bool applyDownscale)
+    {
+        if (Request.Downscale is null)
+        {
+            return null;
+        }
+
+        if (applyDownscale)
+        {
+            return Request.Downscale;
+        }
+
+        if (!Request.Downscale.TargetHeight.HasValue)
+        {
+            return Request.Downscale;
+        }
+
+        return null;
     }
 
     private static bool AreAudioStreamsCopyCompatible(IReadOnlyList<string> audioCodecs)

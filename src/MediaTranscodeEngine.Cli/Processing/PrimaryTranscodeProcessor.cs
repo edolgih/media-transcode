@@ -81,6 +81,11 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             return $"REM Downscale 720 not implemented: {fileName}";
         }
 
+        if (IsDownscaleSourceBucketFailure(exception))
+        {
+            return $"REM {exception.Message}";
+        }
+
         return $"REM ffprobe failed: {fileName}";
     }
 
@@ -95,6 +100,7 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         if (IsUnknownDimensionsFailure(exception) ||
             IsNoVideoStreamFailure(exception) ||
             IsDownscaleNotImplementedFailure(exception) ||
+            IsDownscaleSourceBucketFailure(exception) ||
             IsProbeFailure(exception))
         {
             line = string.Empty;
@@ -120,6 +126,12 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
     {
         return exception.Message.Contains("downscale", StringComparison.OrdinalIgnoreCase) &&
                exception.Message.Contains("720", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDownscaleSourceBucketFailure(Exception exception)
+    {
+        return exception.Message.Contains("source bucket missing", StringComparison.OrdinalIgnoreCase) ||
+               exception.Message.Contains("source bucket invalid", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsProbeFailure(Exception exception)

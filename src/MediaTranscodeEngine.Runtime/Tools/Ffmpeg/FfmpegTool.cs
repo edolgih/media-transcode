@@ -10,17 +10,23 @@ namespace MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 /// </summary>
 public sealed class FfmpegTool : ITranscodeTool
 {
-    private static readonly DownscaleProfiles DownscaleProfiles = DownscaleProfiles.Default;
     private readonly string _ffmpegPath;
+    private readonly DownscaleProfiles _downscaleProfiles;
 
     /// <summary>
     /// Initializes an ffmpeg-backed transcode tool.
     /// </summary>
     /// <param name="ffmpegPath">Executable path or command name for ffmpeg.</param>
     public FfmpegTool(string ffmpegPath = "ffmpeg")
+        : this(ffmpegPath, DownscaleProfiles.Default)
+    {
+    }
+
+    internal FfmpegTool(string ffmpegPath, DownscaleProfiles downscaleProfiles)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ffmpegPath);
         _ffmpegPath = ffmpegPath.Trim();
+        _downscaleProfiles = downscaleProfiles ?? throw new ArgumentNullException(nameof(downscaleProfiles));
     }
 
     /// <summary>
@@ -204,7 +210,7 @@ public sealed class FfmpegTool : ITranscodeTool
         return string.Empty;
     }
 
-    private static string BuildVideoPart(SourceVideo video, TranscodePlan plan)
+    private string BuildVideoPart(SourceVideo video, TranscodePlan plan)
     {
         if (plan.CopyVideo)
         {
@@ -216,24 +222,25 @@ public sealed class FfmpegTool : ITranscodeTool
         var fpsToken = ResolveFrameRateToken(video, plan);
         var gop = ResolveGop(video, plan);
         var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32";
+        var preset = plan.EncoderPreset ?? "p6";
 
         if (plan.ApplyOverlayBackground)
         {
             var filter = BuildOverlayFilter(video, plan.TargetHeight, settings.Algorithm);
             return $"-filter_complex {Quote(filter)} -map \"[v]\" -fps_mode:v cfr " +
-                   $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
+                   $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
                    $"-pix_fmt yuv420p -profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
         }
 
         if (plan.TargetHeight.HasValue)
         {
             return $"-map 0:v:0 -fps_mode:v cfr -vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo={settings.Algorithm}:format=nv12\" " +
-                   $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
+                   $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
                    $"-profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
         }
 
         return $"-map 0:v:0 -fps_mode:v cfr " +
-               $"-c:v {encoder} -preset p6 -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
+               $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
                $"-pix_fmt yuv420p -profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
     }
 
@@ -270,25 +277,12 @@ public sealed class FfmpegTool : ITranscodeTool
         return (int)Math.Max(12, Math.Round(fps * 2.0));
     }
 
-    private static DownscaleDefaults ResolveVideoSettings(TranscodePlan plan)
+    private DownscaleDefaults ResolveVideoSettings(TranscodePlan plan)
     {
-        if (plan.Downscale?.TargetHeight == 576)
+        if (plan.Downscale is not null)
         {
-            var profile = DownscaleProfiles.GetRequiredProfile(576);
-            var defaults = profile.ResolveDefaults(
-                contentProfile: plan.Downscale.ContentProfile,
-                qualityProfile: plan.Downscale.QualityProfile);
-
-            var maxrate = plan.Downscale.Maxrate ?? defaults.Maxrate;
-            var bufsize = plan.Downscale.Bufsize ?? (plan.Downscale.Maxrate.HasValue ? plan.Downscale.Maxrate.Value * 2m : defaults.Bufsize);
-
-            return new DownscaleDefaults(
-                ContentProfile: defaults.ContentProfile,
-                QualityProfile: defaults.QualityProfile,
-                Cq: plan.Downscale.Cq ?? defaults.Cq,
-                Maxrate: maxrate,
-                Bufsize: bufsize,
-                Algorithm: plan.Downscale.Algorithm ?? defaults.Algorithm);
+            var defaults = ResolveBaseDefaults(plan);
+            return ApplyOverrides(defaults, plan.Downscale);
         }
 
         return new DownscaleDefaults(
@@ -297,7 +291,83 @@ public sealed class FfmpegTool : ITranscodeTool
             Cq: 21,
             Maxrate: 4m,
             Bufsize: 8m,
-            Algorithm: "bilinear");
+            Algorithm: "bilinear",
+            CqMin: 1,
+            CqMax: int.MaxValue,
+            MaxrateMin: 0.001m,
+            MaxrateMax: decimal.MaxValue);
+    }
+
+    private DownscaleDefaults ResolveBaseDefaults(TranscodePlan plan)
+    {
+        if (plan.TargetHeight == 576)
+        {
+            var profile = _downscaleProfiles.GetRequiredProfile(576);
+            return profile.ResolveDefaults(
+                contentProfile: plan.Downscale?.ContentProfile,
+                qualityProfile: plan.Downscale?.QualityProfile);
+        }
+
+        return new DownscaleDefaults(
+            ContentProfile: "default",
+            QualityProfile: "default",
+            Cq: 21,
+            Maxrate: 4m,
+            Bufsize: 8m,
+            Algorithm: "bilinear",
+            CqMin: 1,
+            CqMax: int.MaxValue,
+            MaxrateMin: 0.001m,
+            MaxrateMax: decimal.MaxValue);
+    }
+
+    private DownscaleDefaults ApplyOverrides(DownscaleDefaults defaults, DownscaleRequest request)
+    {
+        var cq = request.Cq ?? defaults.Cq;
+        var maxrate = request.Maxrate;
+
+        if (!maxrate.HasValue && request.Cq.HasValue && request.TargetHeight == 576)
+        {
+            var profile = _downscaleProfiles.GetRequiredProfile(576);
+            var delta = defaults.Cq - cq;
+            var resolved = defaults.Maxrate + (delta * profile.RateModel.CqStepToMaxrateStep);
+            maxrate = Clamp(resolved, defaults.MaxrateMin, defaults.MaxrateMax);
+        }
+
+        maxrate ??= defaults.Maxrate;
+
+        var bufsize = request.Bufsize;
+        if (!bufsize.HasValue && (request.Maxrate.HasValue || request.Cq.HasValue))
+        {
+            var multiplier = request.TargetHeight == 576
+                ? _downscaleProfiles.GetRequiredProfile(576).RateModel.BufsizeMultiplier
+                : 2.0m;
+            bufsize = maxrate.Value * multiplier;
+        }
+
+        bufsize ??= defaults.Bufsize;
+
+        return new DownscaleDefaults(
+            ContentProfile: defaults.ContentProfile,
+            QualityProfile: defaults.QualityProfile,
+            Cq: cq,
+            Maxrate: maxrate.Value,
+            Bufsize: bufsize.Value,
+            Algorithm: request.Algorithm ?? defaults.Algorithm,
+            CqMin: defaults.CqMin,
+            CqMax: defaults.CqMax,
+            MaxrateMin: defaults.MaxrateMin,
+            MaxrateMax: defaults.MaxrateMax);
+    }
+
+    private static decimal Clamp(decimal value, decimal min, decimal max)
+    {
+        if (value < min)
+        {
+            return min;
+        }
+
+        return value > max ? max : value;
     }
 
     private static string FormatRate(decimal value)
