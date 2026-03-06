@@ -21,6 +21,21 @@ public sealed class ToMkvGpuInfoFormatter
     }
 
     /// <summary>
+    /// Builds a single-line failure summary for known inspection or scenario failures.
+    /// </summary>
+    /// <param name="filePath">Path to the source file that failed.</param>
+    /// <param name="exception">Failure raised while inspecting or planning the file.</param>
+    /// <returns>A single-line info marker for the failure.</returns>
+    public string FormatFailure(string filePath, Exception exception)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        ArgumentNullException.ThrowIfNull(exception);
+
+        var marker = ResolveFailureMarker(exception);
+        return $"{Path.GetFileName(filePath.Trim())}: [{marker}]";
+    }
+
+    /// <summary>
     /// Builds a single-line summary of the actions requested by ToMkvGpu for the supplied video and plan.
     /// </summary>
     /// <param name="video">Inspected source video facts.</param>
@@ -64,5 +79,21 @@ public sealed class ToMkvGpuInfoFormatter
     private static bool HasNonAacAudio(SourceVideo video)
     {
         return video.AudioCodecs.Any(codec => !codec.Equals("aac", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string ResolveFailureMarker(Exception exception)
+    {
+        var message = exception.Message;
+        if (message.Contains("video stream", StringComparison.OrdinalIgnoreCase))
+        {
+            return "no video stream";
+        }
+
+        if (message.Contains("downscale", StringComparison.OrdinalIgnoreCase))
+        {
+            return "downscale not supported";
+        }
+
+        return "ffprobe failed";
     }
 }

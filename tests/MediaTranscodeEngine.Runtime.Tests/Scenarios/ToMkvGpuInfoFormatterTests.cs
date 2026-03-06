@@ -66,6 +66,42 @@ public sealed class ToMkvGpuInfoFormatterTests
         actual.Should().Be("input.mp4: [ffprobe failed]");
     }
 
+    [Fact]
+    public void FormatFailure_WhenProbeErrorIsGeneric_ReturnsFfprobeFailedMarker()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatFailure(
+            @"C:\nested\folder\input.mp4",
+            new InvalidOperationException("ffprobe returned invalid JSON output."));
+
+        actual.Should().Be("input.mp4: [ffprobe failed]");
+    }
+
+    [Fact]
+    public void FormatFailure_WhenNoVideoStreamErrorOccurs_ReturnsNoVideoStreamMarker()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatFailure(
+            @"C:\nested\folder\input.mp4",
+            new InvalidOperationException("Video probe did not return a video stream."));
+
+        actual.Should().Be("input.mp4: [no video stream]");
+    }
+
+    [Fact]
+    public void FormatFailure_WhenDownscaleIsNotSupported_ReturnsDownscaleMarker()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatFailure(
+            @"C:\nested\folder\input.mp4",
+            new NotSupportedException("Downscale 720 is not implemented for ToMkvGpu."));
+
+        actual.Should().Be("input.mp4: [downscale not supported]");
+    }
+
     private static ToMkvGpuInfoFormatter CreateSut()
     {
         return new ToMkvGpuInfoFormatter();
