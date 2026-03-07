@@ -248,6 +248,38 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
+    public void BuildExecution_WhenDownscaleManualCqIsProvided_SkipsAutoSample()
+    {
+        var providerCalls = 0;
+        var sut = CreateSut(sampleReductionProvider: (_, _, _) =>
+        {
+            providerCalls++;
+            return 45m;
+        });
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "h264",
+            filePath: @"C:\video\input.mp4",
+            height: 1080,
+            duration: TimeSpan.FromMinutes(10),
+            bitrate: 8_000_000);
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            targetHeight: 576,
+            downscale: new DownscaleRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", cq: 21),
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        providerCalls.Should().Be(0);
+        actual.Commands[0].Should().Contain("-cq 21");
+        actual.Commands[0].Should().Contain("-maxrate 3M -bufsize 6M");
+    }
+
+    [Fact]
     public void BuildExecution_WhenDownscaleFastAutoSampleIsRequested_UsesFastResolvedSettings()
     {
         var sut = CreateSut();
