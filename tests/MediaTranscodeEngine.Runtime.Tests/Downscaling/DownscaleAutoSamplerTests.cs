@@ -33,9 +33,9 @@ public sealed class DownscaleAutoSamplerTests
         actual.Maxrate.Should().Be(2.4m);
         actual.Bufsize.Should().Be(4.8m);
         actualWindows.Should().Equal(
-            new DownscaleSampleWindow(StartSeconds: 60, DurationSeconds: 120),
-            new DownscaleSampleWindow(StartSeconds: 240, DurationSeconds: 120),
-            new DownscaleSampleWindow(StartSeconds: 420, DurationSeconds: 120));
+            new DownscaleSampleWindow(StartSeconds: 112, DurationSeconds: 15),
+            new DownscaleSampleWindow(StartSeconds: 292, DurationSeconds: 15),
+            new DownscaleSampleWindow(StartSeconds: 472, DurationSeconds: 15));
     }
 
     [Fact]
@@ -286,12 +286,13 @@ public sealed class DownscaleAutoSamplerTests
             AudioBitrateEstimateMbps: 0.192m,
             LongMinDuration: TimeSpan.FromMinutes(8),
             LongWindowCount: 3,
-            LongWindowDuration: TimeSpan.FromSeconds(120),
+            LongWindowAnchors: [0.20, 0.50, 0.80],
             MediumMinDuration: TimeSpan.FromMinutes(3),
             MediumWindowCount: 2,
-            MediumWindowDuration: TimeSpan.FromSeconds(120),
+            MediumWindowAnchors: [0.35, 0.65],
             ShortWindowCount: 1,
-            ShortWindowDuration: TimeSpan.FromSeconds(90));
+            SampleWindowDuration: TimeSpan.FromSeconds(15),
+            ShortWindowAnchors: [0.50]);
     }
 
     private static DownscaleDefaults sutResolveDefaults()

@@ -17,12 +17,13 @@ internal static class Downscale576Profile
                 AudioBitrateEstimateMbps: 0.192m,
                 LongMinDuration: TimeSpan.FromMinutes(8),
                 LongWindowCount: 3,
-                LongWindowDuration: TimeSpan.FromSeconds(120),
+                LongWindowAnchors: [0.20, 0.50, 0.80],
                 MediumMinDuration: TimeSpan.FromMinutes(3),
                 MediumWindowCount: 2,
-                MediumWindowDuration: TimeSpan.FromSeconds(120),
+                MediumWindowAnchors: [0.35, 0.65],
                 ShortWindowCount: 1,
-                ShortWindowDuration: TimeSpan.FromSeconds(90)),
+                SampleWindowDuration: TimeSpan.FromSeconds(15),
+                ShortWindowAnchors: [0.50]),
             sourceBuckets:
             [
                 new SourceHeightBucket(

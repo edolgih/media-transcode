@@ -388,9 +388,9 @@ public sealed class FfmpegToolTests
         actual.Commands[0].Should().Contain("-cq 23");
         actual.Commands[0].Should().Contain("-maxrate 2.4M -bufsize 4.8M");
         actualWindows.Should().Equal(
-            new DownscaleSampleWindow(StartSeconds: 60, DurationSeconds: 120),
-            new DownscaleSampleWindow(StartSeconds: 240, DurationSeconds: 120),
-            new DownscaleSampleWindow(StartSeconds: 420, DurationSeconds: 120));
+            new DownscaleSampleWindow(StartSeconds: 112, DurationSeconds: 15),
+            new DownscaleSampleWindow(StartSeconds: 292, DurationSeconds: 15),
+            new DownscaleSampleWindow(StartSeconds: 472, DurationSeconds: 15));
     }
 
     [Fact]

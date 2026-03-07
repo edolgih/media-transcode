@@ -297,12 +297,13 @@ internal sealed record DownscaleAutoSampling(
     decimal AudioBitrateEstimateMbps,
     TimeSpan LongMinDuration,
     int LongWindowCount,
-    TimeSpan LongWindowDuration,
+    IReadOnlyList<double> LongWindowAnchors,
     TimeSpan MediumMinDuration,
     int MediumWindowCount,
-    TimeSpan MediumWindowDuration,
+    IReadOnlyList<double> MediumWindowAnchors,
     int ShortWindowCount,
-    TimeSpan ShortWindowDuration)
+    TimeSpan SampleWindowDuration,
+    IReadOnlyList<double> ShortWindowAnchors)
 {
     public string ModeDefault { get; init; } = NormalizeRequiredToken(ModeDefault, nameof(ModeDefault));
 
@@ -326,9 +327,7 @@ internal sealed record DownscaleAutoSampling(
         ? LongWindowCount
         : throw new ArgumentOutOfRangeException(nameof(LongWindowCount), LongWindowCount, "LongWindowCount must be greater than zero.");
 
-    public TimeSpan LongWindowDuration { get; init; } = LongWindowDuration > TimeSpan.Zero
-        ? LongWindowDuration
-        : throw new ArgumentOutOfRangeException(nameof(LongWindowDuration), LongWindowDuration, "LongWindowDuration must be greater than zero.");
+    public IReadOnlyList<double> LongWindowAnchors { get; init; } = NormalizeAnchors(LongWindowAnchors, nameof(LongWindowAnchors));
 
     public TimeSpan MediumMinDuration { get; init; } = MediumMinDuration > TimeSpan.Zero
         ? MediumMinDuration
@@ -338,17 +337,17 @@ internal sealed record DownscaleAutoSampling(
         ? MediumWindowCount
         : throw new ArgumentOutOfRangeException(nameof(MediumWindowCount), MediumWindowCount, "MediumWindowCount must be greater than zero.");
 
-    public TimeSpan MediumWindowDuration { get; init; } = MediumWindowDuration > TimeSpan.Zero
-        ? MediumWindowDuration
-        : throw new ArgumentOutOfRangeException(nameof(MediumWindowDuration), MediumWindowDuration, "MediumWindowDuration must be greater than zero.");
+    public IReadOnlyList<double> MediumWindowAnchors { get; init; } = NormalizeAnchors(MediumWindowAnchors, nameof(MediumWindowAnchors));
 
     public int ShortWindowCount { get; init; } = ShortWindowCount > 0
         ? ShortWindowCount
         : throw new ArgumentOutOfRangeException(nameof(ShortWindowCount), ShortWindowCount, "ShortWindowCount must be greater than zero.");
 
-    public TimeSpan ShortWindowDuration { get; init; } = ShortWindowDuration > TimeSpan.Zero
-        ? ShortWindowDuration
-        : throw new ArgumentOutOfRangeException(nameof(ShortWindowDuration), ShortWindowDuration, "ShortWindowDuration must be greater than zero.");
+    public TimeSpan SampleWindowDuration { get; init; } = SampleWindowDuration > TimeSpan.Zero
+        ? SampleWindowDuration
+        : throw new ArgumentOutOfRangeException(nameof(SampleWindowDuration), SampleWindowDuration, "SampleWindowDuration must be greater than zero.");
+
+    public IReadOnlyList<double> ShortWindowAnchors { get; init; } = NormalizeAnchors(ShortWindowAnchors, nameof(ShortWindowAnchors));
 
     public IReadOnlyList<DownscaleSampleWindow> GetSampleWindows(TimeSpan duration)
     {
@@ -361,15 +360,8 @@ internal sealed record DownscaleAutoSampling(
         {
             return BuildWindows(
                 duration,
-                [
-                    new DownscaleSampleWindow(StartSeconds: 60, DurationSeconds: (int)LongWindowDuration.TotalSeconds),
-                    new DownscaleSampleWindow(
-                        StartSeconds: (int)Math.Floor(Math.Max((duration.TotalSeconds / 2.0) - (LongWindowDuration.TotalSeconds / 2.0), 0.0)),
-                        DurationSeconds: (int)LongWindowDuration.TotalSeconds),
-                    new DownscaleSampleWindow(
-                        StartSeconds: (int)Math.Floor(Math.Max(duration.TotalSeconds - LongWindowDuration.TotalSeconds - 60.0, 0.0)),
-                        DurationSeconds: (int)LongWindowDuration.TotalSeconds)
-                ],
+                SampleWindowDuration,
+                LongWindowAnchors,
                 LongWindowCount);
         }
 
@@ -377,28 +369,22 @@ internal sealed record DownscaleAutoSampling(
         {
             return BuildWindows(
                 duration,
-                [
-                    new DownscaleSampleWindow(StartSeconds: 45, DurationSeconds: (int)MediumWindowDuration.TotalSeconds),
-                    new DownscaleSampleWindow(
-                        StartSeconds: (int)Math.Floor(Math.Max((duration.TotalSeconds / 2.0) - (MediumWindowDuration.TotalSeconds / 2.0), 0.0)),
-                        DurationSeconds: (int)MediumWindowDuration.TotalSeconds)
-                ],
+                SampleWindowDuration,
+                MediumWindowAnchors,
                 MediumWindowCount);
         }
 
         return BuildWindows(
             duration,
-            [
-                new DownscaleSampleWindow(
-                    StartSeconds: (int)Math.Floor(Math.Max((duration.TotalSeconds / 2.0) - (ShortWindowDuration.TotalSeconds / 2.0), 0.0)),
-                    DurationSeconds: (int)ShortWindowDuration.TotalSeconds)
-            ],
+            SampleWindowDuration,
+            ShortWindowAnchors,
             ShortWindowCount);
     }
 
     private static IReadOnlyList<DownscaleSampleWindow> BuildWindows(
         TimeSpan totalDuration,
-        IReadOnlyList<DownscaleSampleWindow> slots,
+        TimeSpan sampleDuration,
+        IReadOnlyList<double> anchors,
         int count)
     {
         if (count < 1)
@@ -407,19 +393,21 @@ internal sealed record DownscaleAutoSampling(
         }
 
         var maxDurationSeconds = Math.Max((int)Math.Floor(totalDuration.TotalSeconds), 1);
+        var durationSeconds = Math.Min((int)Math.Floor(sampleDuration.TotalSeconds), maxDurationSeconds);
+        if (durationSeconds < 1)
+        {
+            return [];
+        }
+
         var result = new List<DownscaleSampleWindow>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var slot in slots.Take(count))
+        foreach (var anchor in anchors.Take(count))
         {
-            var durationSeconds = Math.Min(slot.DurationSeconds, maxDurationSeconds);
-            if (durationSeconds < 1)
-            {
-                continue;
-            }
-
             var maxStart = Math.Max((int)Math.Floor(totalDuration.TotalSeconds) - durationSeconds, 0);
-            var startSeconds = Math.Min(Math.Max(slot.StartSeconds, 0), maxStart);
+            var centerSeconds = totalDuration.TotalSeconds * anchor;
+            var startSeconds = (int)Math.Floor(centerSeconds - (durationSeconds / 2.0));
+            startSeconds = Math.Min(Math.Max(startSeconds, 0), maxStart);
             var key = $"{startSeconds}|{durationSeconds}";
             if (seen.Add(key))
             {
@@ -434,6 +422,31 @@ internal sealed record DownscaleAutoSampling(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
         return value.Trim().ToLowerInvariant();
+    }
+
+    private static IReadOnlyList<double> NormalizeAnchors(IReadOnlyList<double>? values, string paramName)
+    {
+        if (values is null || values.Count == 0)
+        {
+            throw new ArgumentException("Anchor list must not be null or empty.", paramName);
+        }
+
+        var normalized = new List<double>(values.Count);
+        foreach (var value in values)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0d || value >= 1d)
+            {
+                throw new ArgumentOutOfRangeException(paramName, value, "Anchor value must be between 0 and 1.");
+            }
+
+            if (!normalized.Contains(value))
+            {
+                normalized.Add(value);
+            }
+        }
+
+        normalized.Sort();
+        return normalized.ToArray();
     }
 }
 

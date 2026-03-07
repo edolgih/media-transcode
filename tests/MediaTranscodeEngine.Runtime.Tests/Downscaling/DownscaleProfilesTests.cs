@@ -110,41 +110,71 @@ public sealed class DownscaleProfilesTests
         sut.AutoSampling.MaxIterations.Should().Be(8);
         sut.AutoSampling.HybridAccurateIterations.Should().Be(2);
         sut.AutoSampling.AudioBitrateEstimateMbps.Should().Be(0.192m);
+        sut.AutoSampling.SampleWindowDuration.Should().Be(TimeSpan.FromSeconds(15));
+        sut.AutoSampling.LongWindowAnchors.Should().Equal(0.20, 0.50, 0.80);
+        sut.AutoSampling.MediumWindowAnchors.Should().Equal(0.35, 0.65);
+        sut.AutoSampling.ShortWindowAnchors.Should().Equal(0.50);
     }
 
     [Fact]
-    public void GetSampleWindows_WhenDurationIsLong_ReturnsThree120SecondWindows()
+    public void GetSampleWindows_WhenDurationIsLong_ReturnsThree15SecondWindowsUsingConfiguredAnchors()
     {
         var sut = DownscaleProfiles.Default.GetRequiredProfile(576);
 
         var actual = sut.GetSampleWindows(TimeSpan.FromMinutes(8));
 
         actual.Should().Equal(
-            new DownscaleSampleWindow(StartSeconds: 60, DurationSeconds: 120),
-            new DownscaleSampleWindow(StartSeconds: 180, DurationSeconds: 120),
-            new DownscaleSampleWindow(StartSeconds: 300, DurationSeconds: 120));
+            new DownscaleSampleWindow(StartSeconds: 88, DurationSeconds: 15),
+            new DownscaleSampleWindow(StartSeconds: 232, DurationSeconds: 15),
+            new DownscaleSampleWindow(StartSeconds: 376, DurationSeconds: 15));
     }
 
     [Fact]
-    public void GetSampleWindows_WhenDurationIsMedium_ReturnsTwo120SecondWindows()
+    public void GetSampleWindows_WhenDurationIsMedium_ReturnsTwo15SecondWindowsUsingConfiguredAnchors()
     {
         var sut = DownscaleProfiles.Default.GetRequiredProfile(576);
 
         var actual = sut.GetSampleWindows(TimeSpan.FromMinutes(3));
 
         actual.Should().Equal(
-            new DownscaleSampleWindow(StartSeconds: 45, DurationSeconds: 120),
-            new DownscaleSampleWindow(StartSeconds: 30, DurationSeconds: 120));
+            new DownscaleSampleWindow(StartSeconds: 55, DurationSeconds: 15),
+            new DownscaleSampleWindow(StartSeconds: 109, DurationSeconds: 15));
     }
 
     [Fact]
-    public void GetSampleWindows_WhenDurationIsShort_ReturnsOne90SecondWindow()
+    public void GetSampleWindows_WhenDurationIsShort_ReturnsOne15SecondWindow()
     {
         var sut = DownscaleProfiles.Default.GetRequiredProfile(576);
 
         var actual = sut.GetSampleWindows(TimeSpan.FromMinutes(2));
 
-        actual.Should().Equal(new DownscaleSampleWindow(StartSeconds: 15, DurationSeconds: 90));
+        actual.Should().Equal(new DownscaleSampleWindow(StartSeconds: 52, DurationSeconds: 15));
+    }
+
+    [Fact]
+    public void GetSampleWindows_WhenCustomAnchorsAndSharedDurationAreConfigured_UsesThoseValues()
+    {
+        var sut = new DownscaleAutoSampling(
+            EnabledByDefault: true,
+            ModeDefault: "accurate",
+            MaxIterations: 8,
+            HybridAccurateIterations: 2,
+            AudioBitrateEstimateMbps: 0.192m,
+            LongMinDuration: TimeSpan.FromMinutes(8),
+            LongWindowCount: 2,
+            LongWindowAnchors: [0.20, 0.80],
+            MediumMinDuration: TimeSpan.FromMinutes(3),
+            MediumWindowCount: 2,
+            MediumWindowAnchors: [0.25, 0.75],
+            ShortWindowCount: 1,
+            SampleWindowDuration: TimeSpan.FromSeconds(30),
+            ShortWindowAnchors: [0.50]);
+
+        var actual = sut.GetSampleWindows(TimeSpan.FromMinutes(10));
+
+        actual.Should().Equal(
+            new DownscaleSampleWindow(StartSeconds: 105, DurationSeconds: 30),
+            new DownscaleSampleWindow(StartSeconds: 465, DurationSeconds: 30));
     }
 
     [Fact]
@@ -313,12 +343,13 @@ public sealed class DownscaleProfilesTests
                 AudioBitrateEstimateMbps: 0.192m,
                 LongMinDuration: TimeSpan.FromMinutes(8),
                 LongWindowCount: 3,
-                LongWindowDuration: TimeSpan.FromSeconds(120),
+                LongWindowAnchors: [0.20, 0.50, 0.80],
                 MediumMinDuration: TimeSpan.FromMinutes(3),
                 MediumWindowCount: 2,
-                MediumWindowDuration: TimeSpan.FromSeconds(120),
+                MediumWindowAnchors: [0.35, 0.65],
                 ShortWindowCount: 1,
-                ShortWindowDuration: TimeSpan.FromSeconds(90)),
+                SampleWindowDuration: TimeSpan.FromSeconds(15),
+                ShortWindowAnchors: [0.50]),
             sourceBuckets: sourceBuckets ??
                            [
                                new SourceHeightBucket(
