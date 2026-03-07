@@ -319,7 +319,7 @@ public sealed class FfmpegTool : ITranscodeTool
             baseSettings: defaults,
             sourceHeight: video.Height,
             duration: video.Duration,
-            sourceBitrate: video.Bitrate,
+            sourceBitrate: ResolveSourceBitrate(video),
             hasAudio: video.AudioCodecs.Count > 0,
             accurateReductionProvider: (settings, windows) => _sampleReductionProvider(video.FilePath, settings, windows));
     }
@@ -399,6 +399,33 @@ public sealed class FfmpegTool : ITranscodeTool
     private static string FormatRate(decimal value)
     {
         return $"{value.ToString("0.###", CultureInfo.InvariantCulture)}M";
+    }
+
+    private static long? ResolveSourceBitrate(SourceVideo video)
+    {
+        if (video.Bitrate.HasValue)
+        {
+            return video.Bitrate.Value;
+        }
+
+        if (video.Duration <= TimeSpan.Zero || string.IsNullOrWhiteSpace(video.FilePath) || !File.Exists(video.FilePath))
+        {
+            return null;
+        }
+
+        var fileSizeBytes = new FileInfo(video.FilePath).Length;
+        if (fileSizeBytes <= 0)
+        {
+            return null;
+        }
+
+        var estimatedBitsPerSecond = Math.Round((fileSizeBytes * 8m) / (decimal)video.Duration.TotalSeconds, MidpointRounding.AwayFromZero);
+        if (estimatedBitsPerSecond <= 0m || estimatedBitsPerSecond > long.MaxValue)
+        {
+            return null;
+        }
+
+        return (long)estimatedBitsPerSecond;
     }
 
     private decimal? MeasureSampleAverageReduction(

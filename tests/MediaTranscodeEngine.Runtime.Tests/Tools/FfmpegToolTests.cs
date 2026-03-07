@@ -306,6 +306,41 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
+    public void BuildExecution_WhenDownscaleFastAutoSampleIsRequestedAndProbeBitrateIsMissing_UsesFileSizeDurationEstimate()
+    {
+        var sut = CreateSut();
+        var filePath = CreateTempFileWithLength(10_000_000);
+
+        try
+        {
+            var video = CreateVideo(
+                container: "mp4",
+                videoCodec: "h264",
+                filePath: filePath,
+                height: 1080,
+                duration: TimeSpan.FromSeconds(10),
+                bitrate: null);
+            var plan = CreatePlan(
+                copyVideo: false,
+                copyAudio: false,
+                targetVideoCodec: "h264",
+                preferredBackend: "gpu",
+                targetHeight: 576,
+                downscale: new DownscaleRequest(targetHeight: 576, autoSampleMode: "fast"),
+                outputPath: Path.ChangeExtension(filePath, ".mkv"));
+
+            var actual = sut.BuildExecution(video, plan);
+
+            actual.Commands[0].Should().Contain("-cq 24");
+            actual.Commands[0].Should().Contain("-maxrate 4.2M -bufsize 8.4M");
+        }
+        finally
+        {
+            TryDelete(filePath);
+        }
+    }
+
+    [Fact]
     public void BuildExecution_WhenDownscaleFastAutoSampleIsRequestedButNoAutoSampleIsSet_UsesBaseProfileSettings()
     {
         var sut = CreateSut();
@@ -778,6 +813,28 @@ public sealed class FfmpegToolTests
             framesPerSecond: framesPerSecond,
             duration: duration ?? TimeSpan.FromMinutes(10),
             bitrate: bitrate);
+    }
+
+    private static string CreateTempFileWithLength(long lengthBytes)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"mte-ffmpegtool-test-{Guid.NewGuid():N}.mkv");
+        using var stream = File.Open(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+        stream.SetLength(lengthBytes);
+        return path;
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+        }
     }
 
     private static TranscodePlan CreatePlan(
