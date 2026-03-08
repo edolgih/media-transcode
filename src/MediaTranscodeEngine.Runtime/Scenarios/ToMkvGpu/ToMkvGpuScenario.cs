@@ -90,7 +90,12 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)
     {
-        if (!applyDownscale || Request.Downscale?.TargetHeight != 576)
+        if (Request.Downscale?.TargetHeight != 576)
+        {
+            return;
+        }
+
+        if (!applyDownscale && video.Height > 0)
         {
             return;
         }

@@ -159,6 +159,19 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildPlan_WhenDownscale576RequestedForZeroHeight_ThrowsBucketHint()
+    {
+        var sut = CreateSut(downscaleTarget: 576);
+        var video = CreateVideo(height: 0, videoCodec: "h264", audioCodecs: ["aac"]);
+
+        var action = () => sut.BuildPlan(video);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*576 source bucket missing*")
+            .WithMessage("*height 0*");
+    }
+
+    [Fact]
     public void BuildPlan_WhenEncodeOverridesAreRequestedWithoutResize_PreservesOverridesForToolRendering()
     {
         var sut = new ToMkvGpuScenario(new ToMkvGpuRequest(
