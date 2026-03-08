@@ -35,10 +35,10 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         ArgumentNullException.ThrowIfNull(request);
 
         LogRequestStart(request);
-        var scenario = CreateScenario(request);
 
         try
         {
+            var scenario = CreateScenario(request);
             var video = _videoInspector.Load(request.InputPath);
             LogVideoInspected(video);
             var plan = scenario.BuildPlan(video);
@@ -63,19 +63,9 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         }
         catch (Exception exception)
         {
-            var failure = ClassifyHandledFailure(request, exception);
-            if (failure is null)
-            {
-                throw;
-            }
-
-            _logger.LogWarning(
-                exception,
-                "Processing returned legacy failure marker. InputPath={InputPath} Info={Info} FailureKind={FailureKind}",
-                request.InputPath,
-                request.Info,
-                failure.Value.LogToken);
-            return FormatFailure(request, exception, failure.Value);
+            var failure = ClassifyFailure(request, exception);
+            LogFailure(request, exception, failure);
+            return FormatFailure(request, exception, failure);
         }
     }
 
@@ -144,26 +134,59 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         return new ToMkvGpuScenario(request.ToMkvGpu);
     }
 
+    private void LogFailure(CliTranscodeRequest request, Exception exception, HandledFailure failure)
+    {
+        if (failure.Level == LogLevel.Error)
+        {
+            _logger.LogError(
+                exception,
+                "Processing returned failure marker. InputPath={InputPath} Info={Info} FailureKind={FailureKind}",
+                request.InputPath,
+                request.Info,
+                failure.LogToken);
+            return;
+        }
+
+        _logger.LogWarning(
+            exception,
+            "Processing returned failure marker. InputPath={InputPath} Info={Info} FailureKind={FailureKind} FailureMessage={FailureMessage}",
+            request.InputPath,
+            request.Info,
+            failure.LogToken,
+            exception.Message);
+    }
+
     private string FormatFailure(CliTranscodeRequest request, Exception exception, HandledFailure failure)
     {
         var fileName = Path.GetFileName(request.InputPath);
+        if (request.Info)
+        {
+            return failure.Kind switch
+            {
+                HandledFailureKind.IoError => $"{fileName}: [i/o error]",
+                HandledFailureKind.UnexpectedFailure => $"{fileName}: [unexpected failure]",
+                _ => _infoFormatter.FormatFailure(request.InputPath, exception)
+            };
+        }
+
         return failure.Kind switch
         {
-            HandledFailureKind.InfoFailure => _infoFormatter.FormatFailure(request.InputPath, exception),
             HandledFailureKind.UnknownDimensionsOverlay => $"REM Unknown dimensions: {fileName}",
             HandledFailureKind.NoVideoStream => $"REM Нет видеопотока: {fileName}",
             HandledFailureKind.DownscaleNotImplemented => $"REM Downscale 720 not implemented: {fileName}",
             HandledFailureKind.DownscaleSourceBucket => $"REM {exception.Message}",
             HandledFailureKind.ProbeFailure => $"REM ffprobe failed: {fileName}",
+            HandledFailureKind.IoError => $"REM I/O error: {fileName}",
+            HandledFailureKind.UnexpectedFailure => $"REM Unexpected failure: {fileName}",
             _ => throw new InvalidOperationException($"Unhandled failure kind '{failure.Kind}'.")
         };
     }
 
-    private static HandledFailure? ClassifyHandledFailure(CliTranscodeRequest request, Exception exception)
+    private static HandledFailure ClassifyFailure(CliTranscodeRequest request, Exception exception)
     {
-        if (request.Info)
+        if (exception is IOException or UnauthorizedAccessException)
         {
-            return new HandledFailure(HandledFailureKind.InfoFailure, "info_failure");
+            return new HandledFailure(HandledFailureKind.IoError, "io_error", LogLevel.Error);
         }
 
         var message = exception.Message;
@@ -171,45 +194,46 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             (message.Contains("valid video width", StringComparison.OrdinalIgnoreCase) ||
              message.Contains("valid video height", StringComparison.OrdinalIgnoreCase)))
         {
-            return new HandledFailure(HandledFailureKind.UnknownDimensionsOverlay, "unknown_dimensions");
+            return new HandledFailure(HandledFailureKind.UnknownDimensionsOverlay, "unknown_dimensions", LogLevel.Warning);
         }
 
         if (message.Contains("video stream", StringComparison.OrdinalIgnoreCase))
         {
-            return new HandledFailure(HandledFailureKind.NoVideoStream, "no_video_stream");
+            return new HandledFailure(HandledFailureKind.NoVideoStream, "no_video_stream", LogLevel.Warning);
         }
 
         if (message.Contains("downscale", StringComparison.OrdinalIgnoreCase) &&
             message.Contains("720", StringComparison.OrdinalIgnoreCase))
         {
-            return new HandledFailure(HandledFailureKind.DownscaleNotImplemented, "downscale_not_implemented");
+            return new HandledFailure(HandledFailureKind.DownscaleNotImplemented, "downscale_not_implemented", LogLevel.Warning);
         }
 
         if (message.Contains("source bucket missing", StringComparison.OrdinalIgnoreCase) ||
             message.Contains("source bucket invalid", StringComparison.OrdinalIgnoreCase))
         {
-            return new HandledFailure(HandledFailureKind.DownscaleSourceBucket, "downscale_source_bucket");
+            return new HandledFailure(HandledFailureKind.DownscaleSourceBucket, "downscale_source_bucket", LogLevel.Warning);
         }
 
         if (message.Contains("ffprobe", StringComparison.OrdinalIgnoreCase) ||
             message.Contains("video probe", StringComparison.OrdinalIgnoreCase) ||
             message.Contains("streams", StringComparison.OrdinalIgnoreCase))
         {
-            return new HandledFailure(HandledFailureKind.ProbeFailure, "probe_failure");
+            return new HandledFailure(HandledFailureKind.ProbeFailure, "probe_failure", LogLevel.Warning);
         }
 
-        return null;
+        return new HandledFailure(HandledFailureKind.UnexpectedFailure, "unexpected_failure", LogLevel.Warning);
     }
 
     private enum HandledFailureKind
     {
-        InfoFailure,
         UnknownDimensionsOverlay,
         NoVideoStream,
         DownscaleNotImplemented,
         DownscaleSourceBucket,
-        ProbeFailure
+        ProbeFailure,
+        IoError,
+        UnexpectedFailure
     }
 
-    private readonly record struct HandledFailure(HandledFailureKind Kind, string LogToken);
+    private readonly record struct HandledFailure(HandledFailureKind Kind, string LogToken, LogLevel Level);
 }

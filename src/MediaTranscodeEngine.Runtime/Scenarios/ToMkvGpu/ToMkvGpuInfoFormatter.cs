@@ -84,6 +84,12 @@ public sealed class ToMkvGpuInfoFormatter
     private static string ResolveFailureMarker(Exception exception)
     {
         var message = exception.Message;
+        if (message.Contains("valid video width", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("valid video height", StringComparison.OrdinalIgnoreCase))
+        {
+            return "unknown dimensions";
+        }
+
         if (message.Contains("video stream", StringComparison.OrdinalIgnoreCase))
         {
             return "no video stream";

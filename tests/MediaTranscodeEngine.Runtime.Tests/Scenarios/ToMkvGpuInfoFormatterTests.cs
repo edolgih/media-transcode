@@ -91,6 +91,18 @@ public sealed class ToMkvGpuInfoFormatterTests
     }
 
     [Fact]
+    public void FormatFailure_WhenUnknownDimensionsErrorOccurs_ReturnsUnknownDimensionsMarker()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatFailure(
+            @"C:\nested\folder\input.mp4",
+            new InvalidOperationException("Video probe did not return a valid video height."));
+
+        actual.Should().Be("input.mp4: [unknown dimensions]");
+    }
+
+    [Fact]
     public void FormatFailure_WhenDownscaleIsNotSupported_ReturnsDownscaleMarker()
     {
         var sut = CreateSut();

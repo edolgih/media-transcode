@@ -237,6 +237,54 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
+    public void Process_WhenToolThrowsUnexpectedException_ReturnsLegacyUnexpectedRemLineAndLogsWarning()
+    {
+        using var provider = new ListLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
+        var sut = new PrimaryTranscodeProcessor(
+            CreateInspector(CreateVideo(filePath: @"C:\video\a.mp4", container: "mp4", videoCodec: "h264")),
+            new ThrowingTool(new InvalidOperationException("Unexpected tool failure.")),
+            new ToMkvGpuInfoFormatter(),
+            loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
+
+        var actual = sut.Process(new CliTranscodeRequest(
+            InputPath: @"C:\video\a.mp4",
+            ScenarioName: "tomkvgpu",
+            Info: false,
+            ToMkvGpu: new ToMkvGpuRequest()));
+
+        actual.Should().Be("REM Unexpected failure: a.mp4");
+        var warningEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Warning &&
+                                                            entry.Message.Contains("Processing returned failure marker.", StringComparison.Ordinal) &&
+                                                            Equals(entry.Properties["FailureKind"], "unexpected_failure"));
+        warningEntry.Exception.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Process_WhenInspectorThrowsIOException_ReturnsLegacyIoRemLineAndLogsError()
+    {
+        using var provider = new ListLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
+        var sut = new PrimaryTranscodeProcessor(
+            CreateThrowingInspector(new IOException("Disk read failed.")),
+            new StubTool(),
+            new ToMkvGpuInfoFormatter(),
+            loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
+
+        var actual = sut.Process(new CliTranscodeRequest(
+            InputPath: @"C:\video\a.mp4",
+            ScenarioName: "tomkvgpu",
+            Info: false,
+            ToMkvGpu: new ToMkvGpuRequest()));
+
+        actual.Should().Be("REM I/O error: a.mp4");
+        var errorEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Error &&
+                                                          entry.Message.Contains("Processing returned failure marker.", StringComparison.Ordinal) &&
+                                                          Equals(entry.Properties["FailureKind"], "io_error"));
+        errorEntry.Exception.Should().BeOfType<IOException>();
+    }
+
+    [Fact]
     public void Process_WhenNonInfoEncodeIsNeeded_LogsInspectionPlanAndExecution()
     {
         using var provider = new ListLoggerProvider();
@@ -287,9 +335,10 @@ public sealed class PrimaryTranscodeProcessorTests
             ToMkvGpu: new ToMkvGpuRequest()));
 
         actual.Should().Be("REM Нет видеопотока: a.mp4");
-        provider.Entries.Should().Contain(entry => entry.Level == LogLevel.Warning &&
-                                                  entry.Message.Contains("Processing returned legacy failure marker.", StringComparison.Ordinal) &&
-                                                  Equals(entry.Properties["FailureKind"], "no_video_stream"));
+        var warningEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Warning &&
+                                                            entry.Message.Contains("Processing returned failure marker.", StringComparison.Ordinal) &&
+                                                            Equals(entry.Properties["FailureKind"], "no_video_stream"));
+        warningEntry.Exception.Should().BeOfType<InvalidOperationException>();
     }
 
     private static ILogger<T> CreateLogger<T>()
@@ -393,6 +442,28 @@ public sealed class PrimaryTranscodeProcessorTests
         public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan)
         {
             return ToolExecution.Single("stub", "stub");
+        }
+    }
+
+    private sealed class ThrowingTool : ITranscodeTool
+    {
+        private readonly Exception _exception;
+
+        public ThrowingTool(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public string Name => "throwing";
+
+        public bool CanHandle(Runtime.Plans.TranscodePlan plan)
+        {
+            return true;
+        }
+
+        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan)
+        {
+            throw _exception;
         }
     }
 }

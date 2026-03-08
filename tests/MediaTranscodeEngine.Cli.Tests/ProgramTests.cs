@@ -1,6 +1,10 @@
 using FluentAssertions;
 using MediaTranscodeEngine.Cli.Processing;
 using MediaTranscodeEngine.Cli.Tests.Logging;
+using MediaTranscodeEngine.Runtime.Inspection;
+using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
+using MediaTranscodeEngine.Runtime.Tools;
+using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -246,6 +250,52 @@ public sealed class ProgramTests
         }
     }
 
+    [Fact]
+    public void RunCli_WhenProcessorReturnsLegacyIoRemLine_WritesOneLineAndKeepsStdErrEmpty()
+    {
+        using var provider = new ListLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
+        var processor = new PrimaryTranscodeProcessor(
+            new VideoInspector(new ThrowingVideoProbe(new IOException("Disk read failed."))),
+            new StubTool(),
+            new ToMkvGpuInfoFormatter(),
+            loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
+        var services = new ServiceCollection()
+            .AddSingleton<ITranscodeProcessor>(processor)
+            .BuildServiceProvider();
+        var logger = loggerFactory.CreateLogger("test");
+        var runtimeValues = new RuntimeValues
+        {
+            FfprobePath = "ffprobe",
+            FfmpegPath = "ffmpeg"
+        };
+
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+
+        Console.SetOut(output);
+        Console.SetError(error);
+        try
+        {
+            var exitCode = Program.RunCli(["--input", @"C:\video\a.mp4"], logger, services, runtimeValues, readRedirectedStdIn: false);
+
+            exitCode.Should().Be(0);
+            output.ToString().Should().Contain("chcp 65001");
+            output.ToString().Should().Contain("REM I/O error: a.mp4");
+            error.ToString().Should().BeEmpty();
+            var errorEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Error &&
+                                                              entry.Message.Contains("Processing returned failure marker.", StringComparison.Ordinal));
+            errorEntry.Exception.Should().BeOfType<IOException>();
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+    }
+
     private sealed class StubProcessor : ITranscodeProcessor
     {
         private readonly string _line;
@@ -258,6 +308,36 @@ public sealed class ProgramTests
         public string Process(CliTranscodeRequest request)
         {
             return _line;
+        }
+    }
+
+    private sealed class ThrowingVideoProbe : IVideoProbe
+    {
+        private readonly Exception _exception;
+
+        public ThrowingVideoProbe(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public VideoProbeSnapshot Probe(string filePath)
+        {
+            throw _exception;
+        }
+    }
+
+    private sealed class StubTool : ITranscodeTool
+    {
+        public string Name => "stub";
+
+        public bool CanHandle(Runtime.Plans.TranscodePlan plan)
+        {
+            return true;
+        }
+
+        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan)
+        {
+            return ToolExecution.Single("stub", "stub");
         }
     }
 }
