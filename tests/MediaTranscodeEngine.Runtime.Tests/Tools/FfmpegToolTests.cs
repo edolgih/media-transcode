@@ -913,7 +913,9 @@ public sealed class FfmpegToolTests
 
         var actual = sut.BuildExecution(video, plan);
 
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("-fps_mode:v cfr");
+        actual.Commands[0].Should().NotContain("-pix_fmt yuv420p");
         actual.Commands[0].Should().Contain("-r 50");
         actual.Commands[0].Should().Contain("-g 100");
     }

@@ -191,7 +191,7 @@ public sealed class FfmpegTool : ITranscodeTool
             parts.Add(sanitizePart);
         }
 
-        if (plan.RequiresVideoEncode && plan.TargetHeight.HasValue)
+        if (plan.RequiresVideoEncode && string.Equals(plan.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase))
         {
             parts.Add("-hwaccel cuda -hwaccel_output_format cuda");
         }
@@ -246,13 +246,16 @@ public sealed class FfmpegTool : ITranscodeTool
         var compatibilityPart = ResolveVideoCompatibilityPart(video, plan);
         var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32";
         var preset = plan.EncoderPreset ?? "p6";
+        var pixelFormatPart = string.Equals(plan.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : "-pix_fmt yuv420p ";
 
         if (plan.ApplyOverlayBackground)
         {
             var filter = BuildOverlayFilter(video, plan.TargetHeight, settings.Algorithm);
             return $"-filter_complex {Quote(filter)} -map \"[v]\" -fps_mode:v cfr " +
                    $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-                   $"-pix_fmt yuv420p {compatibilityPart}-r {fpsToken} -g {gop}";
+                   $"{pixelFormatPart}{compatibilityPart}-r {fpsToken} -g {gop}";
         }
 
         if (plan.TargetHeight.HasValue)
@@ -264,7 +267,7 @@ public sealed class FfmpegTool : ITranscodeTool
 
         return $"-map 0:v:0 -fps_mode:v cfr " +
                $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-               $"-pix_fmt yuv420p {compatibilityPart}-r {fpsToken} -g {gop}";
+               $"{pixelFormatPart}{compatibilityPart}-r {fpsToken} -g {gop}";
     }
 
     private static string BuildAudioPart(TranscodePlan plan)
