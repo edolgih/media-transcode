@@ -1,0 +1,52 @@
+namespace MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
+
+internal static class VideoCodecCompatibility
+{
+    private static readonly H264LevelLimit[] H264Levels =
+    [
+        new("3.0", MaxFrameSizeInMacroblocks: 1620, MaxMacroblocksPerSecond: 40500),
+        new("3.1", MaxFrameSizeInMacroblocks: 3600, MaxMacroblocksPerSecond: 108000),
+        new("3.2", MaxFrameSizeInMacroblocks: 5120, MaxMacroblocksPerSecond: 216000),
+        new("4.0", MaxFrameSizeInMacroblocks: 8192, MaxMacroblocksPerSecond: 245760),
+        new("4.2", MaxFrameSizeInMacroblocks: 8704, MaxMacroblocksPerSecond: 522240),
+        new("5.0", MaxFrameSizeInMacroblocks: 22080, MaxMacroblocksPerSecond: 589824),
+        new("5.1", MaxFrameSizeInMacroblocks: 36864, MaxMacroblocksPerSecond: 983040),
+        new("5.2", MaxFrameSizeInMacroblocks: 36864, MaxMacroblocksPerSecond: 2073600)
+    ];
+
+    internal static string ResolveArguments(string codec, int width, int height, double framesPerSecond)
+    {
+        return codec switch
+        {
+            "h264" => $"-profile:v high -level:v {ResolveH264Level(width, height, framesPerSecond)}",
+            "h265" => string.Empty,
+            _ => string.Empty
+        };
+    }
+
+    private static string ResolveH264Level(int width, int height, double framesPerSecond)
+    {
+        if (width <= 0 || height <= 0 || framesPerSecond <= 0)
+        {
+            return "4.1";
+        }
+
+        var macroblockWidth = (width + 15) / 16;
+        var macroblockHeight = (height + 15) / 16;
+        var frameSizeInMacroblocks = macroblockWidth * macroblockHeight;
+        var macroblocksPerSecond = frameSizeInMacroblocks * framesPerSecond;
+
+        foreach (var level in H264Levels)
+        {
+            if (frameSizeInMacroblocks <= level.MaxFrameSizeInMacroblocks &&
+                macroblocksPerSecond <= level.MaxMacroblocksPerSecond)
+            {
+                return level.Name;
+            }
+        }
+
+        return H264Levels[^1].Name;
+    }
+
+    private sealed record H264LevelLimit(string Name, int MaxFrameSizeInMacroblocks, double MaxMacroblocksPerSecond);
+}

@@ -236,6 +236,7 @@ public sealed class FfmpegTool : ITranscodeTool
         var settings = ResolveVideoSettings(video, plan);
         var fpsToken = ResolveFrameRateToken(video, plan);
         var gop = ResolveGop(video, plan);
+        var compatibilityPart = ResolveVideoCompatibilityPart(video, plan);
         var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32";
         var preset = plan.EncoderPreset ?? "p6";
 
@@ -244,19 +245,19 @@ public sealed class FfmpegTool : ITranscodeTool
             var filter = BuildOverlayFilter(video, plan.TargetHeight, settings.Algorithm);
             return $"-filter_complex {Quote(filter)} -map \"[v]\" -fps_mode:v cfr " +
                    $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-                   $"-pix_fmt yuv420p -profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
+                   $"-pix_fmt yuv420p {compatibilityPart}-r {fpsToken} -g {gop}";
         }
 
         if (plan.TargetHeight.HasValue)
         {
             return $"-map 0:v:0 -fps_mode:v cfr -vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo={settings.Algorithm}:format=nv12\" " +
                    $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-                   $"-profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
+                   $"{compatibilityPart}-r {fpsToken} -g {gop}";
         }
 
         return $"-map 0:v:0 -fps_mode:v cfr " +
                $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-               $"-pix_fmt yuv420p -profile:v high -level:v 4.1 -r {fpsToken} -g {gop}";
+               $"-pix_fmt yuv420p {compatibilityPart}-r {fpsToken} -g {gop}";
     }
 
     private static string BuildAudioPart(TranscodePlan plan)
@@ -290,6 +291,75 @@ public sealed class FfmpegTool : ITranscodeTool
     {
         var fps = plan.TargetFramesPerSecond ?? video.FramesPerSecond;
         return (int)Math.Max(12, Math.Round(fps * 2.0));
+    }
+
+    private static string ResolveVideoCompatibilityPart(SourceVideo video, TranscodePlan plan)
+    {
+        var (width, height) = ResolveOutputDimensions(video, plan);
+        var fps = plan.TargetFramesPerSecond ?? video.FramesPerSecond;
+        var compatibilityPart = VideoCodecCompatibility.ResolveArguments(plan.TargetVideoCodec!, width, height, fps);
+        return string.IsNullOrWhiteSpace(compatibilityPart)
+            ? string.Empty
+            : $"{compatibilityPart} ";
+    }
+
+    private static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, TranscodePlan plan)
+    {
+        if (plan.ApplyOverlayBackground)
+        {
+            return ResolveOverlayOutputDimensions(video, plan.TargetHeight);
+        }
+
+        if (!plan.TargetHeight.HasValue)
+        {
+            return (video.Width, video.Height);
+        }
+
+        if (video.Width <= 0 || video.Height <= 0)
+        {
+            return (video.Width, video.Height);
+        }
+
+        var outputWidth = (int)Math.Round(video.Width * (double)plan.TargetHeight.Value / video.Height);
+        return (MakeEven(outputWidth), MakeEven(plan.TargetHeight.Value));
+    }
+
+    private static (int Width, int Height) ResolveOverlayOutputDimensions(SourceVideo video, int? targetHeight)
+    {
+        var outputWidth = video.Width;
+        var outputHeight = video.Height;
+
+        if (outputWidth <= 0 || outputHeight <= 0)
+        {
+            outputWidth = 1920;
+            outputHeight = 1080;
+        }
+
+        if (outputWidth < outputHeight)
+        {
+            (outputWidth, outputHeight) = (outputHeight, outputWidth);
+        }
+
+        if (targetHeight.HasValue)
+        {
+            var ratio = (double)targetHeight.Value / outputHeight;
+            outputWidth = (int)Math.Round(outputWidth * ratio);
+            outputHeight = targetHeight.Value;
+        }
+
+        return (MakeEven(outputWidth), MakeEven(outputHeight));
+    }
+
+    private static int MakeEven(int value)
+    {
+        if (value <= 0)
+        {
+            return value;
+        }
+
+        return (value % 2) == 0
+            ? value
+            : value + 1;
     }
 
     private DownscaleDefaults ResolveVideoSettings(SourceVideo video, TranscodePlan plan)
@@ -465,36 +535,7 @@ public sealed class FfmpegTool : ITranscodeTool
 
     private static string BuildOverlayFilter(SourceVideo video, int? targetHeight, string downscaleAlgorithm)
     {
-        var outputWidth = video.Width;
-        var outputHeight = video.Height;
-
-        if (outputWidth <= 0 || outputHeight <= 0)
-        {
-            outputWidth = 1920;
-            outputHeight = 1080;
-        }
-
-        if (outputWidth < outputHeight)
-        {
-            (outputWidth, outputHeight) = (outputHeight, outputWidth);
-        }
-
-        if (targetHeight.HasValue)
-        {
-            var ratio = (double)targetHeight.Value / outputHeight;
-            outputWidth = (int)Math.Round(outputWidth * ratio);
-            outputHeight = targetHeight.Value;
-        }
-
-        if ((outputWidth % 2) != 0)
-        {
-            outputWidth++;
-        }
-
-        if ((outputHeight % 2) != 0)
-        {
-            outputHeight++;
-        }
+        var (outputWidth, outputHeight) = ResolveOverlayOutputDimensions(video, targetHeight);
 
         if (targetHeight.HasValue)
         {

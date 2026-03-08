@@ -191,6 +191,77 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
+    public void BuildExecution_WhenDownscaleTargets576AtSource60Fps_UsesH264Level32()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "av1",
+            width: 1920,
+            height: 1080,
+            framesPerSecond: 59.94,
+            filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            targetHeight: 576,
+            downscale: new DownscaleRequest(targetHeight: 576),
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-profile:v high -level:v 3.2 -r 59.94");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenEncoding1080pAtSource60Fps_UsesH264Level42()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "av1",
+            width: 1920,
+            height: 1080,
+            framesPerSecond: 59.94,
+            filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-profile:v high -level:v 4.2 -r 59.94");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenEncoding1080pAtSource30Fps_UsesH264Level40()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "av1",
+            width: 1920,
+            height: 1080,
+            framesPerSecond: 29.97,
+            filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("-profile:v high -level:v 4.0 -r 29.97");
+    }
+
+    [Fact]
     public void BuildExecution_WhenDownscaleAlgorithmIsOverridden_UsesExplicitAlgorithm()
     {
         var sut = CreateSut();
