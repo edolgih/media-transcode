@@ -176,6 +176,27 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
+    public void BuildExecution_WhenDownscale480UsesDefaultProfile_Uses480Defaults()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", height: 692, filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            targetHeight: 480,
+            downscale: new DownscaleRequest(targetHeight: 480),
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("scale_cuda=-2:480:interp_algo=bilinear:format=nv12");
+        actual.Commands[0].Should().Contain("-cq 27");
+        actual.Commands[0].Should().Contain("-maxrate 2.6M -bufsize 5.2M");
+    }
+
+    [Fact]
     public void BuildExecution_WhenDownscaleUsesAnimeDefaultProfile_UsesAnimeDefaults()
     {
         var sut = CreateSut();
@@ -373,7 +394,7 @@ public sealed class FfmpegToolTests
     {
         var providerCalls = 0;
         var logger = new ListLogger<FfmpegTool>();
-        var sut = CreateSut(sampleReductionProvider: (_, _, _) =>
+        var sut = CreateSut(sampleReductionProvider: (_, _, _, _) =>
         {
             providerCalls++;
             return 45m;
@@ -530,7 +551,7 @@ public sealed class FfmpegToolTests
     {
         IReadOnlyList<DownscaleSampleWindow>? actualWindows = null;
         var logger = new ListLogger<FfmpegTool>();
-        var sut = CreateSut(sampleReductionProvider: (_, settings, windows) =>
+        var sut = CreateSut(sampleReductionProvider: (_, _, settings, windows) =>
         {
             actualWindows = windows;
             settings.Cq.Should().Be(23);
@@ -573,7 +594,7 @@ public sealed class FfmpegToolTests
     public void BuildExecution_WhenDownscaleAutoSampleModeIsOmitted_UsesAccurateByDefault()
     {
         var providerCalls = 0;
-        var sut = CreateSut(sampleReductionProvider: (_, _, _) =>
+        var sut = CreateSut(sampleReductionProvider: (_, _, _, _) =>
         {
             providerCalls++;
             return 45m;
@@ -606,7 +627,7 @@ public sealed class FfmpegToolTests
         var providerCalls = 0;
         var sut = CreateSut(
             downscaleProfiles: CreateDownscaleProfiles(maxIterations: 1, hybridAccurateIterations: 1),
-            sampleReductionProvider: (_, _, _) =>
+            sampleReductionProvider: (_, _, _, _) =>
             {
                 providerCalls++;
                 return 45m;
@@ -640,7 +661,7 @@ public sealed class FfmpegToolTests
         DownscaleDefaults? actualStart = null;
         var sut = CreateSut(
             downscaleProfiles: CreateDownscaleProfiles(maxIterations: 1, hybridAccurateIterations: 1),
-            sampleReductionProvider: (_, settings, _) =>
+            sampleReductionProvider: (_, _, settings, _) =>
             {
                 actualStart ??= settings;
                 return 45m;
@@ -674,7 +695,7 @@ public sealed class FfmpegToolTests
     public void BuildExecution_WhenDownscaleManualMaxrateIsProvided_SkipsAutoSample()
     {
         var providerCalls = 0;
-        var sut = CreateSut(sampleReductionProvider: (_, _, _) =>
+        var sut = CreateSut(sampleReductionProvider: (_, _, _, _) =>
         {
             providerCalls++;
             return 45m;
@@ -705,7 +726,7 @@ public sealed class FfmpegToolTests
     public void BuildExecution_WhenDownscaleManualBufsizeIsProvided_SkipsAutoSample()
     {
         var providerCalls = 0;
-        var sut = CreateSut(sampleReductionProvider: (_, _, _) =>
+        var sut = CreateSut(sampleReductionProvider: (_, _, _, _) =>
         {
             providerCalls++;
             return 45m;
@@ -940,7 +961,7 @@ public sealed class FfmpegToolTests
     private static FfmpegTool CreateSut(
         string ffmpegPath = "ffmpeg",
         DownscaleProfiles? downscaleProfiles = null,
-        Func<string, DownscaleDefaults, IReadOnlyList<DownscaleSampleWindow>, decimal?>? sampleReductionProvider = null,
+        Func<string, int, DownscaleDefaults, IReadOnlyList<DownscaleSampleWindow>, decimal?>? sampleReductionProvider = null,
         Microsoft.Extensions.Logging.ILogger<FfmpegTool>? logger = null)
     {
         return new FfmpegTool(

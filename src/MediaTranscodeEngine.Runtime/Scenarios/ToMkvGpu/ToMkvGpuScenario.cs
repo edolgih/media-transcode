@@ -94,7 +94,8 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)
     {
-        if (Request.Downscale?.TargetHeight != 576)
+        var targetHeight = Request.Downscale?.TargetHeight;
+        if (!targetHeight.HasValue)
         {
             return;
         }
@@ -104,7 +105,11 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             return;
         }
 
-        var profile = _downscaleProfiles.GetRequiredProfile(576);
+        if (!_downscaleProfiles.TryGetProfile(targetHeight.Value, out var profile))
+        {
+            return;
+        }
+
         var issue = profile.ResolveSourceBucketIssue(video.Height);
         if (!string.IsNullOrWhiteSpace(issue))
         {

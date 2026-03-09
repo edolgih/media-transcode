@@ -16,6 +16,7 @@ internal sealed class FfmpegSampleMeasurer
 
     public decimal? MeasureAverageReduction(
         string inputPath,
+        int targetHeight,
         DownscaleDefaults settings,
         IReadOnlyList<DownscaleSampleWindow> windows)
     {
@@ -35,7 +36,7 @@ internal sealed class FfmpegSampleMeasurer
 
             try
             {
-                var encodedSize = EncodeSample(sourceSample.Path, settings);
+                var encodedSize = EncodeSample(sourceSample.Path, targetHeight, settings);
                 if (!encodedSize.HasValue || encodedSize.Value <= 0 || sourceSample.SizeBytes <= 0)
                 {
                     continue;
@@ -98,7 +99,7 @@ internal sealed class FfmpegSampleMeasurer
         return new SourceSample(samplePath, size);
     }
 
-    private long? EncodeSample(string samplePath, DownscaleDefaults settings)
+    private long? EncodeSample(string samplePath, int targetHeight, DownscaleDefaults settings)
     {
         if (!File.Exists(samplePath))
         {
@@ -116,7 +117,7 @@ internal sealed class FfmpegSampleMeasurer
             "-i", samplePath,
             "-map", "0:v:0",
             "-fps_mode:v", "cfr",
-            "-vf", $"scale_cuda=-2:576:interp_algo={settings.Algorithm}:format=nv12",
+            "-vf", $"scale_cuda=-2:{targetHeight}:interp_algo={settings.Algorithm}:format=nv12",
             "-c:v", "h264_nvenc",
             "-preset", "p6",
             "-rc", "vbr_hq",

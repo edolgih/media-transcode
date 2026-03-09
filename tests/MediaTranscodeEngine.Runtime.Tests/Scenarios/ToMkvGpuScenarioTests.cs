@@ -198,6 +198,18 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildPlan_WhenDownscale480RequestedForLargerSource_AppliesDownscale()
+    {
+        var sut = CreateSut(downscaleTarget: 480);
+        var video = CreateVideo(height: 692, videoCodec: "h264", audioCodecs: ["aac"]);
+
+        var actual = sut.BuildPlan(video);
+
+        actual.TargetHeight.Should().Be(480);
+        actual.CopyVideo.Should().BeFalse();
+    }
+
+    [Fact]
     public void BuildPlan_WhenDownscale576RequestedForZeroHeight_ThrowsBucketHint()
     {
         var sut = CreateSut(downscaleTarget: 576);
@@ -207,6 +219,19 @@ public sealed class ToMkvGpuScenarioTests
 
         action.Should().Throw<InvalidOperationException>()
             .WithMessage("*576 source bucket missing*")
+            .WithMessage("*height 0*");
+    }
+
+    [Fact]
+    public void BuildPlan_WhenDownscale480RequestedForZeroHeight_ThrowsBucketHint()
+    {
+        var sut = CreateSut(downscaleTarget: 480);
+        var video = CreateVideo(height: 0, videoCodec: "h264", audioCodecs: ["aac"]);
+
+        var action = () => sut.BuildPlan(video);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*480 source bucket missing*")
             .WithMessage("*height 0*");
     }
 

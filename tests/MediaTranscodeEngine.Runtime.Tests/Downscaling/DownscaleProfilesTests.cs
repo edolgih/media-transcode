@@ -22,6 +22,25 @@ public sealed class DownscaleProfilesTests
     }
 
     [Fact]
+    public void Default_When480ProfileIsRequested_ReturnsConfiguredSourceBuckets()
+    {
+        var sut = DownscaleProfiles.Default;
+
+        var actual = sut.GetRequiredProfile(480);
+
+        actual.SourceBuckets.Should().HaveCount(3);
+        actual.SourceBuckets[0].Name.Should().Be("sd_576");
+        actual.SourceBuckets[0].MinHeight.Should().Be(481);
+        actual.SourceBuckets[0].MaxHeight.Should().Be(649);
+        actual.SourceBuckets[1].Name.Should().Be("hd_720");
+        actual.SourceBuckets[1].MinHeight.Should().Be(650);
+        actual.SourceBuckets[1].MaxHeight.Should().Be(899);
+        actual.SourceBuckets[2].Name.Should().Be("fhd_1080");
+        actual.SourceBuckets[2].MinHeight.Should().Be(900);
+        actual.SourceBuckets[2].MaxHeight.Should().Be(1300);
+    }
+
+    [Fact]
     public void ResolveDefaults_WhenContentAndQualityAreMissing_UsesFilmDefaultEntry()
     {
         var sut = DownscaleProfiles.Default.GetRequiredProfile(576);

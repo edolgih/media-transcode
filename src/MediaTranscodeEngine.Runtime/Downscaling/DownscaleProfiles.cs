@@ -24,6 +24,11 @@ internal sealed class DownscaleProfiles
         throw new InvalidOperationException($"Downscale profile '{targetHeight}' is not configured.");
     }
 
+    public bool TryGetProfile(int targetHeight, out DownscaleProfile profile)
+    {
+        return _profilesByTargetHeight.TryGetValue(targetHeight, out profile!);
+    }
+
     internal static DownscaleProfiles Create(params DownscaleProfile[] profiles)
     {
         return new DownscaleProfiles(profiles.ToDictionary(static profile => profile.TargetHeight));
@@ -31,7 +36,9 @@ internal sealed class DownscaleProfiles
 
     private static DownscaleProfiles CreateDefault()
     {
-        return Create(Downscale576Profile.Create());
+        return Create(
+            Downscale480Profile.Create(),
+            Downscale576Profile.Create());
     }
 }
 

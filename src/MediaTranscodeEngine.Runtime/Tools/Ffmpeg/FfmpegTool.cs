@@ -15,7 +15,7 @@ public sealed class FfmpegTool : ITranscodeTool
     private readonly DownscaleProfiles _downscaleProfiles;
     private readonly DownscaleAutoSampler _autoSampler;
     private readonly FfmpegSampleMeasurer _sampleMeasurer;
-    private readonly Func<string, DownscaleDefaults, IReadOnlyList<DownscaleSampleWindow>, decimal?> _sampleReductionProvider;
+    private readonly Func<string, int, DownscaleDefaults, IReadOnlyList<DownscaleSampleWindow>, decimal?> _sampleReductionProvider;
     private readonly ILogger<FfmpegTool> _logger;
 
     /// <summary>
@@ -31,7 +31,7 @@ public sealed class FfmpegTool : ITranscodeTool
     internal FfmpegTool(
         string ffmpegPath,
         DownscaleProfiles downscaleProfiles,
-        Func<string, DownscaleDefaults, IReadOnlyList<DownscaleSampleWindow>, decimal?>? sampleReductionProvider,
+        Func<string, int, DownscaleDefaults, IReadOnlyList<DownscaleSampleWindow>, decimal?>? sampleReductionProvider,
         ILogger<FfmpegTool> logger)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ffmpegPath);
@@ -406,7 +406,12 @@ public sealed class FfmpegTool : ITranscodeTool
 
     private DownscaleDefaults ResolveAutoSampledDefaults(SourceVideo video, TranscodePlan plan, DownscaleDefaults defaults)
     {
-        if (plan.TargetHeight != 576 || plan.Downscale is null)
+        if (!plan.TargetHeight.HasValue || plan.Downscale is null)
+        {
+            return defaults;
+        }
+
+        if (!_downscaleProfiles.TryGetProfile(plan.TargetHeight.Value, out _))
         {
             return defaults;
         }
@@ -419,16 +424,16 @@ public sealed class FfmpegTool : ITranscodeTool
             duration: video.Duration,
             sourceBitrate: sourceBitrate.Bitrate,
             hasAudio: video.AudioCodecs.Count > 0,
-            accurateReductionProvider: (settings, windows) => _sampleReductionProvider(video.FilePath, settings, windows));
+            accurateReductionProvider: (settings, windows) => _sampleReductionProvider(video.FilePath, plan.TargetHeight.Value, settings, windows));
         LogAutoSampleResolution(video.FilePath, defaults, resolution, sourceBitrate);
         return resolution.Settings;
     }
 
     private DownscaleDefaults ResolveBaseDefaults(SourceVideo video, TranscodePlan plan)
     {
-        if (plan.TargetHeight == 576)
+        if (plan.TargetHeight.HasValue &&
+            _downscaleProfiles.TryGetProfile(plan.TargetHeight.Value, out var profile))
         {
-            var profile = _downscaleProfiles.GetRequiredProfile(576);
             return profile.ResolveDefaults(
                 sourceHeight: video.Height,
                 contentProfile: plan.Downscale?.ContentProfile,
@@ -452,10 +457,12 @@ public sealed class FfmpegTool : ITranscodeTool
     {
         var cq = request.Cq ?? defaults.Cq;
         var maxrate = request.Maxrate;
+        DownscaleProfile? profile = null;
+        var hasProfile = request.TargetHeight.HasValue &&
+                         _downscaleProfiles.TryGetProfile(request.TargetHeight.Value, out profile);
 
-        if (!maxrate.HasValue && request.Cq.HasValue && request.TargetHeight == 576)
+        if (!maxrate.HasValue && request.Cq.HasValue && hasProfile && profile is not null)
         {
-            var profile = _downscaleProfiles.GetRequiredProfile(576);
             var delta = defaults.Cq - cq;
             var resolved = defaults.Maxrate + (delta * profile.RateModel.CqStepToMaxrateStep);
             maxrate = Clamp(resolved, defaults.MaxrateMin, defaults.MaxrateMax);
@@ -466,8 +473,8 @@ public sealed class FfmpegTool : ITranscodeTool
         var bufsize = request.Bufsize;
         if (!bufsize.HasValue && (request.Maxrate.HasValue || request.Cq.HasValue))
         {
-            var multiplier = request.TargetHeight == 576
-                ? _downscaleProfiles.GetRequiredProfile(576).RateModel.BufsizeMultiplier
+            var multiplier = hasProfile && profile is not null
+                ? profile.RateModel.BufsizeMultiplier
                 : 2.0m;
             bufsize = maxrate.Value * multiplier;
         }
