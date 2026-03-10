@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MediaTranscodeEngine.Cli.Processing;
+using MediaTranscodeEngine.Cli.Scenarios;
 using MediaTranscodeEngine.Cli.Tests.Logging;
 using MediaTranscodeEngine.Runtime.Inspection;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
@@ -80,7 +81,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--input", @"C:\video\a.mp4"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, services, runtimeValues, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().Contain("chcp 65001");
@@ -117,7 +118,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--input", @"C:\video\a.mp4", "--info"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--info"], logger, services, runtimeValues, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().NotContain("chcp 65001");
@@ -154,7 +155,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--input", @"C:\video\a.mkv"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mkv"], logger, services, runtimeValues, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Trim().Should().Be("chcp 65001");
@@ -192,7 +193,7 @@ public sealed class ProgramTests
         try
         {
             var exitCode = Program.RunCli(
-                ["--input", @"C:\video\a.mp4", "--downscale", "576", "--autosample-mode", "fast"],
+                ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale", "576", "--autosample-mode", "fast"],
                 logger,
                 services,
                 runtimeValues,
@@ -203,9 +204,10 @@ public sealed class ProgramTests
                                                       entry.Message.Contains("CLI request received.", StringComparison.Ordinal));
             provider.Entries.Should().Contain(entry => entry.Level == LogLevel.Information &&
                                                       entry.Message.Contains("CLI request parsed.", StringComparison.Ordinal) &&
+                                                      Equals(entry.Properties["Scenario"], "tomkvgpu") &&
+                                                      Equals(entry.Properties["Info"], false) &&
                                                       Equals(entry.Properties["InputCount"], 1) &&
-                                                      Equals(entry.Properties["DownscaleTarget"], 576) &&
-                                                      Equals(entry.Properties["AutoSampleMode"], "fast"));
+                                                      Equals(entry.Properties["ScenarioArgCount"], 4));
             provider.Entries.Should().Contain(entry => entry.Level == LogLevel.Information &&
                                                       entry.Message.Contains("CLI input processing started.", StringComparison.Ordinal) &&
                                                       Equals(entry.Properties["InputPath"], @"C:\video\a.mp4"));
@@ -249,6 +251,7 @@ public sealed class ProgramTests
             exitCode.Should().Be(0);
             output.ToString().Should().Contain("MediaTranscodeEngine CLI");
             output.ToString().Should().Contain("Usage:");
+            output.ToString().Should().Contain("Scenario name. Required.");
             output.ToString().Should().Contain("--max-fps <50|40|30|24>");
             output.ToString().Should().Contain("RuntimeValues:FfprobePath current: ffprobe-custom");
             output.ToString().Should().Contain("RuntimeValues:FfmpegPath  current: ffmpeg-custom");
@@ -302,8 +305,8 @@ public sealed class ProgramTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var processor = new PrimaryTranscodeProcessor(
             new VideoInspector(new ThrowingVideoProbe(new IOException("Disk read failed."))),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
         var services = new ServiceCollection()
             .AddSingleton<ITranscodeProcessor>(processor)
@@ -324,7 +327,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--input", @"C:\video\a.mp4"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, services, runtimeValues, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().Contain("chcp 65001");
@@ -384,5 +387,11 @@ public sealed class ProgramTests
         {
             return ToolExecution.Single("stub", "stub");
         }
+    }
+
+    private static CliScenarioRegistry CreateScenarioRegistry()
+    {
+        return new CliScenarioRegistry(
+            [new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())]);
     }
 }

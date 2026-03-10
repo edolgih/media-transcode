@@ -8,59 +8,59 @@ dotnet run --project src/MediaTranscodeEngine.Cli -- --help
 
 ## Generate Commands
 
-Default command generation:
+Command generation for `tomkvgpu`:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv"
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv"
 ```
 
 Info-only output:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --info
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --info
 ```
 
 `downscale 576`:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --downscale 576
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --downscale 576
 ```
 
 Explicit `576` profile:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --downscale 576 --content-profile film --quality-profile default
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --downscale 576 --content-profile film --quality-profile default
 ```
 
 `downscale 424`:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --downscale 424
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --downscale 424
 ```
 
 Overlay with explicit repair mode:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --overlay-bg --sync-audio
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --overlay-bg --sync-audio
 ```
 
 Frame-rate cap:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --max-fps 30
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --max-fps 30
 ```
 
 Read paths from stdin:
 
 ```powershell
-Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project src/MediaTranscodeEngine.Cli -- --info
+Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --info
 ```
 
 ## Supported Options
 
 - `--help`, `-h`
 - `--input <path>`; repeatable
-- `--scenario tomkvgpu`
+- `--scenario <name>`; required, currently `tomkvgpu`
 - `--info`
 - `--keep-source`
 - `--overlay-bg`
@@ -83,7 +83,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `ffprobe` with JSON output
 - `ffmpeg` with required filters and encoders such as `h264_nvenc` and `scale_cuda`
 
-By default the CLI resolves binary paths from `src/MediaTranscodeEngine.Cli/appsettings.json`:
+The CLI resolves binary paths from standard host configuration sources such as `appsettings.json` and environment variables. A minimal `appsettings.json` looks like this:
 
 ```json
 {

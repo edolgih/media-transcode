@@ -1,7 +1,7 @@
 using FluentAssertions;
 using MediaTranscodeEngine.Cli.Processing;
+using MediaTranscodeEngine.Cli.Scenarios;
 using MediaTranscodeEngine.Cli.Tests.Logging;
-using MediaTranscodeEngine.Runtime.Downscaling;
 using MediaTranscodeEngine.Runtime.Inspection;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 using MediaTranscodeEngine.Runtime.Tools;
@@ -18,15 +18,11 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mkv", container: "mkv", videoCodec: "av1")),
-            new FfmpegTool("ffmpeg", CreateLogger<FfmpegTool>()),
-            new ToMkvGpuInfoFormatter(),
+            [new FfmpegTool("ffmpeg", CreateLogger<FfmpegTool>())],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mkv",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv"));
 
         actual.Should().StartWith("ffmpeg ");
         actual.Should().Contain(" && del \"C:\\video\\a.mkv\" && ren \"C:\\video\\a_temp.mkv\" \"a.mkv\"");
@@ -34,19 +30,29 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
+    public void Process_WhenFirstToolCannotHandlePlan_UsesNextMatchingTool()
+    {
+        var sut = new PrimaryTranscodeProcessor(
+            CreateInspector(CreateVideo(filePath: @"C:\video\a.mkv", container: "mkv", videoCodec: "av1")),
+            [new RejectingTool(), new StubTool()],
+            CreateScenarioRegistry(),
+            CreateLogger<PrimaryTranscodeProcessor>());
+
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv"));
+
+        actual.Should().Be("stub");
+    }
+
+    [Fact]
     public void Process_WhenProbeReturnsNoVideoStream_ReturnsLegacyRemLine()
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new InvalidOperationException("Video probe did not return a video stream.")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4"));
 
         actual.Should().Be("REM Нет видеопотока: a.mp4");
     }
@@ -56,15 +62,11 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new InvalidOperationException("ffprobe returned invalid JSON output.")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4"));
 
         actual.Should().Be("REM ffprobe failed: a.mp4");
     }
@@ -74,15 +76,11 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new InvalidOperationException("Video probe did not return a valid video width.")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest(overlayBackground: true)));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", false, "--overlay-bg"));
 
         actual.Should().Be("REM Unknown dimensions: a.mp4");
     }
@@ -99,15 +97,11 @@ public sealed class PrimaryTranscodeProcessorTests
                     new VideoProbeStream(streamType: "audio", codec: "aac")
                 ],
                 duration: TimeSpan.FromMinutes(10))),
-            new FfmpegTool("ffmpeg", CreateLogger<FfmpegTool>()),
-            new ToMkvGpuInfoFormatter(),
+            [new FfmpegTool("ffmpeg", CreateLogger<FfmpegTool>())],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest(overlayBackground: true)));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", false, "--overlay-bg"));
 
         actual.Should().Contain("scale=1920:-1,crop=1920:1080");
         actual.Should().Contain("-map \"[v]\"");
@@ -119,15 +113,11 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mp4", container: "mp4", videoCodec: "h264")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 720))));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", false, "--downscale", "720"));
 
         actual.Should().Be("REM Downscale 720 not implemented: a.mp4");
     }
@@ -137,15 +127,11 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new InvalidOperationException("576 source bucket missing: height 900; add SourceBuckets")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576))));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", false, "--downscale", "576"));
 
         actual.Should().Be("REM 576 source bucket missing: height 900; add SourceBuckets");
     }
@@ -155,15 +141,11 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new InvalidOperationException("576 source bucket invalid: missing corridor 'mult/low'")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576))));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", false, "--downscale", "576"));
 
         actual.Should().Be("REM 576 source bucket invalid: missing corridor 'mult/low'");
     }
@@ -180,15 +162,11 @@ public sealed class PrimaryTranscodeProcessorTests
                     new VideoProbeStream(streamType: "audio", codec: "aac")
                 ],
                 duration: TimeSpan.FromMinutes(10))),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mkv",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576))));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv", false, "--downscale", "576"));
 
         actual.Should().Be("REM 576 source bucket missing: height 0; add SourceBuckets");
     }
@@ -205,15 +183,11 @@ public sealed class PrimaryTranscodeProcessorTests
                     new VideoProbeStream(streamType: "audio", codec: "aac")
                 ],
                 duration: TimeSpan.FromMinutes(10))),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mkv",
-            ScenarioName: "tomkvgpu",
-            Info: true,
-            ToMkvGpu: new ToMkvGpuRequest(downscale: new DownscaleRequest(targetHeight: 576))));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv", true, "--downscale", "576"));
 
         actual.Should().Be("a.mkv: [576 source bucket missing: height 0; add SourceBuckets]");
     }
@@ -223,15 +197,11 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new InvalidOperationException("ffprobe returned invalid JSON output.")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: true,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", true));
 
         actual.Should().Be("a.mp4: [ffprobe failed]");
     }
@@ -243,15 +213,11 @@ public sealed class PrimaryTranscodeProcessorTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mp4", container: "mp4", videoCodec: "h264")),
-            new ThrowingTool(new InvalidOperationException("Unexpected tool failure.")),
-            new ToMkvGpuInfoFormatter(),
+            [new ThrowingTool(new InvalidOperationException("Unexpected tool failure."))],
+            CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4"));
 
         actual.Should().Be("REM Unexpected failure: a.mp4");
         var warningEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Warning &&
@@ -267,15 +233,11 @@ public sealed class PrimaryTranscodeProcessorTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new IOException("Disk read failed.")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4"));
 
         actual.Should().Be("REM I/O error: a.mp4");
         var errorEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Error &&
@@ -291,15 +253,11 @@ public sealed class PrimaryTranscodeProcessorTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mkv", container: "mkv", videoCodec: "av1")),
-            new FfmpegTool("ffmpeg", loggerFactory.CreateLogger<FfmpegTool>()),
-            new ToMkvGpuInfoFormatter(),
+            [new FfmpegTool("ffmpeg", loggerFactory.CreateLogger<FfmpegTool>())],
+            CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mkv",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv"));
 
         actual.Should().StartWith("ffmpeg ");
         provider.Entries.Should().Contain(entry => entry.Level == LogLevel.Information &&
@@ -324,15 +282,11 @@ public sealed class PrimaryTranscodeProcessorTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new InvalidOperationException("Video probe did not return a video stream.")),
-            new StubTool(),
-            new ToMkvGpuInfoFormatter(),
+            [new StubTool()],
+            CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(new CliTranscodeRequest(
-            InputPath: @"C:\video\a.mp4",
-            ScenarioName: "tomkvgpu",
-            Info: false,
-            ToMkvGpu: new ToMkvGpuRequest()));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4"));
 
         actual.Should().Be("REM Нет видеопотока: a.mp4");
         var warningEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Warning &&
@@ -344,6 +298,17 @@ public sealed class PrimaryTranscodeProcessorTests
     private static ILogger<T> CreateLogger<T>()
     {
         return LoggerFactory.Create(static _ => { }).CreateLogger<T>();
+    }
+
+    private static CliTranscodeRequest CreateRequest(string inputPath, bool info = false, params string[] scenarioArgs)
+    {
+        return new CliTranscodeRequest(inputPath, "tomkvgpu", info, scenarioArgs);
+    }
+
+    private static CliScenarioRegistry CreateScenarioRegistry()
+    {
+        return new CliScenarioRegistry(
+            [new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())]);
     }
 
     private static SourceVideo CreateVideo(
@@ -464,6 +429,21 @@ public sealed class PrimaryTranscodeProcessorTests
         public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan)
         {
             throw _exception;
+        }
+    }
+
+    private sealed class RejectingTool : ITranscodeTool
+    {
+        public string Name => "rejecting";
+
+        public bool CanHandle(Runtime.Plans.TranscodePlan plan)
+        {
+            return false;
+        }
+
+        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan)
+        {
+            throw new InvalidOperationException("Rejecting tool must not be called.");
         }
     }
 }

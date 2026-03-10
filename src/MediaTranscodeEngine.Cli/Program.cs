@@ -1,5 +1,6 @@
 using MediaTranscodeEngine.Cli.Parsing;
 using MediaTranscodeEngine.Cli.Processing;
+using MediaTranscodeEngine.Cli.Scenarios;
 using MediaTranscodeEngine.Runtime.Inspection;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 using MediaTranscodeEngine.Runtime.Tools;
@@ -14,8 +15,20 @@ using System.Text;
 
 namespace MediaTranscodeEngine.Cli;
 
+/*
+Это точка входа CLI. Здесь поднимается host, собираются зависимости,
+разбираются аргументы и запускается обработка входных файлов.
+*/
+/// <summary>
+/// Hosts the command-line entry point for media inspection and scenario-driven command generation.
+/// </summary>
 public static class Program
 {
+    /// <summary>
+    /// Runs the CLI application.
+    /// </summary>
+    /// <param name="args">Raw command-line arguments.</param>
+    /// <returns>Process exit code.</returns>
     public static async Task<int> Main(string[] args)
     {
         ConfigureUtf8ConsoleWriters();
@@ -61,14 +74,18 @@ public static class Program
                 return new FfmpegTool(options.FfmpegPath!, logger);
             });
             builder.Services.AddSingleton<ToMkvGpuInfoFormatter>();
+            builder.Services.AddSingleton<ICliScenarioHandler, ToMkvGpuCliScenarioHandler>();
+            builder.Services.AddSingleton(static services =>
+                new CliScenarioRegistry(services.GetServices<ICliScenarioHandler>()));
             builder.Services.AddSingleton<ITranscodeProcessor, PrimaryTranscodeProcessor>();
 
             using var host = builder.Build();
             var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
             startupLogger = logger;
             var runtimeOptions = host.Services.GetRequiredService<IOptions<RuntimeValues>>().Value;
+            var scenarioRegistry = host.Services.GetRequiredService<CliScenarioRegistry>();
 
-            return RunCli(args, logger, host.Services, runtimeOptions);
+            return RunCli(args, logger, host.Services, runtimeOptions, scenarioRegistry, readRedirectedStdIn: true);
         }
         catch (Exception ex)
         {
@@ -90,6 +107,9 @@ public static class Program
         }
     }
 
+    /// <summary>
+    /// Configures UTF-8 console writers without a BOM for standard output and error.
+    /// </summary>
     internal static void ConfigureUtf8ConsoleWriters()
     {
         var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
@@ -97,6 +117,12 @@ public static class Program
         Console.SetError(new StreamWriter(Console.OpenStandardError(), utf8) { AutoFlush = true });
     }
 
+    /// <summary>
+    /// Resolves the effective log file path from configuration and the CLI base directory.
+    /// </summary>
+    /// <param name="configuredPath">Configured path, absolute or relative.</param>
+    /// <param name="cliBaseDirectory">CLI base directory used for relative paths.</param>
+    /// <returns>Absolute log file path.</returns>
     internal static string ResolveLogFilePath(string? configuredPath, string cliBaseDirectory)
     {
         if (string.IsNullOrWhiteSpace(configuredPath))
@@ -112,15 +138,38 @@ public static class Program
         return Path.GetFullPath(Path.Combine(cliBaseDirectory, configuredPath));
     }
 
+    /// <summary>
+    /// Runs the CLI using the registry available from the service provider or the default registry.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
+    /// <param name="logger">Logger used for CLI lifecycle events.</param>
+    /// <param name="services">Application services.</param>
+    /// <param name="runtimeValues">Runtime executable paths.</param>
+    /// <returns>Process exit code.</returns>
     internal static int RunCli(
         string[] args,
         Microsoft.Extensions.Logging.ILogger logger,
         IServiceProvider services,
         RuntimeValues runtimeValues)
     {
-        return RunCli(args, logger, services, runtimeValues, readRedirectedStdIn: true);
+        return RunCli(
+            args,
+            logger,
+            services,
+            runtimeValues,
+            services.GetService<CliScenarioRegistry>() ?? CliScenarioRegistry.Default,
+            readRedirectedStdIn: true);
     }
 
+    /// <summary>
+    /// Runs the CLI using the registry available from the service provider or the default registry.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
+    /// <param name="logger">Logger used for CLI lifecycle events.</param>
+    /// <param name="services">Application services.</param>
+    /// <param name="runtimeValues">Runtime executable paths.</param>
+    /// <param name="readRedirectedStdIn">Whether redirected standard input should be treated as additional input paths.</param>
+    /// <returns>Process exit code.</returns>
     internal static int RunCli(
         string[] args,
         Microsoft.Extensions.Logging.ILogger logger,
@@ -128,6 +177,39 @@ public static class Program
         RuntimeValues runtimeValues,
         bool readRedirectedStdIn)
     {
+        return RunCli(
+            args,
+            logger,
+            services,
+            runtimeValues,
+            services.GetService<CliScenarioRegistry>() ?? CliScenarioRegistry.Default,
+            readRedirectedStdIn);
+    }
+
+    /// <summary>
+    /// Runs the CLI using the supplied scenario registry.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
+    /// <param name="logger">Logger used for CLI lifecycle events.</param>
+    /// <param name="services">Application services.</param>
+    /// <param name="runtimeValues">Runtime executable paths.</param>
+    /// <param name="scenarioRegistry">Registered CLI scenarios.</param>
+    /// <param name="readRedirectedStdIn">Whether redirected standard input should be treated as additional input paths.</param>
+    /// <returns>Process exit code.</returns>
+    internal static int RunCli(
+        string[] args,
+        Microsoft.Extensions.Logging.ILogger logger,
+        IServiceProvider services,
+        RuntimeValues runtimeValues,
+        CliScenarioRegistry scenarioRegistry,
+        bool readRedirectedStdIn)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(runtimeValues);
+        ArgumentNullException.ThrowIfNull(scenarioRegistry);
+
         var effectiveArgs = BuildEffectiveArgs(args, readRedirectedStdIn);
         logger.LogInformation(
             "CLI request received. OriginalArgCount={OriginalArgCount} EffectiveArgCount={EffectiveArgCount} ReadRedirectedStdIn={ReadRedirectedStdIn}",
@@ -138,11 +220,11 @@ public static class Program
         if (effectiveArgs.Length == 0 || effectiveArgs.Any(IsHelpToken))
         {
             logger.LogInformation("CLI help requested.");
-            Console.WriteLine(CliHelpBuilder.BuildHelpText(runtimeValues));
+            Console.WriteLine(CliHelpBuilder.BuildHelpText(runtimeValues, scenarioRegistry));
             return 0;
         }
 
-        if (!CliArgumentParser.TryParse(effectiveArgs, out var parsed, out var errorText))
+        if (!CliArgumentParser.TryParse(effectiveArgs, scenarioRegistry, out var parsed, out var errorText))
         {
             logger.LogWarning("CLI parse failed: {ErrorText}. Args={Args}", errorText, string.Join(" ", effectiveArgs));
             Console.Error.WriteLine(errorText);
@@ -150,13 +232,11 @@ public static class Program
         }
 
         logger.LogInformation(
-            "CLI request parsed. Scenario={Scenario} Info={Info} InputCount={InputCount} DownscaleTarget={DownscaleTarget} AutoSampleMode={AutoSampleMode} NoAutoSample={NoAutoSample}",
-            parsed.RequestTemplate.Scenario,
-            parsed.RequestTemplate.Info,
+            "CLI request parsed. Scenario={Scenario} Info={Info} InputCount={InputCount} ScenarioArgCount={ScenarioArgCount}",
+            parsed.Scenario,
+            parsed.Info,
             parsed.Inputs.Count,
-            parsed.RequestTemplate.DownscaleTarget,
-            parsed.RequestTemplate.AutoSampleMode,
-            parsed.RequestTemplate.NoAutoSample);
+            parsed.ScenarioArgs.Count);
 
         if (parsed.Inputs.Count == 0)
         {
@@ -167,7 +247,7 @@ public static class Program
         }
 
         var processor = services.GetRequiredService<ITranscodeProcessor>();
-        if (!parsed.RequestTemplate.Info)
+        if (!parsed.Info)
         {
             Console.WriteLine("chcp 65001");
         }
@@ -177,7 +257,11 @@ public static class Program
             logger.LogInformation("CLI input processing started. InputPath={InputPath}", input);
             try
             {
-                var request = CliRequestMappers.BuildRequest(parsed.RequestTemplate, input);
+                var request = new CliTranscodeRequest(
+                    inputPath: input,
+                    scenarioName: parsed.Scenario,
+                    info: parsed.Info,
+                    scenarioArgs: parsed.ScenarioArgs);
                 var line = processor.Process(request);
                 if (!string.IsNullOrWhiteSpace(line))
                 {

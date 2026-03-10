@@ -11,6 +11,8 @@ The repository is currently focused on the `tomkvgpu` scenario and produces per-
 - normal mode: legacy-compatible command lines and `REM ...` diagnostics
 - `--info` mode: short decision markers without an `ffmpeg` command
 
+The CLI and runtime are already structured for additional scenarios, even though `tomkvgpu` is still the only implemented one. The CLI requires an explicit `--scenario <name>` argument.
+
 ## Repository Layout
 
 - `src/MediaTranscodeEngine.Runtime` - runtime model, input inspection, scenarios, and tool adapters
@@ -25,7 +27,7 @@ The repository is currently focused on the `tomkvgpu` scenario and produces per-
 - `ffprobe` with JSON output
 - `ffmpeg` with the required filters and encoders
 
-The CLI resolves `ffprobe` and `ffmpeg` paths from `src/MediaTranscodeEngine.Cli/appsettings.json`.
+The CLI resolves `ffprobe` and `ffmpeg` paths from standard host configuration sources such as `appsettings.json` and environment variables.
 
 ## Build And Test
 

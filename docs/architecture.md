@@ -18,9 +18,18 @@ Core runtime types:
 CLI wiring:
 
 - `src/MediaTranscodeEngine.Cli/Program.cs`
+- `src/MediaTranscodeEngine.Cli/Scenarios/CliScenarioRegistry.cs`
+- `src/MediaTranscodeEngine.Cli/Scenarios/ICliScenarioHandler.cs`
 - `src/MediaTranscodeEngine.Runtime/Inspection/FfprobeVideoProbe.cs`
 - `src/MediaTranscodeEngine.Runtime/Scenarios/ToMkvGpu/ToMkvGpuScenario.cs`
 - `src/MediaTranscodeEngine.Runtime/Tools/Ffmpeg/FfmpegTool.cs`
+
+CLI flow at a high level:
+
+- the common CLI layer parses shared arguments such as the required scenario name, input paths, and `--info`;
+- the selected scenario validates its own scenario-specific arguments;
+- processing then loads source facts, asks the scenario to build a `TranscodePlan`, and picks the first tool that can execute that plan;
+- in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the runtime request/scenario types it uses.
 
 ## Timing, FPS And Sync Notes
 

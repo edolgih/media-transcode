@@ -1,79 +1,130 @@
-using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
+using MediaTranscodeEngine.Cli.Scenarios;
 
 namespace MediaTranscodeEngine.Cli.Parsing;
 
-internal sealed record CliParseResult(
-    IReadOnlyList<string> Inputs,
-    CliRequestTemplate RequestTemplate);
-
+/*
+Этот парсер разбирает только общие аргументы CLI.
+Scenario-specific аргументы он не интерпретирует, а передает выбранному сценарию как есть.
+*/
+/// <summary>
+/// Parses common CLI arguments and delegates scenario-specific validation to the selected scenario handler.
+/// </summary>
 internal static class CliArgumentParser
 {
-    private const string LegacyToMkvCommandToken = "tomkvgpu";
-    private const string LegacyToH264CommandToken = "toh264gpu";
-
+    /// <summary>
+    /// Parses CLI arguments using the default scenario registry.
+    /// </summary>
+    /// <param name="args">Raw command-line arguments.</param>
+    /// <param name="parsed">Common parse result on success.</param>
+    /// <param name="errorText">Error message on failure.</param>
+    /// <returns><see langword="true"/> when parsing succeeds; otherwise <see langword="false"/>.</returns>
     public static bool TryParse(
         string[] args,
         out CliParseResult parsed,
         out string? errorText)
     {
+        return TryParse(args, CliScenarioRegistry.Default, out parsed, out errorText);
+    }
+
+    /// <summary>
+    /// Parses CLI arguments using the supplied scenario registry.
+    /// </summary>
+    /// <param name="args">Raw command-line arguments.</param>
+    /// <param name="registry">Available CLI scenarios.</param>
+    /// <param name="parsed">Common parse result on success.</param>
+    /// <param name="errorText">Error message on failure.</param>
+    /// <returns><see langword="true"/> when parsing succeeds; otherwise <see langword="false"/>.</returns>
+    public static bool TryParse(
+        string[] args,
+        CliScenarioRegistry registry,
+        out CliParseResult parsed,
+        out string? errorText)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(registry);
+
         parsed = default!;
         errorText = null;
 
-        var state = new CliMutableParseState();
+        var inputs = new List<string>();
+        var scenarioArgs = new List<string>();
+        string? scenarioName = null;
+        var info = false;
+
         for (var i = 0; i < args.Length; i++)
         {
             var token = args[i];
-            if (IsLegacyCommandToken(token))
+            if (registry.TryGetLegacyScenarioName(token, out var suggestedScenarioName))
             {
-                errorText = "Do not use legacy scenario command tokens. Use --scenario tomkvgpu.";
+                errorText = $"Do not use legacy scenario command tokens. Use --scenario {suggestedScenarioName}.";
                 return false;
             }
 
-            if (!CliContracts.TryGetOption(token, out var option))
+            if (string.Equals(token, CliCommonOptions.InputOptionName, StringComparison.OrdinalIgnoreCase))
             {
-                errorText = token.StartsWith("-", StringComparison.Ordinal)
-                    ? $"Unknown option: {token}"
-                    : $"Unexpected argument: {token}";
-                return false;
-            }
-
-            CliParsedValue value = default;
-            if (option.ValueKind is not CliOptionValueKind.Flag)
-            {
-                if (!TryReadValue(args, ref i, token, out var valueToken, out errorText))
+                if (!TryReadRequiredValue(args, ref i, token, out var inputPath, out errorText))
                 {
                     return false;
                 }
 
-                if (!CliContracts.TryParseValue(option, valueToken, out value, out errorText))
+                inputs.Add(inputPath);
+                continue;
+            }
+
+            if (string.Equals(token, CliCommonOptions.ScenarioOptionName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!TryReadRequiredValue(args, ref i, token, out scenarioName, out errorText))
                 {
                     return false;
                 }
+
+                continue;
             }
 
-            option.ApplyValue(state, value);
-        }
+            if (string.Equals(token, CliCommonOptions.InfoOptionName, StringComparison.OrdinalIgnoreCase))
+            {
+                info = true;
+                continue;
+            }
 
-        if (!CliContracts.IsSupportedScenario(state.RequestTemplate.Scenario))
-        {
-            errorText = $"Unsupported scenario: {state.RequestTemplate.Scenario}. Only '{CliContracts.SupportedScenario}' is available.";
+            if (token.StartsWith("-", StringComparison.Ordinal))
+            {
+                scenarioArgs.Add(token);
+                if (i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.Ordinal))
+                {
+                    scenarioArgs.Add(args[i + 1]);
+                    i++;
+                }
+
+                continue;
+            }
+
+            errorText = $"Unexpected argument: {token}";
             return false;
         }
 
-        if (state.RequestTemplate.MaxFramesPerSecond.HasValue &&
-            !ToMkvGpuRequest.IsSupportedMaxFramesPerSecond(state.RequestTemplate.MaxFramesPerSecond.Value))
+        if (string.IsNullOrWhiteSpace(scenarioName))
         {
-            errorText = $"--max-fps must be one of: {ToMkvGpuRequest.SupportedMaxFramesPerSecondDisplay}.";
+            errorText = $"Scenario is required. Use --scenario <name>. Available scenarios: {registry.GetSupportedScenarioDisplay()}.";
+            return false;
+        }
+
+        if (!registry.TryGetScenario(scenarioName, out var handler))
+        {
+            errorText = $"Unsupported scenario: {scenarioName}. Available scenarios: {registry.GetSupportedScenarioDisplay()}.";
             return false;
         }
 
         parsed = new CliParseResult(
-            Inputs: state.Inputs,
-            RequestTemplate: state.RequestTemplate);
-        return true;
+            inputs: inputs.ToArray(),
+            scenario: scenarioName,
+            info: info,
+            scenarioArgs: scenarioArgs.ToArray());
+
+        return handler.TryValidate(parsed.ScenarioArgs, out errorText);
     }
 
-    private static bool TryReadValue(
+    private static bool TryReadRequiredValue(
         string[] args,
         ref int index,
         string optionName,
@@ -100,11 +151,5 @@ internal static class CliArgumentParser
         value = token;
         index = valueIndex;
         return true;
-    }
-
-    private static bool IsLegacyCommandToken(string token)
-    {
-        return token.Equals(LegacyToMkvCommandToken, StringComparison.OrdinalIgnoreCase) ||
-               token.Equals(LegacyToH264CommandToken, StringComparison.OrdinalIgnoreCase);
     }
 }

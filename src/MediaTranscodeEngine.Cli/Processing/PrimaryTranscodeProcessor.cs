@@ -1,44 +1,64 @@
-using MediaTranscodeEngine.Cli.Parsing;
-using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
+using MediaTranscodeEngine.Cli.Scenarios;
+using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Tools;
 using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.Logging;
 
 namespace MediaTranscodeEngine.Cli.Processing;
 
+/*
+Это основная orchestration-реализация CLI:
+инспекция файла, построение сценария, получение плана и выбор tool для генерации итоговой команды или маркера.
+*/
+/// <summary>
+/// Orchestrates the CLI flow from inspected source facts through scenario planning to tool execution output.
+/// </summary>
 internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
 {
     private readonly VideoInspector _videoInspector;
-    private readonly ITranscodeTool _transcodeTool;
-    private readonly ToMkvGpuInfoFormatter _infoFormatter;
+    private readonly IReadOnlyList<ITranscodeTool> _transcodeTools;
+    private readonly CliScenarioRegistry _scenarioRegistry;
     private readonly ILogger<PrimaryTranscodeProcessor> _logger;
 
+    /// <summary>
+    /// Initializes the primary CLI transcode processor.
+    /// </summary>
+    /// <param name="videoInspector">Source video inspector.</param>
+    /// <param name="transcodeTools">Registered transcode tools.</param>
+    /// <param name="scenarioRegistry">Registered CLI scenarios.</param>
+    /// <param name="logger">Processor logger.</param>
     public PrimaryTranscodeProcessor(
         VideoInspector videoInspector,
-        ITranscodeTool transcodeTool,
-        ToMkvGpuInfoFormatter infoFormatter,
+        IEnumerable<ITranscodeTool> transcodeTools,
+        CliScenarioRegistry scenarioRegistry,
         ILogger<PrimaryTranscodeProcessor> logger)
     {
         ArgumentNullException.ThrowIfNull(videoInspector);
-        ArgumentNullException.ThrowIfNull(transcodeTool);
-        ArgumentNullException.ThrowIfNull(infoFormatter);
+        ArgumentNullException.ThrowIfNull(transcodeTools);
+        ArgumentNullException.ThrowIfNull(scenarioRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
         _videoInspector = videoInspector;
-        _transcodeTool = transcodeTool;
-        _infoFormatter = infoFormatter;
+        _transcodeTools = transcodeTools.ToArray();
+        _scenarioRegistry = scenarioRegistry;
         _logger = logger;
     }
 
+    /// <summary>
+    /// Processes one CLI input and returns either info output, legacy diagnostics, or a generated command line.
+    /// </summary>
+    /// <param name="request">Per-input CLI request.</param>
+    /// <returns>Single output line for the input.</returns>
     public string Process(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var scenarioHandler = ResolveScenarioHandler(request.ScenarioName);
         LogRequestStart(request);
 
         try
         {
-            var scenario = CreateScenario(request);
+            var scenario = scenarioHandler.CreateScenario(request);
             var video = _videoInspector.Load(request.InputPath);
             LogVideoInspected(video);
             var plan = scenario.BuildPlan(video);
@@ -47,10 +67,11 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             if (request.Info)
             {
                 _logger.LogInformation("Info output generated. InputPath={InputPath}", request.InputPath);
-                return _infoFormatter.Format(video, plan);
+                return scenarioHandler.FormatInfo(request, video, plan);
             }
 
-            var execution = _transcodeTool.BuildExecution(video, plan);
+            var tool = ResolveTool(plan);
+            var execution = tool.BuildExecution(video, plan);
             _logger.LogInformation(
                 "Tool execution built. InputPath={InputPath} ToolName={ToolName} CommandCount={CommandCount} IsEmpty={IsEmpty}",
                 request.InputPath,
@@ -63,33 +84,22 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         }
         catch (Exception exception)
         {
-            var failure = ClassifyFailure(request, exception);
+            var failure = scenarioHandler.DescribeFailure(request, exception);
             LogFailure(request, exception, failure);
-            return FormatFailure(request, exception, failure);
+            return request.Info
+                ? failure.InfoOutput
+                : failure.NonInfoOutput;
         }
     }
 
     private void LogRequestStart(CliTranscodeRequest request)
     {
-        var downscale = request.ToMkvGpu.Downscale;
         _logger.LogInformation(
-            "Processing started. InputPath={InputPath} Scenario={Scenario} Info={Info} OverlayBackground={OverlayBackground} SynchronizeAudio={SynchronizeAudio} KeepSource={KeepSource} DownscaleTarget={DownscaleTarget} ContentProfile={ContentProfile} QualityProfile={QualityProfile} NoAutoSample={NoAutoSample} AutoSampleMode={AutoSampleMode} Algorithm={Algorithm} Cq={Cq} Maxrate={Maxrate} Bufsize={Bufsize} NvencPreset={NvencPreset}",
+            "Processing started. InputPath={InputPath} Scenario={Scenario} Info={Info} ScenarioArgCount={ScenarioArgCount}",
             request.InputPath,
             request.ScenarioName,
             request.Info,
-            request.ToMkvGpu.OverlayBackground,
-            request.ToMkvGpu.SynchronizeAudio,
-            request.ToMkvGpu.KeepSource,
-            downscale?.TargetHeight,
-            downscale?.ContentProfile,
-            downscale?.QualityProfile,
-            downscale?.NoAutoSample ?? false,
-            downscale?.AutoSampleMode,
-            downscale?.Algorithm,
-            downscale?.Cq,
-            downscale?.Maxrate,
-            downscale?.Bufsize,
-            request.ToMkvGpu.NvencPreset);
+            request.ScenarioArgs.Count);
     }
 
     private void LogVideoInspected(SourceVideo video)
@@ -107,11 +117,12 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             video.Bitrate);
     }
 
-    private void LogPlanBuilt(CliTranscodeRequest request, Runtime.Plans.TranscodePlan plan)
+    private void LogPlanBuilt(CliTranscodeRequest request, TranscodePlan plan)
     {
         _logger.LogInformation(
-            "Transcode plan built. InputPath={InputPath} TargetContainer={TargetContainer} TargetVideoCodec={TargetVideoCodec} CopyVideo={CopyVideo} CopyAudio={CopyAudio} TargetHeight={TargetHeight} TargetFramesPerSecond={TargetFramesPerSecond} RequiresVideoEncode={RequiresVideoEncode} RequiresAudioEncode={RequiresAudioEncode} ApplyOverlayBackground={ApplyOverlayBackground} SynchronizeAudio={SynchronizeAudio}",
+            "Transcode plan built. InputPath={InputPath} Scenario={Scenario} TargetContainer={TargetContainer} TargetVideoCodec={TargetVideoCodec} CopyVideo={CopyVideo} CopyAudio={CopyAudio} TargetHeight={TargetHeight} TargetFramesPerSecond={TargetFramesPerSecond} RequiresVideoEncode={RequiresVideoEncode} RequiresAudioEncode={RequiresAudioEncode} ApplyOverlayBackground={ApplyOverlayBackground} SynchronizeAudio={SynchronizeAudio}",
             request.InputPath,
+            request.ScenarioName,
             plan.TargetContainer,
             plan.TargetVideoCodec,
             plan.CopyVideo,
@@ -124,17 +135,29 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             plan.SynchronizeAudio);
     }
 
-    private static ToMkvGpuScenario CreateScenario(CliTranscodeRequest request)
+    private ICliScenarioHandler ResolveScenarioHandler(string scenarioName)
     {
-        if (!request.ScenarioName.Equals(CliContracts.SupportedScenario, StringComparison.OrdinalIgnoreCase))
+        if (_scenarioRegistry.TryGetScenario(scenarioName, out var scenarioHandler))
         {
-            throw new NotSupportedException($"Scenario '{request.ScenarioName}' is not supported by Runtime CLI.");
+            return scenarioHandler;
         }
 
-        return new ToMkvGpuScenario(request.ToMkvGpu);
+        throw new NotSupportedException($"Scenario '{scenarioName}' is not supported by Runtime CLI.");
     }
 
-    private void LogFailure(CliTranscodeRequest request, Exception exception, HandledFailure failure)
+    private ITranscodeTool ResolveTool(TranscodePlan plan)
+    {
+        var tool = _transcodeTools.FirstOrDefault(candidate => candidate.CanHandle(plan));
+        if (tool is not null)
+        {
+            return tool;
+        }
+
+        throw new NotSupportedException(
+            $"No registered transcode tool can handle the plan for container '{plan.TargetContainer}'.");
+    }
+
+    private void LogFailure(CliTranscodeRequest request, Exception exception, CliScenarioFailure failure)
     {
         if (failure.Level == LogLevel.Error)
         {
@@ -155,85 +178,4 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             failure.LogToken,
             exception.Message);
     }
-
-    private string FormatFailure(CliTranscodeRequest request, Exception exception, HandledFailure failure)
-    {
-        var fileName = Path.GetFileName(request.InputPath);
-        if (request.Info)
-        {
-            return failure.Kind switch
-            {
-                HandledFailureKind.IoError => $"{fileName}: [i/o error]",
-                HandledFailureKind.UnexpectedFailure => $"{fileName}: [unexpected failure]",
-                _ => _infoFormatter.FormatFailure(request.InputPath, exception)
-            };
-        }
-
-        return failure.Kind switch
-        {
-            HandledFailureKind.UnknownDimensionsOverlay => $"REM Unknown dimensions: {fileName}",
-            HandledFailureKind.NoVideoStream => $"REM Нет видеопотока: {fileName}",
-            HandledFailureKind.DownscaleNotImplemented => $"REM Downscale 720 not implemented: {fileName}",
-            HandledFailureKind.DownscaleSourceBucket => $"REM {exception.Message}",
-            HandledFailureKind.ProbeFailure => $"REM ffprobe failed: {fileName}",
-            HandledFailureKind.IoError => $"REM I/O error: {fileName}",
-            HandledFailureKind.UnexpectedFailure => $"REM Unexpected failure: {fileName}",
-            _ => throw new InvalidOperationException($"Unhandled failure kind '{failure.Kind}'.")
-        };
-    }
-
-    private static HandledFailure ClassifyFailure(CliTranscodeRequest request, Exception exception)
-    {
-        if (exception is IOException or UnauthorizedAccessException)
-        {
-            return new HandledFailure(HandledFailureKind.IoError, "io_error", LogLevel.Error);
-        }
-
-        var message = exception.Message;
-        if (request.ToMkvGpu.OverlayBackground &&
-            (message.Contains("valid video width", StringComparison.OrdinalIgnoreCase) ||
-             message.Contains("valid video height", StringComparison.OrdinalIgnoreCase)))
-        {
-            return new HandledFailure(HandledFailureKind.UnknownDimensionsOverlay, "unknown_dimensions", LogLevel.Warning);
-        }
-
-        if (message.Contains("video stream", StringComparison.OrdinalIgnoreCase))
-        {
-            return new HandledFailure(HandledFailureKind.NoVideoStream, "no_video_stream", LogLevel.Warning);
-        }
-
-        if (message.Contains("downscale", StringComparison.OrdinalIgnoreCase) &&
-            message.Contains("720", StringComparison.OrdinalIgnoreCase))
-        {
-            return new HandledFailure(HandledFailureKind.DownscaleNotImplemented, "downscale_not_implemented", LogLevel.Warning);
-        }
-
-        if (message.Contains("source bucket missing", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("source bucket invalid", StringComparison.OrdinalIgnoreCase))
-        {
-            return new HandledFailure(HandledFailureKind.DownscaleSourceBucket, "downscale_source_bucket", LogLevel.Warning);
-        }
-
-        if (message.Contains("ffprobe", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("video probe", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("streams", StringComparison.OrdinalIgnoreCase))
-        {
-            return new HandledFailure(HandledFailureKind.ProbeFailure, "probe_failure", LogLevel.Warning);
-        }
-
-        return new HandledFailure(HandledFailureKind.UnexpectedFailure, "unexpected_failure", LogLevel.Warning);
-    }
-
-    private enum HandledFailureKind
-    {
-        UnknownDimensionsOverlay,
-        NoVideoStream,
-        DownscaleNotImplemented,
-        DownscaleSourceBucket,
-        ProbeFailure,
-        IoError,
-        UnexpectedFailure
-    }
-
-    private readonly record struct HandledFailure(HandledFailureKind Kind, string LogToken, LogLevel Level);
 }

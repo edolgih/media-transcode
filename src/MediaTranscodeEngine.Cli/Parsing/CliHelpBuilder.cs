@@ -1,9 +1,36 @@
+using MediaTranscodeEngine.Cli.Scenarios;
+
 namespace MediaTranscodeEngine.Cli.Parsing;
 
+/*
+Этот helper собирает help-текст CLI из общей части, зарегистрированных сценариев и текущей runtime-конфигурации.
+*/
+/// <summary>
+/// Builds CLI help text from shared options, registered scenarios, and runtime configuration.
+/// </summary>
 internal static class CliHelpBuilder
 {
+    /// <summary>
+    /// Builds help text using the default scenario registry.
+    /// </summary>
+    /// <param name="runtimeValues">Configured runtime executable paths.</param>
+    /// <returns>Rendered help text.</returns>
     public static string BuildHelpText(RuntimeValues runtimeValues)
     {
+        return BuildHelpText(runtimeValues, CliScenarioRegistry.Default);
+    }
+
+    /// <summary>
+    /// Builds help text using the supplied scenario registry.
+    /// </summary>
+    /// <param name="runtimeValues">Configured runtime executable paths.</param>
+    /// <param name="registry">Registered CLI scenarios.</param>
+    /// <returns>Rendered help text.</returns>
+    public static string BuildHelpText(RuntimeValues runtimeValues, CliScenarioRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeValues);
+        ArgumentNullException.ThrowIfNull(registry);
+
         var exeName = Path.GetFileName(Environment.ProcessPath);
         if (string.IsNullOrWhiteSpace(exeName))
         {
@@ -19,7 +46,7 @@ internal static class CliHelpBuilder
             "Options:"
         };
 
-        AddOptionRows(lines, GetOptionsForHelp());
+        AddOptionRows(lines, registry.GetHelpOptions());
 
         lines.Add(string.Empty);
         lines.Add("Configuration (appsettings / environment):");
@@ -28,32 +55,19 @@ internal static class CliHelpBuilder
 
         lines.Add(string.Empty);
         lines.Add("Examples:");
-        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\"");
-        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --info");
-        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --keep-source --downscale 480");
-        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --overlay-bg --sync-audio");
-        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --max-fps 50");
-        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --downscale 576 --content-profile film --quality-profile default");
-        lines.Add($"  {exeName} --input \"C:\\video\\movie.mkv\" --downscale 480 --content-profile film --quality-profile default");
-        lines.Add($"  Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | {exeName} --info");
+        foreach (var example in registry.GetHelpExamples(exeName))
+        {
+            lines.Add($"  {example}");
+        }
 
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static IReadOnlyList<CliOptionDefinition> GetOptionsForHelp()
-    {
-        return CliContracts.OptionsByName.Values
-            .Where(static option => option.Name != "-h")
-            .OrderBy(static option => option.Name, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
-
-    private static void AddOptionRows(List<string> lines, IReadOnlyList<CliOptionDefinition> options)
+    private static void AddOptionRows(List<string> lines, IReadOnlyList<CliHelpOption> options)
     {
         foreach (var option in options)
         {
-            var usage = option.Usage ?? option.Name;
-            lines.Add($"  {usage,-32} {option.HelpText}");
+            lines.Add($"  {option.Usage,-32} {option.HelpText}");
         }
     }
 }
