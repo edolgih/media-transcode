@@ -37,6 +37,7 @@ internal sealed class DownscaleProfiles
     private static DownscaleProfiles CreateDefault()
     {
         return Create(
+            Downscale424Profile.Create(),
             Downscale480Profile.Create(),
             Downscale576Profile.Create());
     }

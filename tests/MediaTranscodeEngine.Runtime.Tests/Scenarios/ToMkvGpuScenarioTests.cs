@@ -211,6 +211,18 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildPlan_WhenDownscale424RequestedForLargerSource_AppliesDownscale()
+    {
+        var sut = CreateSut(downscaleTarget: 424);
+        var video = CreateVideo(height: 576, videoCodec: "h264", audioCodecs: ["aac"]);
+
+        var actual = sut.BuildPlan(video);
+
+        actual.TargetHeight.Should().Be(424);
+        actual.CopyVideo.Should().BeFalse();
+    }
+
+    [Fact]
     public void BuildPlan_WhenDownscale576RequestedForZeroHeight_ThrowsBucketHint()
     {
         var sut = CreateSut(downscaleTarget: 576);

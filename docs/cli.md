@@ -32,6 +32,12 @@ Explicit `576` profile:
 dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --downscale 576 --content-profile film --quality-profile default
 ```
 
+`downscale 424`:
+
+```bash
+dotnet run --project src/MediaTranscodeEngine.Cli -- --input "D:\\Src\\movie.mkv" --downscale 424
+```
+
 Overlay with explicit repair mode:
 
 ```bash
@@ -58,7 +64,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--info`
 - `--keep-source`
 - `--overlay-bg`
-- `--downscale <int>`
+- `--downscale <576|480|424>`
 - `--max-fps <50|40|30|24>`
 - `--sync-audio`
 - `--content-profile <anime|mult|film>`

@@ -147,7 +147,7 @@ internal static class CliContracts
                 HelpText: "Downscale target height.",
                 ApplyValue: static (state, value) => state.RequestTemplate = state.RequestTemplate with { DownscaleTarget = value.IntValue },
                 InvalidValueError: "--downscale must be an integer.",
-                Usage: "--downscale <int>"),
+                Usage: "--downscale <576|480|424>"),
             ["--max-fps"] = new CliOptionDefinition(
                 Name: "--max-fps",
                 ValueKind: CliOptionValueKind.Int,

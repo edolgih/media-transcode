@@ -41,6 +41,25 @@ public sealed class DownscaleProfilesTests
     }
 
     [Fact]
+    public void Default_When424ProfileIsRequested_ReturnsConfiguredSourceBuckets()
+    {
+        var sut = DownscaleProfiles.Default;
+
+        var actual = sut.GetRequiredProfile(424);
+
+        actual.SourceBuckets.Should().HaveCount(3);
+        actual.SourceBuckets[0].Name.Should().Be("sd_480");
+        actual.SourceBuckets[0].MinHeight.Should().Be(425);
+        actual.SourceBuckets[0].MaxHeight.Should().Be(649);
+        actual.SourceBuckets[1].Name.Should().Be("hd_720");
+        actual.SourceBuckets[1].MinHeight.Should().Be(650);
+        actual.SourceBuckets[1].MaxHeight.Should().Be(899);
+        actual.SourceBuckets[2].Name.Should().Be("fhd_1080");
+        actual.SourceBuckets[2].MinHeight.Should().Be(900);
+        actual.SourceBuckets[2].MaxHeight.Should().Be(1300);
+    }
+
+    [Fact]
     public void ResolveDefaults_WhenContentAndQualityAreMissing_UsesFilmDefaultEntry()
     {
         var sut = DownscaleProfiles.Default.GetRequiredProfile(576);
@@ -52,6 +71,21 @@ public sealed class DownscaleProfilesTests
         actual.Cq.Should().Be(26);
         actual.Maxrate.Should().Be(3.4m);
         actual.Bufsize.Should().Be(6.9m);
+        actual.Algorithm.Should().Be("bilinear");
+    }
+
+    [Fact]
+    public void ResolveDefaults_When424ProfileUsesMissingContentAndQuality_UsesFilmDefaultEntry()
+    {
+        var sut = DownscaleProfiles.Default.GetRequiredProfile(424);
+
+        var actual = sut.ResolveDefaults(contentProfile: null, qualityProfile: null);
+
+        actual.ContentProfile.Should().Be("film");
+        actual.QualityProfile.Should().Be("default");
+        actual.Cq.Should().Be(28);
+        actual.Maxrate.Should().Be(2.1m);
+        actual.Bufsize.Should().Be(4.2m);
         actual.Algorithm.Should().Be("bilinear");
     }
 

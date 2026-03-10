@@ -206,6 +206,27 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
+    public void BuildExecution_WhenDownscale424UsesDefaultProfile_Uses424Defaults()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", height: 576, filePath: @"C:\video\input.mp4");
+        var plan = CreatePlan(
+            copyVideo: false,
+            copyAudio: false,
+            targetVideoCodec: "h264",
+            preferredBackend: "gpu",
+            targetHeight: 424,
+            downscale: new DownscaleRequest(targetHeight: 424),
+            outputPath: @"C:\video\input.mkv");
+
+        var actual = sut.BuildExecution(video, plan);
+
+        actual.Commands[0].Should().Contain("scale_cuda=-2:424:interp_algo=bilinear:format=nv12");
+        actual.Commands[0].Should().Contain("-cq 28");
+        actual.Commands[0].Should().Contain("-maxrate 2.1M -bufsize 4.2M");
+    }
+
+    [Fact]
     public void BuildExecution_WhenDownscaleUsesAnimeDefaultProfile_UsesAnimeDefaults()
     {
         var sut = CreateSut();
