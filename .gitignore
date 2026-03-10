@@ -6,8 +6,15 @@
 # dotenv files
 .env
 
-# Local docs (keep files locally, do not track in repository)
-docs/
+# Docs tracked selectively
+docs/*
+!docs/architecture.md
+!docs/cli.md
+!docs/reference/
+docs/reference/*
+!docs/reference/legacy-fe62f0c/
+docs/reference/legacy-fe62f0c/*
+!docs/reference/legacy-fe62f0c/ToMkvGPU.576.Profiles.yaml
 implementation_plan.md
 refactoring_current.md
 

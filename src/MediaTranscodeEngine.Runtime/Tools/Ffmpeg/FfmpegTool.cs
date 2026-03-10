@@ -209,22 +209,15 @@ public sealed class FfmpegTool : ITranscodeTool
 
     private static string BuildSanitizePart(SourceVideo video, TranscodePlan plan)
     {
-        if (plan.RequiresVideoEncode)
-        {
-            return "-fflags +genpts+igndts -avoid_negative_ts make_zero";
-        }
-
-        if (UsesStrongSyncRemux(plan))
+        if (plan.FixTimestamps || UsesStrongSyncRemux(plan))
         {
             return "-fflags +genpts+igndts -avoid_negative_ts make_zero";
         }
 
         var needsContainerChange = !video.Container.Equals(plan.TargetContainer, StringComparison.OrdinalIgnoreCase);
-        if (plan.RequiresAudioEncode || needsContainerChange)
+        if (plan.RequiresVideoEncode || plan.RequiresAudioEncode || needsContainerChange)
         {
-            return needsContainerChange || plan.SynchronizeAudio
-                ? "-fflags +genpts -avoid_negative_ts make_zero"
-                : "-avoid_negative_ts make_zero";
+            return "-avoid_negative_ts make_zero";
         }
 
         return string.Empty;
@@ -249,32 +242,37 @@ public sealed class FfmpegTool : ITranscodeTool
         var pixelFormatPart = string.Equals(plan.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase)
             ? string.Empty
             : "-pix_fmt yuv420p ";
+        var frameRatePart = plan.TargetFramesPerSecond.HasValue
+            ? $"-fps_mode:v cfr -r {fpsToken} "
+            : string.Empty;
 
         if (plan.ApplyOverlayBackground)
         {
             var filter = BuildOverlayFilter(video, plan.TargetHeight, settings.Algorithm);
-            return $"-filter_complex {Quote(filter)} -map \"[v]\" -fps_mode:v cfr " +
+            return $"-filter_complex {Quote(filter)} -map \"[v]\" {frameRatePart}" +
                    $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-                   $"{pixelFormatPart}{compatibilityPart}-r {fpsToken} -g {gop}";
+                   $"{pixelFormatPart}{compatibilityPart}-g {gop}";
         }
 
         if (plan.TargetHeight.HasValue)
         {
-            return $"-map 0:v:0 -fps_mode:v cfr -vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo={settings.Algorithm}:format=nv12\" " +
+            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo={settings.Algorithm}:format=nv12\" " +
                    $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-                   $"{compatibilityPart}-r {fpsToken} -g {gop}";
+                   $"{compatibilityPart}-g {gop}";
         }
 
-        return $"-map 0:v:0 -fps_mode:v cfr " +
+        return $"-map 0:v:0 {frameRatePart}" +
                $"-c:v {encoder} -preset {preset} -rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} {aqPart} " +
-               $"{pixelFormatPart}{compatibilityPart}-r {fpsToken} -g {gop}";
+               $"{pixelFormatPart}{compatibilityPart}-g {gop}";
     }
 
     private static string BuildAudioPart(TranscodePlan plan)
     {
         return plan.CopyAudio
             ? "-map 0:a? -c:a copy"
-            : "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"";
+            : plan.SynchronizeAudio
+                ? "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\""
+                : "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k";
     }
 
     private static bool UsesStrongSyncRemux(TranscodePlan plan)

@@ -34,7 +34,8 @@ public sealed class FfmpegToolTests
         actual.Commands.Should().HaveCount(2);
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-c:a copy");
-        actual.Commands[0].Should().Contain("-fflags +genpts -avoid_negative_ts make_zero");
+        actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
+        actual.Commands[0].Should().NotContain("-fflags +genpts");
         actual.Commands[0].Should().Contain("-sn");
         actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096");
         actual.Commands[0].Should().Contain("\"C:\\video\\input.mkv\"");
@@ -72,8 +73,11 @@ public sealed class FfmpegToolTests
         actual.Commands.Should().HaveCount(2);
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
         actual.Commands[0].Should().Contain("-c:a aac");
-        actual.Commands[0].Should().Contain("-fflags +genpts+igndts -avoid_negative_ts make_zero");
-        actual.Commands[0].Should().Contain("-fps_mode:v cfr");
+        actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
+        actual.Commands[0].Should().NotContain("+igndts");
+        actual.Commands[0].Should().NotContain("-fps_mode:v cfr");
+        actual.Commands[0].Should().NotContain(" -r ");
+        actual.Commands[0].Should().NotContain("-af \"aresample=async=1:first_pts=0\"");
         actual.Commands[0].Should().Contain("-cq 21");
         actual.Commands[0].Should().Contain("-maxrate 4M -bufsize 8M");
     }
@@ -171,6 +175,11 @@ public sealed class FfmpegToolTests
 
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
+        actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
+        actual.Commands[0].Should().NotContain("+igndts");
+        actual.Commands[0].Should().NotContain("-fps_mode:v cfr");
+        actual.Commands[0].Should().NotContain(" -r ");
+        actual.Commands[0].Should().NotContain("-af \"aresample=async=1:first_pts=0\"");
         actual.Commands[0].Should().Contain("-cq 26");
         actual.Commands[0].Should().Contain("-maxrate 3.4M -bufsize 6.9M");
     }
@@ -258,7 +267,8 @@ public sealed class FfmpegToolTests
 
         var actual = sut.BuildExecution(video, plan);
 
-        actual.Commands[0].Should().Contain("-profile:v high -level:v 3.2 -r 59.94");
+        actual.Commands[0].Should().Contain("-profile:v high -level:v 3.2");
+        actual.Commands[0].Should().NotContain(" -r ");
     }
 
     [Fact]
@@ -281,7 +291,8 @@ public sealed class FfmpegToolTests
 
         var actual = sut.BuildExecution(video, plan);
 
-        actual.Commands[0].Should().Contain("-profile:v high -level:v 4.2 -r 59.94");
+        actual.Commands[0].Should().Contain("-profile:v high -level:v 4.2");
+        actual.Commands[0].Should().NotContain(" -r ");
     }
 
     [Fact]
@@ -304,7 +315,8 @@ public sealed class FfmpegToolTests
 
         var actual = sut.BuildExecution(video, plan);
 
-        actual.Commands[0].Should().Contain("-profile:v high -level:v 4.0 -r 29.97");
+        actual.Commands[0].Should().Contain("-profile:v high -level:v 4.0");
+        actual.Commands[0].Should().NotContain(" -r ");
     }
 
     [Fact]
@@ -863,9 +875,10 @@ public sealed class FfmpegToolTests
 
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-c:a aac");
-        actual.Commands[0].Should().Contain("-af \"aresample=async=1:first_pts=0\"");
+        actual.Commands[0].Should().NotContain("-af \"aresample=async=1:first_pts=0\"");
         actual.Commands[0].Should().NotContain("-c:a copy");
-        actual.Commands[0].Should().Contain("-fflags +genpts -avoid_negative_ts make_zero");
+        actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
+        actual.Commands[0].Should().NotContain("-fflags +genpts");
         actual.Commands[0].Should().NotContain("+igndts");
     }
 
@@ -935,10 +948,13 @@ public sealed class FfmpegToolTests
         var actual = sut.BuildExecution(video, plan);
 
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
+        actual.Commands[0].Should().NotContain("+igndts");
         actual.Commands[0].Should().Contain("-fps_mode:v cfr");
         actual.Commands[0].Should().NotContain("-pix_fmt yuv420p");
         actual.Commands[0].Should().Contain("-r 50");
         actual.Commands[0].Should().Contain("-g 100");
+        actual.Commands[0].Should().NotContain("-af \"aresample=async=1:first_pts=0\"");
     }
 
     [Fact]

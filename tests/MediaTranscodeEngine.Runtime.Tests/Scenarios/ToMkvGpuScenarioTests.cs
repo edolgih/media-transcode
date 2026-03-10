@@ -79,7 +79,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.VideoCompatibilityProfile.Should().Be(VideoCompatibilityProfile.H264High);
         actual.PreferredBackend.Should().Be("gpu");
         actual.CopyAudio.Should().BeFalse();
-        actual.FixTimestamps.Should().BeTrue();
+        actual.FixTimestamps.Should().BeFalse();
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
         actual.TargetFramesPerSecond.Should().Be(50);
-        actual.FixTimestamps.Should().BeTrue();
+        actual.FixTimestamps.Should().BeFalse();
     }
 
     [Fact]
@@ -182,6 +182,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.Downscale.Should().NotBeNull();
         actual.Downscale!.TargetHeight.Should().Be(576);
         actual.CopyVideo.Should().BeFalse();
+        actual.FixTimestamps.Should().BeFalse();
         actual.TargetVideoCodec.Should().Be("h264");
     }
 
