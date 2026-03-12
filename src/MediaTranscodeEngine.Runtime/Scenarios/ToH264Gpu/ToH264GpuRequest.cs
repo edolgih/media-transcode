@@ -5,10 +5,10 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 
 /*
 Это runtime-request для сценария toh264gpu.
-Он хранит только scenario-specific опции, а вычисление итогового поведения остается внутри сценария.
+Он хранит scenario-specific опции и сам разбирает raw CLI-аргументы, а вычисление итогового поведения остается внутри сценария.
 */
 /// <summary>
-/// Captures scenario-specific directives for the legacy ToH264Gpu workflow.
+/// Captures scenario-specific directives for the legacy ToH264Gpu workflow and parses raw scenario arguments.
 /// </summary>
 public sealed class ToH264GpuRequest
 {

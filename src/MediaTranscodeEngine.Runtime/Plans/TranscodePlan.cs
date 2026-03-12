@@ -4,7 +4,7 @@ namespace MediaTranscodeEngine.Runtime.Plans;
 
 /*
 Это общий план транскодирования, который сценарий передает инструменту.
-В нем лежит общий intent без привязки к конкретному CLI-вызову или процессу ffmpeg.
+В нем лежит общий intent без renderer-specific деталей; reusable VideoSettings и explicit Downscale разделены отдельно.
 */
 /// <summary>
 /// Describes a tool-agnostic transcode intent produced by a scenario for a specific source video.

@@ -5,10 +5,10 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 
 /*
 Это request-модель сценария tomkvgpu.
-Она хранит только пользовательские указания, специфичные для этого сценария.
+Она хранит scenario-specific указания и теперь же отвечает за parsing raw CLI-аргументов этого сценария.
 */
 /// <summary>
-/// Captures scenario-specific directives for the legacy ToMkvGpu workflow.
+/// Captures scenario-specific directives for the legacy ToMkvGpu workflow and parses raw scenario arguments.
 /// </summary>
 public sealed class ToMkvGpuRequest
 {

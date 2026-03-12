@@ -4,10 +4,10 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 
 /*
 Это общий resolver profile-driven video settings.
-Он отдельно обслуживает ordinary encode и explicit downscale, но использует одну и ту же профильную математику.
+Он раздельно обслуживает ordinary encode и explicit downscale, но использует один и тот же каталог профилей, bounds и autosample-логику.
 */
 /// <summary>
-/// Resolves effective profile-driven video settings for encode and downscale paths.
+/// Resolves effective profile-driven video settings for encode and explicit downscale paths.
 /// </summary>
 internal sealed class VideoSettingsResolver
 {

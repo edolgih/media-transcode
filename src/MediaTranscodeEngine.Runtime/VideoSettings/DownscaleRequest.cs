@@ -2,6 +2,7 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 
 /*
 Это явное намерение downscale.
+Отдельный тип нужен, чтобы факт изменения высоты не угадывался по полям общего VideoSettingsRequest.
 */
 /// <summary>
 /// Captures explicit downscale intent and scaling-specific overrides.

@@ -4,7 +4,7 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 
 /*
 Это общий механизм autosample для video settings.
-Он используется и для ordinary encode, и для explicit downscale, если сценарий просит profile-driven подбор.
+Он используется и для ordinary encode, и для explicit downscale, когда сценарий хочет profile-driven подбор внутри corridor профиля.
 */
 /// <summary>
 /// Resolves autosampled video settings from a profile, an effective request, and source facts.

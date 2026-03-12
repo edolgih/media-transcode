@@ -2,7 +2,7 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 
 /*
 Это локальный execution spec сценария toh264gpu.
-В нем лежат узкие ffmpeg-детали, которые не должны попадать в общий TranscodePlan.
+В нем лежат узкие детали рендера ffmpeg-команды, которые больше не должны раздувать общий TranscodePlan.
 */
 /// <summary>
 /// Carries toh264gpu-specific ffmpeg rendering details outside the shared transcode plan.

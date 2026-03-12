@@ -9,7 +9,8 @@ namespace MediaTranscodeEngine.Cli.Processing;
 
 /*
 Это основная orchestration-реализация CLI:
-инспекция файла, построение сценария, получение плана и выбор tool для генерации итоговой команды или маркера.
+инспекция файла, построение сценария, получение общего плана и optional execution spec,
+а затем выбор tool для генерации итоговой команды или маркера.
 */
 /// <summary>
 /// Orchestrates the CLI flow from inspected source facts through scenario planning to tool execution output.

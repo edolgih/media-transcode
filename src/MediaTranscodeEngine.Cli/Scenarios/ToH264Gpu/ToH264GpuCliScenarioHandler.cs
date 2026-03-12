@@ -36,13 +36,13 @@ internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--content-profile <anime|mult|film>", "Quality-oriented content profile."),
         new CliHelpOption("--quality-profile <high|default|low>", "Quality-oriented quality profile."),
         new CliHelpOption("--autosample-mode <accurate|fast|hybrid>", "Autosample mode."),
-        new CliHelpOption("--downscale-algo <bicubic|lanczos|bilinear>", "scale_cuda interpolation algorithm."),
+        new CliHelpOption("--downscale-algo <bicubic|lanczos|bilinear>", "Downscale interpolation algorithm."),
         new CliHelpOption("--cq <1..51>", "Explicit CQ override."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s."),
         new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s."),
         new CliHelpOption("--nvenc-preset <p1..p7>", "Explicit NVENC preset override."),
-        new CliHelpOption("--denoise", "Enable hqdn3d in normal encode mode."),
-        new CliHelpOption("--sync-audio", "Use the sync-safe repair path and disable audio copy."),
+        new CliHelpOption("--denoise", "Enable denoise in normal encode mode."),
+        new CliHelpOption("--sync-audio", "Use the explicit audio-sync repair path."),
         new CliHelpOption("--mkv", "Write MKV instead of MP4.")
     ];
 

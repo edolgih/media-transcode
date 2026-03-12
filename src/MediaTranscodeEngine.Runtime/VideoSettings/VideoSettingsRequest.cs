@@ -2,7 +2,8 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 
 /*
 Это общая request-модель для video settings.
-Она хранит только общие quality/rate overrides и не несет явного намерения downscale.
+Она хранит только общие quality/rate overrides и используется и в ordinary encode, и рядом с explicit downscale,
+но сама по себе не несет намерения менять разрешение.
 */
 /// <summary>
 /// Captures reusable video-settings directives independent from a specific scenario.

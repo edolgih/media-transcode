@@ -1,8 +1,8 @@
 namespace MediaTranscodeEngine.Runtime.Scenarios;
 
 /*
-Это маркер для scenario-specific execution payload.
-Он нужен, когда общего плана недостаточно и сценарий хочет передать инструменту локальные детали исполнения.
+Это общий базовый тип для scenario-specific execution payload.
+Он нужен только тогда, когда общего TranscodePlan недостаточно и сценарий хочет передать tool-адаптеру локальные детали исполнения.
 */
 /// <summary>
 /// Represents an optional scenario-specific execution payload that a tool can consume alongside a shared transcode plan.

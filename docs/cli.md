@@ -68,7 +68,7 @@ dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario toh264gpu --inpu
 dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --content-profile film --quality-profile default --autosample-mode fast
 ```
 
-`toh264gpu` sync-safe repair path:
+`toh264gpu` explicit audio-sync repair path:
 
 ```bash
 dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --sync-audio --keep-source
@@ -89,6 +89,8 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 
 `tomkvgpu` options:
 
+Quality-oriented video settings:
+
 - `--keep-source`
 - `--overlay-bg`
 - `--downscale <720|576|480|424>`
@@ -105,6 +107,8 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 
 `toh264gpu` options:
 
+Quality-oriented video settings:
+
 - `--keep-source`
 - `--downscale <720|576|480|424>`
 - `--keep-fps`
@@ -113,10 +117,12 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--autosample-mode <accurate|fast|hybrid>`
 - `--downscale-algo <bilinear|bicubic|lanczos>`
 - `--cq <1..51>`
+- `--maxrate <number>`
+- `--bufsize <number>`
 - `--nvenc-preset <p1..p7>`
 - `--denoise`
 - `--sync-audio`
-  Uses the sync-safe repair path with async audio resample instead of audio copy.
+  Uses the explicit audio-sync repair path.
 - `--mkv`
 
 ## Requirements

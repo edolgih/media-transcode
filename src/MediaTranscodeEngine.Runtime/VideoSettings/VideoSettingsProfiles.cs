@@ -4,7 +4,7 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 
 /*
 Это реестр типизированных video-settings профилей runtime.
-Он хранит профили по целевой высоте и позволяет сценариям и tool-адаптерам брать их как данные.
+Он хранит profile data по целевой высоте и выступает единым source of truth для ordinary encode и downscale.
 */
 /// <summary>
 /// Provides typed video-settings profiles used by Runtime.
