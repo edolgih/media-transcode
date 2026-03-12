@@ -20,10 +20,10 @@ Info-only output:
 dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --info
 ```
 
-`downscale 576`:
+`downscale 720`:
 
 ```bash
-dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --downscale 576
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --downscale 720
 ```
 
 Explicit `576` profile:
@@ -62,6 +62,12 @@ dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario toh264gpu --inpu
 dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --downscale 576
 ```
 
+`toh264gpu` with explicit quality-oriented profile selection:
+
+```bash
+dotnet run --project src/MediaTranscodeEngine.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --content-profile film --quality-profile default --autosample-mode fast
+```
+
 `toh264gpu` sync-safe repair path:
 
 ```bash
@@ -85,12 +91,11 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 
 - `--keep-source`
 - `--overlay-bg`
-- `--downscale <576|480|424>`
+- `--downscale <720|576|480|424>`
 - `--max-fps <50|40|30|24>`
 - `--sync-audio`
 - `--content-profile <anime|mult|film>`
 - `--quality-profile <high|default|low>`
-- `--no-autosample`
 - `--autosample-mode <accurate|fast|hybrid>`
 - `--downscale-algo <bilinear|bicubic|lanczos>`
 - `--cq <int>`
@@ -101,8 +106,11 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 `toh264gpu` options:
 
 - `--keep-source`
-- `--downscale <720|576>`
+- `--downscale <720|576|480|424>`
 - `--keep-fps`
+- `--content-profile <anime|mult|film>`
+- `--quality-profile <high|default|low>`
+- `--autosample-mode <accurate|fast|hybrid>`
 - `--downscale-algo <bilinear|bicubic|lanczos>`
 - `--cq <1..51>`
 - `--nvenc-preset <p1..p7>`
