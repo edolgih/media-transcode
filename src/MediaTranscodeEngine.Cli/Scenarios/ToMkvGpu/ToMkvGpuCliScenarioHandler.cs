@@ -1,4 +1,3 @@
-using System.Globalization;
 using MediaTranscodeEngine.Cli.Parsing;
 using MediaTranscodeEngine.Runtime.VideoSettings;
 using MediaTranscodeEngine.Runtime.Plans;
@@ -18,21 +17,6 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 /// </summary>
 internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
 {
-    private const string SupportedDownscaleHeightsDisplay = "720, 576, 480, 424";
-    private const string DownscaleOptionName = "--downscale";
-    private const string KeepSourceOptionName = "--keep-source";
-    private const string OverlayBackgroundOptionName = "--overlay-bg";
-    private const string MaxFramesPerSecondOptionName = "--max-fps";
-    private const string SynchronizeAudioOptionName = "--sync-audio";
-    private const string ContentProfileOptionName = "--content-profile";
-    private const string QualityProfileOptionName = "--quality-profile";
-    private const string AutoSampleModeOptionName = "--autosample-mode";
-    private const string DownscaleAlgorithmOptionName = "--downscale-algo";
-    private const string CqOptionName = "--cq";
-    private const string MaxrateOptionName = "--maxrate";
-    private const string BufsizeOptionName = "--bufsize";
-    private const string NvencPresetOptionName = "--nvenc-preset";
-
     private readonly ToMkvGpuInfoFormatter _infoFormatter;
 
     /// <summary>
@@ -50,7 +34,7 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
 
     public IReadOnlyList<CliHelpOption> HelpOptions { get; } =
     [
-        new CliHelpOption("--downscale <720|576|480|424>", "Downscale target height."),
+        new CliHelpOption($"--downscale <{DownscaleRequest.SupportedTargetHeightsHelpDisplay}>", "Downscale target height."),
         new CliHelpOption("--keep-source", "Keep source file and write output to a new path."),
         new CliHelpOption("--overlay-bg", "Apply overlay background path during encode."),
         new CliHelpOption("--max-fps <50|40|30|24>", "Optional frame-rate cap. Supported values: 50, 40, 30, 24."),
@@ -94,7 +78,7 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     /// <returns><see langword="true"/> when the arguments are valid; otherwise <see langword="false"/>.</returns>
     public bool TryValidate(IReadOnlyList<string> args, out string? errorText)
     {
-        return TryCreateRuntimeRequest(args, out _, out errorText);
+        return ToMkvGpuRequest.TryParseArgs(args, out _, out errorText);
     }
 
     /// <summary>
@@ -154,313 +138,13 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (TryCreateRuntimeRequest(request.ScenarioArgs, out var runtimeRequest, out var errorText))
+        if (ToMkvGpuRequest.TryParseArgs(request.ScenarioArgs, out var runtimeRequest, out var errorText))
         {
             return runtimeRequest;
         }
 
         throw new InvalidOperationException(
             $"CLI request for scenario '{request.ScenarioName}' is invalid: {errorText}");
-    }
-
-    private static bool TryCreateRuntimeRequest(
-        IReadOnlyList<string> args,
-        out ToMkvGpuRequest request,
-        out string? errorText)
-    {
-        request = default!;
-        errorText = null;
-
-        var overlayBackground = false;
-        var synchronizeAudio = false;
-        var keepSource = false;
-        int? downscale = null;
-        int? maxFramesPerSecond = null;
-        int? cq = null;
-        decimal? maxrate = null;
-        decimal? bufsize = null;
-        string? contentProfile = null;
-        string? qualityProfile = null;
-        string? autoSampleMode = null;
-        string? algorithm = null;
-        string? nvencPreset = null;
-
-        for (var i = 0; i < args.Count; i++)
-        {
-            var token = args[i];
-            if (string.Equals(token, KeepSourceOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                keepSource = true;
-                continue;
-            }
-
-            if (string.Equals(token, OverlayBackgroundOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                overlayBackground = true;
-                continue;
-            }
-
-            if (string.Equals(token, SynchronizeAudioOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                synchronizeAudio = true;
-                continue;
-            }
-
-            if (string.Equals(token, DownscaleOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadInt(args, ref i, token, "--downscale must be an integer.", out downscale, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, MaxFramesPerSecondOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadInt(args, ref i, token, "--max-fps must be an integer.", out maxFramesPerSecond, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, CqOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadInt(args, ref i, token, "--cq must be an integer.", out cq, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, MaxrateOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadDecimal(args, ref i, token, "--maxrate must be a number.", out maxrate, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, BufsizeOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadDecimal(args, ref i, token, "--bufsize must be a number.", out bufsize, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, ContentProfileOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadString(args, ref i, token, out contentProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, QualityProfileOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadString(args, ref i, token, out qualityProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, AutoSampleModeOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadString(args, ref i, token, out autoSampleMode, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, DownscaleAlgorithmOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadString(args, ref i, token, out algorithm, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, NvencPresetOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TryReadString(args, ref i, token, out nvencPreset, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            errorText = token.StartsWith("-", StringComparison.Ordinal)
-                ? $"Unknown option: {token}"
-                : $"Unexpected argument: {token}";
-            return false;
-        }
-
-        if (maxFramesPerSecond.HasValue &&
-            !ToMkvGpuRequest.IsSupportedMaxFramesPerSecond(maxFramesPerSecond.Value))
-        {
-            errorText = $"--max-fps must be one of: {ToMkvGpuRequest.SupportedMaxFramesPerSecondDisplay}.";
-            return false;
-        }
-
-        if (downscale is > 0 &&
-            !IsSupportedDownscaleTarget(downscale.Value))
-        {
-            errorText = $"--downscale must be one of: {SupportedDownscaleHeightsDisplay}.";
-            return false;
-        }
-
-        if (downscale is null && !string.IsNullOrWhiteSpace(algorithm))
-        {
-            errorText = "--downscale-algo requires --downscale.";
-            return false;
-        }
-
-        try
-        {
-            var videoSettingsRequest = new VideoSettingsRequest(
-                contentProfile: contentProfile,
-                qualityProfile: qualityProfile,
-                autoSampleMode: autoSampleMode,
-                cq: cq,
-                maxrate: maxrate,
-                bufsize: bufsize);
-            var downscaleRequest = downscale.HasValue
-                ? new DownscaleRequest(downscale.Value, algorithm)
-                : null;
-
-            request = new ToMkvGpuRequest(
-                overlayBackground: overlayBackground,
-                synchronizeAudio: synchronizeAudio,
-                keepSource: keepSource,
-                videoSettings: videoSettingsRequest.HasValue ? videoSettingsRequest : null,
-                downscale: downscaleRequest,
-                nvencPreset: nvencPreset,
-                maxFramesPerSecond: maxFramesPerSecond);
-
-            return true;
-        }
-        catch (ArgumentOutOfRangeException exception)
-        {
-            errorText = exception.ParamName switch
-            {
-                "targetHeight" => "--downscale must be greater than zero.",
-                "cq" => "--cq must be greater than zero.",
-                "maxrate" => "--maxrate must be greater than zero.",
-                "bufsize" => "--bufsize must be greater than zero.",
-                "maxFramesPerSecond" => $"--max-fps must be one of: {ToMkvGpuRequest.SupportedMaxFramesPerSecondDisplay}.",
-                _ => exception.Message
-            };
-
-            return false;
-        }
-    }
-
-    private static bool TryReadString(
-        IReadOnlyList<string> args,
-        ref int index,
-        string optionName,
-        out string value,
-        out string? errorText)
-    {
-        return TryReadRequiredValue(args, ref index, optionName, out value, out errorText);
-    }
-
-    private static bool TryReadInt(
-        IReadOnlyList<string> args,
-        ref int index,
-        string optionName,
-        string invalidValueError,
-        out int? value,
-        out string? errorText)
-    {
-        value = null;
-        errorText = null;
-
-        if (!TryReadRequiredValue(args, ref index, optionName, out var token, out errorText))
-        {
-            return false;
-        }
-
-        if (!int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedValue))
-        {
-            errorText = invalidValueError;
-            return false;
-        }
-
-        value = parsedValue;
-        return true;
-    }
-
-    private static bool TryReadDecimal(
-        IReadOnlyList<string> args,
-        ref int index,
-        string optionName,
-        string invalidValueError,
-        out decimal? value,
-        out string? errorText)
-    {
-        value = null;
-        errorText = null;
-
-        if (!TryReadRequiredValue(args, ref index, optionName, out var token, out errorText))
-        {
-            return false;
-        }
-
-        if (!decimal.TryParse(token, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedValue))
-        {
-            errorText = invalidValueError;
-            return false;
-        }
-
-        value = parsedValue;
-        return true;
-    }
-
-    private static bool TryReadRequiredValue(
-        IReadOnlyList<string> args,
-        ref int index,
-        string optionName,
-        out string value,
-        out string? errorText)
-    {
-        value = string.Empty;
-        errorText = null;
-
-        var valueIndex = index + 1;
-        if (valueIndex >= args.Count)
-        {
-            errorText = $"{optionName} requires a value.";
-            return false;
-        }
-
-        var token = args[valueIndex];
-        if (token.StartsWith("-", StringComparison.Ordinal))
-        {
-            errorText = $"{optionName} requires a value.";
-            return false;
-        }
-
-        value = token;
-        index = valueIndex;
-        return true;
     }
 
     private static HandledFailure ClassifyFailure(ToMkvGpuRequest request, Exception exception)
@@ -507,11 +191,6 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         ProbeFailure,
         IoError,
         UnexpectedFailure
-    }
-
-    private static bool IsSupportedDownscaleTarget(int targetHeight)
-    {
-        return targetHeight is 720 or 576 or 480 or 424;
     }
 
     private sealed class HandledFailure

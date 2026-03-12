@@ -22,6 +22,16 @@ public sealed class VideoSettingsProfilesTests
     }
 
     [Fact]
+    public void GetSupportedDownscaleTargetHeights_WhenDefaultsAreRequested_ReturnsConfiguredTargets()
+    {
+        var sut = VideoSettingsProfiles.Default;
+
+        var actual = sut.GetSupportedDownscaleTargetHeights();
+
+        actual.Should().Equal(720, 576, 480, 424);
+    }
+
+    [Fact]
     public void Default_When720ProfileIsRequested_ResolvesFilmDefault()
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(720);

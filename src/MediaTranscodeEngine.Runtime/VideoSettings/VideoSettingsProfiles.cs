@@ -12,10 +12,16 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 internal sealed class VideoSettingsProfiles
 {
     private readonly IReadOnlyDictionary<int, VideoSettingsProfile> _profilesByTargetHeight;
+    private readonly int[] _supportedDownscaleTargetHeights;
 
     internal VideoSettingsProfiles(IReadOnlyDictionary<int, VideoSettingsProfile> profilesByTargetHeight)
     {
         _profilesByTargetHeight = profilesByTargetHeight;
+        _supportedDownscaleTargetHeights = profilesByTargetHeight.Values
+            .Where(static profile => profile.SupportsDownscale)
+            .OrderByDescending(static profile => profile.TargetHeight)
+            .Select(static profile => profile.TargetHeight)
+            .ToArray();
     }
 
     public static VideoSettingsProfiles Default { get; } = CreateDefault();
@@ -43,6 +49,17 @@ internal sealed class VideoSettingsProfiles
             .OrderBy(profile => Math.Abs(profile.TargetHeight - outputHeight))
             .ThenByDescending(profile => profile.TargetHeight)
             .First();
+    }
+
+    public IReadOnlyList<int> GetSupportedDownscaleTargetHeights()
+    {
+        return _supportedDownscaleTargetHeights;
+    }
+
+    public bool SupportsDownscaleTargetHeight(int targetHeight)
+    {
+        return _profilesByTargetHeight.TryGetValue(targetHeight, out var profile) &&
+               profile.SupportsDownscale;
     }
 
     internal static VideoSettingsProfiles Create(params VideoSettingsProfile[] profiles)

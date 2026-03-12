@@ -107,6 +107,7 @@ internal static class VideoSettings1080Profile
                 new VideoSettingsRange("film", "high", MinInclusive: 20.0m, MaxInclusive: 38.0m),
                 new VideoSettingsRange("film", "default", MinExclusive: 38.0m, MaxInclusive: 52.0m),
                 new VideoSettingsRange("film", "low", MinExclusive: 52.0m, MaxInclusive: 78.0m)
-            ]);
+            ],
+            supportsDownscale: false);
     }
 }

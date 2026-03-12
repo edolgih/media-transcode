@@ -1,4 +1,3 @@
-using System.Globalization;
 using MediaTranscodeEngine.Cli.Parsing;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios;
@@ -18,21 +17,6 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 /// </summary>
 internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
 {
-    private const string KeepSourceOptionName = "--keep-source";
-    private const string DownscaleOptionName = "--downscale";
-    private const string KeepFpsOptionName = "--keep-fps";
-    private const string ContentProfileOptionName = "--content-profile";
-    private const string QualityProfileOptionName = "--quality-profile";
-    private const string AutoSampleModeOptionName = "--autosample-mode";
-    private const string DownscaleAlgoOptionName = "--downscale-algo";
-    private const string CqOptionName = "--cq";
-    private const string MaxrateOptionName = "--maxrate";
-    private const string BufsizeOptionName = "--bufsize";
-    private const string NvencPresetOptionName = "--nvenc-preset";
-    private const string DenoiseOptionName = "--denoise";
-    private const string SynchronizeAudioOptionName = "--sync-audio";
-    private const string MkvOptionName = "--mkv";
-
     private readonly ToH264GpuInfoFormatter _infoFormatter;
 
     public ToH264GpuCliScenarioHandler(ToH264GpuInfoFormatter infoFormatter)
@@ -47,7 +31,7 @@ internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     public IReadOnlyList<CliHelpOption> HelpOptions =>
     [
         new CliHelpOption("--keep-source", "Keep the source file instead of replacing it when output path matches the input."),
-        new CliHelpOption("--downscale <720|576|480|424>", "GPU downscale when the source is higher than the target."),
+        new CliHelpOption($"--downscale <{DownscaleRequest.SupportedTargetHeightsHelpDisplay}>", "GPU downscale when the source is higher than the target."),
         new CliHelpOption("--keep-fps", "Keep the source FPS in downscale mode instead of capping to 30000/1001."),
         new CliHelpOption("--content-profile <anime|mult|film>", "Quality-oriented content profile."),
         new CliHelpOption("--quality-profile <high|default|low>", "Quality-oriented quality profile."),
@@ -76,14 +60,14 @@ internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
 
     public bool TryValidate(IReadOnlyList<string> args, out string? errorText)
     {
-        return TryParseRequest(args, out _, out errorText);
+        return ToH264GpuRequest.TryParseArgs(args, out _, out errorText);
     }
 
     public TranscodeScenario CreateScenario(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!TryParseRequest(request.ScenarioArgs, out var runtimeRequest, out var errorText))
+        if (!ToH264GpuRequest.TryParseArgs(request.ScenarioArgs, out var runtimeRequest, out var errorText))
         {
             throw new InvalidOperationException(errorText ?? "Invalid toh264gpu arguments.");
         }
@@ -141,275 +125,4 @@ internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
             $"{fileName}: [unexpected failure]");
     }
 
-    private static bool TryParseRequest(
-        IReadOnlyList<string> args,
-        out ToH264GpuRequest request,
-        out string? errorText)
-    {
-        request = null!;
-        errorText = null;
-
-        var keepSource = false;
-        var downscaleTargetHeight = (int?)null;
-        var keepFramesPerSecond = false;
-        string? downscaleAlgorithm = null;
-        var cq = (int?)null;
-        var maxrate = (decimal?)null;
-        var bufsize = (decimal?)null;
-        string? contentProfile = null;
-        string? qualityProfile = null;
-        string? autoSampleMode = null;
-        string? nvencPreset = null;
-        var denoise = false;
-        var synchronizeAudio = false;
-        var outputMkv = false;
-
-        for (var index = 0; index < args.Count; index++)
-        {
-            var token = args[index];
-            switch (token)
-            {
-                case KeepSourceOptionName:
-                    keepSource = true;
-                    break;
-
-                case DownscaleOptionName:
-                    if (!TryReadInt(args, ref index, DownscaleOptionName, "--downscale must be 720, 576, 480 or 424.", out downscaleTargetHeight, out errorText))
-                    {
-                        return false;
-                    }
-
-                    if (downscaleTargetHeight is not (720 or 576 or 480 or 424))
-                    {
-                        errorText = "--downscale must be 720, 576, 480 or 424.";
-                        return false;
-                    }
-
-                    break;
-
-                case KeepFpsOptionName:
-                    keepFramesPerSecond = true;
-                    break;
-
-                case ContentProfileOptionName:
-                    if (!TryReadString(args, ref index, ContentProfileOptionName, out contentProfile, out errorText))
-                    {
-                        return false;
-                    }
-
-                    break;
-
-                case QualityProfileOptionName:
-                    if (!TryReadString(args, ref index, QualityProfileOptionName, out qualityProfile, out errorText))
-                    {
-                        return false;
-                    }
-
-                    break;
-
-                case AutoSampleModeOptionName:
-                    if (!TryReadString(args, ref index, AutoSampleModeOptionName, out autoSampleMode, out errorText))
-                    {
-                        return false;
-                    }
-
-                    break;
-
-                case DownscaleAlgoOptionName:
-                    if (!TryReadString(args, ref index, DownscaleAlgoOptionName, out downscaleAlgorithm, out errorText))
-                    {
-                        return false;
-                    }
-
-                    if (downscaleAlgorithm is not ("bicubic" or "lanczos" or "bilinear"))
-                    {
-                        errorText = "--downscale-algo must be one of: bicubic, lanczos, bilinear.";
-                        return false;
-                    }
-
-                    break;
-
-                case CqOptionName:
-                    if (!TryReadInt(args, ref index, CqOptionName, "--cq must be an integer from 1 to 51.", out cq, out errorText))
-                    {
-                        return false;
-                    }
-
-                    if (!cq.HasValue || cq.Value <= 0 || cq.Value > 51)
-                    {
-                        errorText = "--cq must be an integer from 1 to 51.";
-                        return false;
-                    }
-
-                    break;
-
-                case MaxrateOptionName:
-                    if (!TryReadDecimal(args, ref index, MaxrateOptionName, "--maxrate must be a number.", out maxrate, out errorText))
-                    {
-                        return false;
-                    }
-
-                    if (!maxrate.HasValue || maxrate.Value <= 0m)
-                    {
-                        errorText = "--maxrate must be greater than zero.";
-                        return false;
-                    }
-
-                    break;
-
-                case BufsizeOptionName:
-                    if (!TryReadDecimal(args, ref index, BufsizeOptionName, "--bufsize must be a number.", out bufsize, out errorText))
-                    {
-                        return false;
-                    }
-
-                    if (!bufsize.HasValue || bufsize.Value <= 0m)
-                    {
-                        errorText = "--bufsize must be greater than zero.";
-                        return false;
-                    }
-
-                    break;
-
-                case NvencPresetOptionName:
-                    if (!TryReadString(args, ref index, NvencPresetOptionName, out nvencPreset, out errorText))
-                    {
-                        return false;
-                    }
-
-                    if (nvencPreset is not ("p1" or "p2" or "p3" or "p4" or "p5" or "p6" or "p7"))
-                    {
-                        errorText = "--nvenc-preset must be one of: p1, p2, p3, p4, p5, p6, p7.";
-                        return false;
-                    }
-
-                    break;
-
-                case DenoiseOptionName:
-                    denoise = true;
-                    break;
-
-                case SynchronizeAudioOptionName:
-                    synchronizeAudio = true;
-                    break;
-
-                case MkvOptionName:
-                    outputMkv = true;
-                    break;
-
-                default:
-                    errorText = $"Unexpected argument: {token}";
-                    return false;
-            }
-        }
-
-        if (!downscaleTargetHeight.HasValue && !string.IsNullOrWhiteSpace(downscaleAlgorithm))
-        {
-            errorText = "--downscale-algo requires --downscale.";
-            return false;
-        }
-
-        var videoSettingsRequest = new VideoSettingsRequest(
-            contentProfile: contentProfile,
-            qualityProfile: qualityProfile,
-            autoSampleMode: autoSampleMode,
-            cq: cq,
-            maxrate: maxrate,
-            bufsize: bufsize);
-        var downscaleRequest = downscaleTargetHeight.HasValue
-            ? new DownscaleRequest(downscaleTargetHeight.Value, downscaleAlgorithm)
-            : null;
-
-        request = new ToH264GpuRequest(
-            keepSource: keepSource,
-            downscale: downscaleRequest,
-            keepFramesPerSecond: keepFramesPerSecond,
-            videoSettings: videoSettingsRequest.HasValue ? videoSettingsRequest : null,
-            nvencPreset: nvencPreset,
-            denoise: denoise,
-            synchronizeAudio: synchronizeAudio,
-            outputMkv: outputMkv);
-        return true;
-    }
-
-    private static bool TryReadString(
-        IReadOnlyList<string> args,
-        ref int index,
-        string optionName,
-        out string value,
-        out string? errorText)
-    {
-        value = string.Empty;
-        errorText = null;
-
-        var valueIndex = index + 1;
-        if (valueIndex >= args.Count)
-        {
-            errorText = $"{optionName} requires a value.";
-            return false;
-        }
-
-        var token = args[valueIndex];
-        if (token.StartsWith("-", StringComparison.Ordinal))
-        {
-            errorText = $"{optionName} requires a value.";
-            return false;
-        }
-
-        value = token.Trim().ToLowerInvariant();
-        index = valueIndex;
-        return true;
-    }
-
-    private static bool TryReadInt(
-        IReadOnlyList<string> args,
-        ref int index,
-        string optionName,
-        string invalidValueError,
-        out int? value,
-        out string? errorText)
-    {
-        value = null;
-        errorText = null;
-
-        if (!TryReadString(args, ref index, optionName, out var token, out errorText))
-        {
-            return false;
-        }
-
-        if (!int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedValue))
-        {
-            errorText = invalidValueError;
-            return false;
-        }
-
-        value = parsedValue;
-        return true;
-    }
-
-    private static bool TryReadDecimal(
-        IReadOnlyList<string> args,
-        ref int index,
-        string optionName,
-        string invalidValueError,
-        out decimal? value,
-        out string? errorText)
-    {
-        value = null;
-        errorText = null;
-
-        if (!TryReadString(args, ref index, optionName, out var token, out errorText))
-        {
-            return false;
-        }
-
-        if (!decimal.TryParse(token, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedValue))
-        {
-            errorText = invalidValueError;
-            return false;
-        }
-
-        value = parsedValue;
-        return true;
-    }
 }

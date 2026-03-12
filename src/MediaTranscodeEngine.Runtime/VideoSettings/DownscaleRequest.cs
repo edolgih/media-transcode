@@ -8,6 +8,24 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 /// </summary>
 public sealed class DownscaleRequest
 {
+    private static readonly int[] SupportedTargetHeightsValues =
+        [.. VideoSettingsProfiles.Default.GetSupportedDownscaleTargetHeights()];
+
+    /// <summary>
+    /// Gets target heights that are supported by configured downscale profiles.
+    /// </summary>
+    public static IReadOnlyList<int> SupportedTargetHeights => SupportedTargetHeightsValues;
+
+    /// <summary>
+    /// Gets a display string for supported downscale target heights.
+    /// </summary>
+    public static string SupportedTargetHeightsDisplay => string.Join(", ", SupportedTargetHeightsValues);
+
+    /// <summary>
+    /// Gets a help-token string for supported downscale target heights.
+    /// </summary>
+    public static string SupportedTargetHeightsHelpDisplay => string.Join("|", SupportedTargetHeightsValues);
+
     /// <summary>
     /// Initializes explicit downscale directives.
     /// </summary>
@@ -18,6 +36,14 @@ public sealed class DownscaleRequest
         if (targetHeight <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(targetHeight), targetHeight, "Target height must be greater than zero.");
+        }
+
+        if (!IsSupportedTargetHeight(targetHeight))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(targetHeight),
+                targetHeight,
+                $"Supported values: {SupportedTargetHeightsDisplay}.");
         }
 
         TargetHeight = targetHeight;
@@ -33,6 +59,14 @@ public sealed class DownscaleRequest
     /// Gets the explicit scaling algorithm override.
     /// </summary>
     public string? Algorithm { get; }
+
+    /// <summary>
+    /// Determines whether the supplied target height is supported by configured downscale profiles.
+    /// </summary>
+    public static bool IsSupportedTargetHeight(int targetHeight)
+    {
+        return Array.IndexOf(SupportedTargetHeightsValues, targetHeight) >= 0;
+    }
 
     private static string? NormalizeName(string? value)
     {

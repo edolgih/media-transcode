@@ -26,7 +26,8 @@ internal sealed class VideoSettingsProfile
         IReadOnlyList<SourceHeightBucket> sourceBuckets,
         IReadOnlyList<VideoSettingsDefaults> defaults,
         IReadOnlyList<VideoSettingsRange>? globalContentRanges = null,
-        IReadOnlyList<VideoSettingsQualityRange>? globalQualityRanges = null)
+        IReadOnlyList<VideoSettingsQualityRange>? globalQualityRanges = null,
+        bool supportsDownscale = true)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultContentProfile);
@@ -35,6 +36,7 @@ internal sealed class VideoSettingsProfile
         ArgumentNullException.ThrowIfNull(autoSampling);
 
         TargetHeight = targetHeight;
+        SupportsDownscale = supportsDownscale;
         DefaultContentProfile = defaultContentProfile.Trim().ToLowerInvariant();
         DefaultQualityProfile = defaultQualityProfile.Trim().ToLowerInvariant();
         RateModel = rateModel;
@@ -57,6 +59,8 @@ internal sealed class VideoSettingsProfile
     }
 
     public int TargetHeight { get; }
+
+    public bool SupportsDownscale { get; }
 
     public string DefaultContentProfile { get; }
 
