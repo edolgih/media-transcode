@@ -52,7 +52,6 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var targetFramesPerSecond = copyVideo
             ? (double?)null
             : ResolveTargetFramesPerSecond(video, useDownscale);
-        var ffmpegOptions = BuildFfmpegOptions(video, copyVideo, copyAudio, useDownscale, targetContainer, downscaleRequest, videoSettingsRequest);
 
         return new TranscodePlan(
             targetContainer: targetContainer,
@@ -70,8 +69,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             keepSource: Request.KeepSource,
             encoderPreset: copyVideo ? null : (Request.NvencPreset ?? "p6"),
             outputPath: ResolveOutputPath(video, targetContainer),
-            synchronizeAudio: synchronizeAudio,
-            ffmpegOptions: ffmpegOptions);
+            synchronizeAudio: synchronizeAudio);
+    }
+
+    /// <inheritdoc />
+    protected override TranscodeExecutionSpec? BuildExecutionSpecCore(SourceVideo video, TranscodePlan plan)
+    {
+        return BuildToH264GpuExecutionSpec(video, plan);
     }
 
     private bool CanCopyVideo(SourceVideo video, string targetContainer, bool useDownscale)
@@ -135,22 +139,21 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return video.FramesPerSecond;
     }
 
-    private FfmpegOptions BuildFfmpegOptions(
-        SourceVideo video,
-        bool copyVideo,
-        bool copyAudio,
-        bool useDownscale,
-        string targetContainer,
-        DownscaleRequest? downscaleRequest,
-        VideoSettingsRequest? videoSettingsRequest)
+    private ToH264GpuExecutionSpec BuildToH264GpuExecutionSpec(SourceVideo video, TranscodePlan plan)
     {
+        var copyVideo = plan.CopyVideo;
+        var copyAudio = plan.CopyAudio;
+        var useDownscale = plan.Downscale is not null;
+        var targetContainer = plan.TargetContainer;
+        var downscaleRequest = plan.Downscale;
+        var videoSettingsRequest = plan.VideoSettings;
         var audioBitrateKbps = ResolveAudioBitrateKbps(video);
         var videoSettings = copyVideo
             ? null
             : ResolveVideoSettings(video, useDownscale, downscaleRequest, videoSettingsRequest);
         var usesAmrAudio = IsAmrNb(video.PrimaryAudioCodec);
 
-        return new FfmpegOptions(
+        return new ToH264GpuExecutionSpec(
             optimizeForFastStart: targetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
             mapPrimaryAudioOnly: true,
             useHardwareDecode: copyVideo ? null : useDownscale,

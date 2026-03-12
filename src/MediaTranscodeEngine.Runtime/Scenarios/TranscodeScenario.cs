@@ -37,9 +37,34 @@ public abstract class TranscodeScenario
     }
 
     /// <summary>
+    /// Builds an optional scenario-specific execution payload for the supplied source video and shared plan.
+    /// </summary>
+    /// <param name="video">Source video facts used by the scenario.</param>
+    /// <param name="plan">Already built shared transcode plan.</param>
+    /// <returns>Scenario-specific execution payload when needed; otherwise <see langword="null"/>.</returns>
+    public TranscodeExecutionSpec? BuildExecutionSpec(SourceVideo video, TranscodePlan plan)
+    {
+        ArgumentNullException.ThrowIfNull(video);
+        ArgumentNullException.ThrowIfNull(plan);
+
+        return BuildExecutionSpecCore(video, plan);
+    }
+
+    /// <summary>
     /// Builds a tool-agnostic transcode plan for the supplied source video.
     /// </summary>
     /// <param name="video">Source video facts used by the scenario.</param>
     /// <returns>A tool-agnostic transcode plan.</returns>
     protected abstract TranscodePlan BuildPlanCore(SourceVideo video);
+
+    /// <summary>
+    /// Builds an optional scenario-specific execution payload for the supplied source video and shared plan.
+    /// </summary>
+    /// <param name="video">Source video facts used by the scenario.</param>
+    /// <param name="plan">Already built shared transcode plan.</param>
+    /// <returns>Scenario-specific execution payload when needed; otherwise <see langword="null"/>.</returns>
+    protected virtual TranscodeExecutionSpec? BuildExecutionSpecCore(SourceVideo video, TranscodePlan plan)
+    {
+        return null;
+    }
 }

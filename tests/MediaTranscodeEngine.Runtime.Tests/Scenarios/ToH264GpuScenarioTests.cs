@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 using MediaTranscodeEngine.Runtime.Videos;
 
@@ -18,15 +19,15 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["aac"]);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
         actual.TargetContainer.Should().Be("mp4");
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
         actual.TargetVideoCodec.Should().BeNull();
         actual.OutputPath.Should().Be(@"C:\video\input.mp4");
-        actual.FfmpegOptions.Should().NotBeNull();
-        actual.FfmpegOptions!.OptimizeForFastStart.Should().BeTrue();
-        actual.FfmpegOptions.MapPrimaryAudioOnly.Should().BeTrue();
+        spec.OptimizeForFastStart.Should().BeTrue();
+        spec.MapPrimaryAudioOnly.Should().BeTrue();
     }
 
     [Fact]
@@ -138,10 +139,11 @@ public sealed class ToH264GpuScenarioTests
             primaryAudioBitrate: 192_000);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
-        actual.FfmpegOptions!.AudioBitrateKbps.Should().Be(192);
+        spec.AudioBitrateKbps.Should().Be(192);
     }
 
     [Fact]
@@ -157,8 +159,9 @@ public sealed class ToH264GpuScenarioTests
             primaryAudioBitrate: null);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.FfmpegOptions!.AudioBitrateKbps.Should().Be(192);
+        spec.AudioBitrateKbps.Should().Be(192);
     }
 
     [Fact]
@@ -175,11 +178,12 @@ public sealed class ToH264GpuScenarioTests
             bitrate: null);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
         actual.CopyVideo.Should().BeFalse();
-        actual.FfmpegOptions!.VideoCq.Should().Be(21);
-        actual.FfmpegOptions.VideoMaxrateKbps.Should().Be(5200);
-        actual.FfmpegOptions.VideoBufferSizeKbps.Should().Be(10400);
+        spec.VideoCq.Should().Be(21);
+        spec.VideoMaxrateKbps.Should().Be(5200);
+        spec.VideoBufferSizeKbps.Should().Be(10400);
     }
 
     [Fact]
@@ -194,10 +198,11 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"]);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.FfmpegOptions!.VideoCq.Should().Be(19);
-        actual.FfmpegOptions.VideoMaxrateKbps.Should().Be(6000);
-        actual.FfmpegOptions.VideoBufferSizeKbps.Should().Be(12000);
+        spec.VideoCq.Should().Be(19);
+        spec.VideoMaxrateKbps.Should().Be(6000);
+        spec.VideoBufferSizeKbps.Should().Be(12000);
     }
 
     [Fact]
@@ -214,10 +219,11 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"]);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.FfmpegOptions!.VideoCq.Should().Be(23);
-        actual.FfmpegOptions.VideoMaxrateKbps.Should().Be(2600);
-        actual.FfmpegOptions.VideoBufferSizeKbps.Should().Be(5200);
+        spec.VideoCq.Should().Be(23);
+        spec.VideoMaxrateKbps.Should().Be(2600);
+        spec.VideoBufferSizeKbps.Should().Be(5200);
     }
 
     [Fact]
@@ -265,9 +271,10 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"]);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.FfmpegOptions!.EnableAdaptiveQuantization.Should().BeTrue();
-        actual.FfmpegOptions.AqStrength.Should().BeNull();
+        spec.EnableAdaptiveQuantization.Should().BeTrue();
+        spec.AqStrength.Should().BeNull();
     }
 
     [Fact]
@@ -344,11 +351,12 @@ public sealed class ToH264GpuScenarioTests
             height: 1080);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
         actual.TargetHeight.Should().Be(576);
-        actual.FfmpegOptions!.VideoCq.Should().Be(23);
-        actual.FfmpegOptions.VideoMaxrateKbps.Should().Be(2400);
-        actual.FfmpegOptions.VideoBufferSizeKbps.Should().Be(4800);
+        spec.VideoCq.Should().Be(23);
+        spec.VideoMaxrateKbps.Should().Be(2400);
+        spec.VideoBufferSizeKbps.Should().Be(4800);
     }
 
     [Fact]
@@ -367,11 +375,12 @@ public sealed class ToH264GpuScenarioTests
             height: 1080);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
         actual.TargetHeight.Should().Be(480);
-        actual.FfmpegOptions!.VideoCq.Should().Be(27);
-        actual.FfmpegOptions.VideoMaxrateKbps.Should().Be(2600);
-        actual.FfmpegOptions.VideoBufferSizeKbps.Should().Be(5200);
+        spec.VideoCq.Should().Be(27);
+        spec.VideoMaxrateKbps.Should().Be(2600);
+        spec.VideoBufferSizeKbps.Should().Be(5200);
     }
 
     [Fact]
@@ -390,11 +399,12 @@ public sealed class ToH264GpuScenarioTests
             height: 1080);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
         actual.TargetHeight.Should().Be(424);
-        actual.FfmpegOptions!.VideoCq.Should().Be(26);
-        actual.FfmpegOptions.VideoMaxrateKbps.Should().Be(2900);
-        actual.FfmpegOptions.VideoBufferSizeKbps.Should().Be(5800);
+        spec.VideoCq.Should().Be(26);
+        spec.VideoMaxrateKbps.Should().Be(2900);
+        spec.VideoBufferSizeKbps.Should().Be(5800);
     }
 
     [Fact]
@@ -410,8 +420,9 @@ public sealed class ToH264GpuScenarioTests
             primaryAudioBitrate: 192_000);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.FfmpegOptions!.AudioBitrateKbps.Should().Be(192);
+        spec.AudioBitrateKbps.Should().Be(192);
     }
 
     [Fact]
@@ -427,8 +438,9 @@ public sealed class ToH264GpuScenarioTests
             primaryAudioBitrate: 384_000);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.FfmpegOptions!.AudioBitrateKbps.Should().Be(320);
+        spec.AudioBitrateKbps.Should().Be(320);
     }
 
     [Fact]
@@ -444,8 +456,9 @@ public sealed class ToH264GpuScenarioTests
             primaryAudioBitrate: 32_000);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.FfmpegOptions!.AudioBitrateKbps.Should().Be(48);
+        spec.AudioBitrateKbps.Should().Be(48);
     }
 
     [Fact]
@@ -461,16 +474,22 @@ public sealed class ToH264GpuScenarioTests
             primaryAudioBitrate: 12_000);
 
         var actual = sut.BuildPlan(video);
+        var spec = BuildExecutionSpec(sut, video, actual);
 
         actual.CopyAudio.Should().BeFalse();
-        actual.FfmpegOptions!.AudioSampleRate.Should().Be(48000);
-        actual.FfmpegOptions.AudioChannels.Should().Be(1);
-        actual.FfmpegOptions.AudioFilter.Should().Be("aresample=48000:async=1:first_pts=0");
+        spec.AudioSampleRate.Should().Be(48000);
+        spec.AudioChannels.Should().Be(1);
+        spec.AudioFilter.Should().Be("aresample=48000:async=1:first_pts=0");
     }
 
     private static ToH264GpuScenario CreateSut(ToH264GpuRequest? request = null)
     {
         return new ToH264GpuScenario(request);
+    }
+
+    private static ToH264GpuExecutionSpec BuildExecutionSpec(ToH264GpuScenario sut, SourceVideo video, TranscodePlan plan)
+    {
+        return sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToH264GpuExecutionSpec>().Subject;
     }
 
     private static SourceVideo CreateVideo(

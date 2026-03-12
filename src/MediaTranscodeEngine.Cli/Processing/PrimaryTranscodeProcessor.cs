@@ -1,5 +1,6 @@
 using MediaTranscodeEngine.Cli.Scenarios;
 using MediaTranscodeEngine.Runtime.Plans;
+using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Tools;
 using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.Logging;
@@ -62,6 +63,7 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             var video = _videoInspector.Load(request.InputPath);
             LogVideoInspected(video);
             var plan = scenario.BuildPlan(video);
+            var executionSpec = scenario.BuildExecutionSpec(video, plan);
             LogPlanBuilt(request, plan);
 
             if (request.Info)
@@ -70,8 +72,8 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
                 return scenarioHandler.FormatInfo(request, video, plan);
             }
 
-            var tool = ResolveTool(plan);
-            var execution = tool.BuildExecution(video, plan);
+            var tool = ResolveTool(plan, executionSpec);
+            var execution = tool.BuildExecution(video, plan, executionSpec);
             _logger.LogInformation(
                 "Tool execution built. InputPath={InputPath} ToolName={ToolName} CommandCount={CommandCount} IsEmpty={IsEmpty}",
                 request.InputPath,
@@ -145,9 +147,9 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         throw new NotSupportedException($"Scenario '{scenarioName}' is not supported by Runtime CLI.");
     }
 
-    private ITranscodeTool ResolveTool(TranscodePlan plan)
+    private ITranscodeTool ResolveTool(TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
     {
-        var tool = _transcodeTools.FirstOrDefault(candidate => candidate.CanHandle(plan));
+        var tool = _transcodeTools.FirstOrDefault(candidate => candidate.CanHandle(plan, executionSpec));
         if (tool is not null)
         {
             return tool;

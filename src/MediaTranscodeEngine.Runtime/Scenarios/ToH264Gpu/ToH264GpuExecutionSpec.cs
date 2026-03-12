@@ -1,18 +1,18 @@
-namespace MediaTranscodeEngine.Runtime.Plans;
+namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 
 /*
-Это узкий контейнер ffmpeg-специфичных подсказок для сценариев.
-Он нужен там, где одного общего TranscodePlan недостаточно для точной формы команды.
+Это локальный execution spec сценария toh264gpu.
+В нем лежат узкие ffmpeg-детали, которые не должны попадать в общий TranscodePlan.
 */
 /// <summary>
-/// Carries optional ffmpeg-specific rendering hints for scenarios that need a narrower command shape than the shared defaults.
+/// Carries toh264gpu-specific ffmpeg rendering details outside the shared transcode plan.
 /// </summary>
-public sealed class FfmpegOptions
+public sealed class ToH264GpuExecutionSpec : TranscodeExecutionSpec
 {
     /// <summary>
-    /// Initializes ffmpeg-specific rendering hints.
+    /// Initializes toh264gpu-specific rendering details.
     /// </summary>
-    public FfmpegOptions(
+    public ToH264GpuExecutionSpec(
         bool optimizeForFastStart = false,
         bool mapPrimaryAudioOnly = false,
         bool? useHardwareDecode = null,

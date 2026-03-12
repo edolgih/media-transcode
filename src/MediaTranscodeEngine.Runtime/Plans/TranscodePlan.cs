@@ -30,7 +30,6 @@ public sealed record TranscodePlan
     /// <param name="outputPath">Optional explicit output path.</param>
     /// <param name="applyOverlayBackground">Whether the plan requests background overlay during video encoding.</param>
     /// <param name="synchronizeAudio">Whether the plan requests the sync-safe audio path.</param>
-    /// <param name="ffmpegOptions">Optional narrow ffmpeg-specific rendering hints.</param>
     public TranscodePlan(
         string targetContainer,
         string? targetVideoCodec,
@@ -47,8 +46,7 @@ public sealed record TranscodePlan
         string? encoderPreset = null,
         string? outputPath = null,
         bool applyOverlayBackground = false,
-        bool synchronizeAudio = false,
-        FfmpegOptions? ffmpegOptions = null)
+        bool synchronizeAudio = false)
         : this(
             targetContainer,
             targetVideoCodec,
@@ -66,8 +64,7 @@ public sealed record TranscodePlan
             encoderPreset,
             outputPath,
             applyOverlayBackground,
-            synchronizeAudio,
-            ffmpegOptions)
+            synchronizeAudio)
     {
     }
 
@@ -91,7 +88,6 @@ public sealed record TranscodePlan
     /// <param name="outputPath">Optional explicit output path.</param>
     /// <param name="applyOverlayBackground">Whether the plan requests background overlay during video encoding.</param>
     /// <param name="synchronizeAudio">Whether the plan requests the sync-safe audio path.</param>
-    /// <param name="ffmpegOptions">Optional narrow ffmpeg-specific rendering hints.</param>
     public TranscodePlan(
         string targetContainer,
         string? targetVideoCodec,
@@ -109,8 +105,7 @@ public sealed record TranscodePlan
         string? encoderPreset = null,
         string? outputPath = null,
         bool applyOverlayBackground = false,
-        bool synchronizeAudio = false,
-        FfmpegOptions? ffmpegOptions = null)
+        bool synchronizeAudio = false)
     {
         TargetContainer = NormalizeRequiredToken(targetContainer, nameof(targetContainer));
         TargetHeight = NormalizeOptionalPositiveInt(targetHeight, nameof(targetHeight));
@@ -128,7 +123,6 @@ public sealed record TranscodePlan
         OutputPath = NormalizeOptionalPath(outputPath);
         ApplyOverlayBackground = applyOverlayBackground;
         SynchronizeAudio = synchronizeAudio;
-        FfmpegOptions = ffmpegOptions;
 
         if (CopyVideo)
         {
@@ -254,11 +248,6 @@ public sealed record TranscodePlan
     /// Gets a value indicating whether the scenario requests the sync-safe audio path.
     /// </summary>
     public bool SynchronizeAudio { get; }
-
-    /// <summary>
-    /// Gets optional ffmpeg-specific rendering hints.
-    /// </summary>
-    public FfmpegOptions? FfmpegOptions { get; }
 
     /// <summary>
     /// Gets a value indicating whether the plan requires video encoding.

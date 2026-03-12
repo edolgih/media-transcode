@@ -25,17 +25,17 @@ public sealed class FfmpegToolTests
     }
 
     [Fact]
-    public void CanHandle_WhenMp4TargetAndFfmpegOptionsAreProvided_ReturnsTrue()
+    public void CanHandle_WhenMp4TargetAndExecutionSpecAreProvided_ReturnsTrue()
     {
         var sut = CreateToH264GpuSut();
         var plan = CreatePlan(
             copyVideo: true,
             copyAudio: true,
             targetContainer: "mp4",
-            outputPath: @"C:\video\input.mp4",
-            ffmpegOptions: new FfmpegOptions(optimizeForFastStart: true));
+            outputPath: @"C:\video\input.mp4");
+        var spec = CreateToH264GpuExecutionSpec(optimizeForFastStart: true);
 
-        var actual = sut.CanHandle(plan);
+        var actual = sut.CanHandle(plan, spec);
 
         actual.Should().BeTrue();
     }
@@ -69,12 +69,12 @@ public sealed class FfmpegToolTests
             copyVideo: true,
             copyAudio: true,
             targetContainer: "mp4",
-            outputPath: @"C:\video\input.mp4",
-            ffmpegOptions: new FfmpegOptions(
-                optimizeForFastStart: true,
-                mapPrimaryAudioOnly: true));
+            outputPath: @"C:\video\input.mp4");
+        var spec = CreateToH264GpuExecutionSpec(
+            optimizeForFastStart: true,
+            mapPrimaryAudioOnly: true);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-map 0:a:0? -c:a copy");
@@ -91,10 +91,10 @@ public sealed class FfmpegToolTests
             copyVideo: true,
             copyAudio: true,
             targetContainer: "mp4",
-            outputPath: @"C:\video\input.mp4",
-            ffmpegOptions: new FfmpegOptions(optimizeForFastStart: true));
+            outputPath: @"C:\video\input.mp4");
+        var spec = CreateToH264GpuExecutionSpec(optimizeForFastStart: true);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.IsEmpty.Should().BeFalse();
         actual.Commands.Should().HaveCount(3);
@@ -153,11 +153,11 @@ public sealed class FfmpegToolTests
             copyAudio: false,
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
-            ffmpegOptions: new FfmpegOptions(mapPrimaryAudioOnly: true),
             outputPath: @"C:\video\input.mp4",
             targetContainer: "mp4");
+        var spec = CreateToH264GpuExecutionSpec(mapPrimaryAudioOnly: true);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-map 0:a:0? -c:a aac");
         actual.Commands[0].Should().NotContain("-map 0:a? -c:a aac");
@@ -215,14 +215,14 @@ public sealed class FfmpegToolTests
             copyAudio: false,
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
-            ffmpegOptions: new FfmpegOptions(
-                videoBitrateKbps: 1400,
-                videoMaxrateKbps: 2200,
-                videoBufferSizeKbps: 4400),
             outputPath: @"C:\video\input.mp4",
             targetContainer: "mp4");
+        var spec = CreateToH264GpuExecutionSpec(
+            videoBitrateKbps: 1400,
+            videoMaxrateKbps: 2200,
+            videoBufferSizeKbps: 4400);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-rc vbr -b:v 1400k -maxrate 2200k -bufsize 4400k");
     }
@@ -237,11 +237,11 @@ public sealed class FfmpegToolTests
             copyAudio: false,
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
-            ffmpegOptions: new FfmpegOptions(videoCq: 21),
             outputPath: @"C:\video\input.mp4",
             targetContainer: "mp4");
+        var spec = CreateToH264GpuExecutionSpec(videoCq: 21);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-rc vbr_hq -cq 21 -b:v 0");
         actual.Commands[0].Should().NotContain("-maxrate ");
@@ -257,11 +257,11 @@ public sealed class FfmpegToolTests
             copyAudio: false,
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
-            ffmpegOptions: new FfmpegOptions(videoCq: 21),
             outputPath: @"C:\video\input.mp4",
             targetContainer: "mp4");
+        var spec = CreateToH264GpuExecutionSpec(videoCq: 21);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-preset p6");
     }
@@ -276,15 +276,15 @@ public sealed class FfmpegToolTests
             copyAudio: false,
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
-            ffmpegOptions: new FfmpegOptions(
-                audioBitrateKbps: 96,
-                audioSampleRate: 48000,
-                audioChannels: 1,
-                audioFilter: "aresample=48000:async=1:first_pts=0"),
             outputPath: @"C:\video\input.mp4",
             targetContainer: "mp4");
+        var spec = CreateToH264GpuExecutionSpec(
+            audioBitrateKbps: 96,
+            audioSampleRate: 48000,
+            audioChannels: 1,
+            audioFilter: "aresample=48000:async=1:first_pts=0");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-c:a aac -ar 48000 -ac 1 -b:a 96k -af \"aresample=48000:async=1:first_pts=0\"");
     }
@@ -299,12 +299,11 @@ public sealed class FfmpegToolTests
             copyAudio: false,
             fixTimestamps: true,
             synchronizeAudio: true,
-            ffmpegOptions: new FfmpegOptions(
-                mapPrimaryAudioOnly: true),
             outputPath: @"C:\video\input.mp4",
             targetContainer: "mp4");
+        var spec = CreateToH264GpuExecutionSpec(mapPrimaryAudioOnly: true);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-copytb 1");
@@ -324,14 +323,14 @@ public sealed class FfmpegToolTests
             copyAudio: false,
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
-            ffmpegOptions: new FfmpegOptions(
-                useHardwareDecode: false,
-                videoFilter: "hqdn3d=1.2:1.2:6:6",
-                pixelFormat: "yuv420p"),
             outputPath: @"C:\video\input.mp4",
             targetContainer: "mp4");
+        var spec = CreateToH264GpuExecutionSpec(
+            useHardwareDecode: false,
+            videoFilter: "hqdn3d=1.2:1.2:6:6",
+            pixelFormat: "yuv420p");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, spec);
 
         actual.Commands[0].Should().Contain("-vf \"hqdn3d=1.2:1.2:6:6\"");
         actual.Commands[0].Should().Contain("-pix_fmt yuv420p");
@@ -1411,8 +1410,7 @@ public sealed class FfmpegToolTests
         string outputPath = @"C:\video\input.mkv",
         bool applyOverlayBackground = false,
         bool synchronizeAudio = false,
-        string targetContainer = "mkv",
-        FfmpegOptions? ffmpegOptions = null)
+        string targetContainer = "mkv")
     {
         downscale ??= targetHeight.HasValue ? new DownscaleRequest(targetHeight.Value) : null;
 
@@ -1433,8 +1431,44 @@ public sealed class FfmpegToolTests
             encoderPreset: encoderPreset,
             outputPath: outputPath,
             applyOverlayBackground: applyOverlayBackground,
-            synchronizeAudio: synchronizeAudio,
-            ffmpegOptions: ffmpegOptions);
+            synchronizeAudio: synchronizeAudio);
+    }
+
+    private static ToH264GpuExecutionSpec CreateToH264GpuExecutionSpec(
+        bool optimizeForFastStart = false,
+        bool mapPrimaryAudioOnly = false,
+        bool? useHardwareDecode = null,
+        bool? enableAdaptiveQuantization = null,
+        int? aqStrength = null,
+        int? rcLookahead = null,
+        int? videoBitrateKbps = null,
+        int? videoMaxrateKbps = null,
+        int? videoBufferSizeKbps = null,
+        int? videoCq = null,
+        string? videoFilter = null,
+        string? pixelFormat = null,
+        int? audioBitrateKbps = null,
+        int? audioSampleRate = null,
+        int? audioChannels = null,
+        string? audioFilter = null)
+    {
+        return new ToH264GpuExecutionSpec(
+            optimizeForFastStart: optimizeForFastStart,
+            mapPrimaryAudioOnly: mapPrimaryAudioOnly,
+            useHardwareDecode: useHardwareDecode,
+            enableAdaptiveQuantization: enableAdaptiveQuantization,
+            aqStrength: aqStrength,
+            rcLookahead: rcLookahead,
+            videoBitrateKbps: videoBitrateKbps,
+            videoMaxrateKbps: videoMaxrateKbps,
+            videoBufferSizeKbps: videoBufferSizeKbps,
+            videoCq: videoCq,
+            videoFilter: videoFilter,
+            pixelFormat: pixelFormat,
+            audioBitrateKbps: audioBitrateKbps,
+            audioSampleRate: audioSampleRate,
+            audioChannels: audioChannels,
+            audioFilter: audioFilter);
     }
 
     private static VideoCompatibilityProfile? ResolveDefaultCompatibilityProfile(bool copyVideo, string? targetVideoCodec)

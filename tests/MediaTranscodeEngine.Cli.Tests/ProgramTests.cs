@@ -380,12 +380,12 @@ public sealed class ProgramTests
     {
         public string Name => "stub";
 
-        public bool CanHandle(Runtime.Plans.TranscodePlan plan)
+        public bool CanHandle(Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec = null)
         {
             return true;
         }
 
-        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan)
+        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec = null)
         {
             return ToolExecution.Single("stub", "stub");
         }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using MediaTranscodeEngine.Runtime.VideoSettings;
 using MediaTranscodeEngine.Runtime.Plans;
+using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Tools;
 using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 using MediaTranscodeEngine.Runtime.Videos;
@@ -57,11 +58,11 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Determines whether the mkv-oriented ffmpeg tool can execute the supplied plan.
     /// </summary>
-    public bool CanHandle(TranscodePlan plan)
+    public bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
-        if (plan.FfmpegOptions is not null || plan.UseFrameInterpolation)
+        if (executionSpec is not null || plan.UseFrameInterpolation)
         {
             return false;
         }
@@ -84,12 +85,12 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and plan.
     /// </summary>
-    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan)
+    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
     {
         ArgumentNullException.ThrowIfNull(video);
         ArgumentNullException.ThrowIfNull(plan);
 
-        if (!CanHandle(plan))
+        if (!CanHandle(plan, executionSpec))
         {
             throw new NotSupportedException("The supplied transcode plan is not supported by ToMkvGpu ffmpeg tool.");
         }

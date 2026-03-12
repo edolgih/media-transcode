@@ -39,11 +39,11 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Determines whether the toh264gpu-specific ffmpeg tool can execute the supplied plan.
     /// </summary>
-    public bool CanHandle(TranscodePlan plan)
+    public bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
-        if (plan.FfmpegOptions is null || plan.UseFrameInterpolation)
+        if (executionSpec is not ToH264GpuExecutionSpec || plan.UseFrameInterpolation)
         {
             return false;
         }
@@ -66,24 +66,24 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and plan.
     /// </summary>
-    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan)
+    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
     {
         ArgumentNullException.ThrowIfNull(video);
         ArgumentNullException.ThrowIfNull(plan);
 
-        if (!CanHandle(plan))
+        if (executionSpec is not ToH264GpuExecutionSpec spec || !CanHandle(plan, executionSpec))
         {
             throw new NotSupportedException("The supplied transcode plan is not supported by ToH264Gpu ffmpeg tool.");
         }
 
-        if (IsNoOp(video, plan))
+        if (IsNoOp(video, plan, spec))
         {
             return new ToolExecution(Name, Array.Empty<string>());
         }
 
         var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(video, plan);
         var workingOutputPath = FfmpegExecutionLayout.ResolveWorkingOutputPath(video, plan, finalOutputPath);
-        var ffmpegCommand = BuildFfmpegCommand(video, plan, workingOutputPath);
+        var ffmpegCommand = BuildFfmpegCommand(video, plan, spec, workingOutputPath);
         var commands = new List<string> { ffmpegCommand };
 
         FfmpegExecutionLayout.AppendPostOperations(commands, video, plan, workingOutputPath, finalOutputPath);
@@ -91,17 +91,17 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         return new ToolExecution(Name, commands);
     }
 
-    private static bool IsNoOp(SourceVideo video, TranscodePlan plan)
+    private static bool IsNoOp(SourceVideo video, TranscodePlan plan, ToH264GpuExecutionSpec spec)
     {
         var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(video, plan);
         return plan.CopyVideo &&
                plan.CopyAudio &&
-               !RequiresMuxRewrite(plan) &&
+               !RequiresMuxRewrite(spec) &&
                video.Container.Equals(plan.TargetContainer, StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private string BuildFfmpegCommand(SourceVideo video, TranscodePlan plan, string outputPath)
+    private string BuildFfmpegCommand(SourceVideo video, TranscodePlan plan, ToH264GpuExecutionSpec spec, string outputPath)
     {
         var parts = new List<string>
         {
@@ -115,19 +115,19 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             parts.Add(sanitizePart);
         }
 
-        if (ShouldUseHardwareDecode(plan))
+        if (ShouldUseHardwareDecode(plan, spec))
         {
             parts.Add("-hwaccel cuda -hwaccel_output_format cuda");
         }
 
         parts.Add("-i");
         parts.Add(FfmpegExecutionLayout.Quote(video.FilePath));
-        parts.Add(BuildVideoPart(video, plan));
-        parts.Add(BuildAudioPart(plan));
+        parts.Add(BuildVideoPart(video, plan, spec));
+        parts.Add(BuildAudioPart(plan, spec));
         parts.Add("-sn");
 
         if (plan.TargetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase) &&
-            plan.FfmpegOptions!.OptimizeForFastStart)
+            spec.OptimizeForFastStart)
         {
             parts.Add("-movflags +faststart");
         }
@@ -154,7 +154,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         return string.Empty;
     }
 
-    private static string BuildVideoPart(SourceVideo video, TranscodePlan plan)
+    private static string BuildVideoPart(SourceVideo video, TranscodePlan plan, ToH264GpuExecutionSpec options)
     {
         if (plan.CopyVideo)
         {
@@ -163,7 +163,6 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
                 : "-map 0:v:0 -c:v copy";
         }
 
-        var options = plan.FfmpegOptions!;
         var frameRatePart = plan.TargetFramesPerSecond.HasValue
             ? $"-fps_mode:v cfr -r {ResolveFrameRateToken(video, plan)} "
             : string.Empty;
@@ -193,9 +192,8 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
                $"{pixelFormatPart}{compatibilityPart}-g {gop}";
     }
 
-    private static string BuildAudioPart(TranscodePlan plan)
+    private static string BuildAudioPart(TranscodePlan plan, ToH264GpuExecutionSpec options)
     {
-        var options = plan.FfmpegOptions!;
         var mapPart = options.MapPrimaryAudioOnly
             ? "-map 0:a:0?"
             : "-map 0:a?";
@@ -207,9 +205,9 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
                 : BuildAudioEncodePart(mapPart, options);
     }
 
-    private static string BuildRepairAudioEncodePart(string mapPart, FfmpegOptions options)
+    private static string BuildRepairAudioEncodePart(string mapPart, ToH264GpuExecutionSpec options)
     {
-        var repairedOptions = new FfmpegOptions(
+        var repairedOptions = new ToH264GpuExecutionSpec(
             audioBitrateKbps: options.AudioBitrateKbps ?? 192,
             audioSampleRate: options.AudioSampleRate ?? 48000,
             audioChannels: options.AudioChannels ?? 2,
@@ -217,7 +215,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         return BuildAudioEncodePart(mapPart, repairedOptions);
     }
 
-    private static string BuildAudioEncodePart(string mapPart, FfmpegOptions options)
+    private static string BuildAudioEncodePart(string mapPart, ToH264GpuExecutionSpec options)
     {
         var parts = new List<string>
         {
@@ -255,11 +253,11 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         return plan.SynchronizeAudio || plan.FixTimestamps;
     }
 
-    private static bool ShouldUseHardwareDecode(TranscodePlan plan)
+    private static bool ShouldUseHardwareDecode(TranscodePlan plan, ToH264GpuExecutionSpec spec)
     {
-        if (plan.FfmpegOptions!.UseHardwareDecode.HasValue)
+        if (spec.UseHardwareDecode.HasValue)
         {
-            return plan.FfmpegOptions.UseHardwareDecode.Value;
+            return spec.UseHardwareDecode.Value;
         }
 
         return plan.RequiresVideoEncode &&
@@ -267,13 +265,12 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
                string.Equals(plan.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool RequiresMuxRewrite(TranscodePlan plan)
+    private static bool RequiresMuxRewrite(ToH264GpuExecutionSpec options)
     {
-        var options = plan.FfmpegOptions!;
         return options.OptimizeForFastStart || options.MapPrimaryAudioOnly;
     }
 
-    private static string BuildVideoRateControlPart(FfmpegOptions options)
+    private static string BuildVideoRateControlPart(ToH264GpuExecutionSpec options)
     {
         if (options.VideoBitrateKbps.HasValue)
         {
@@ -297,7 +294,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         return "-rc vbr_hq -cq 19 -b:v 0 ";
     }
 
-    private static string BuildAqPart(FfmpegOptions options)
+    private static string BuildAqPart(ToH264GpuExecutionSpec options)
     {
         if (options.EnableAdaptiveQuantization != true)
         {

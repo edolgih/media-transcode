@@ -1,4 +1,5 @@
 using MediaTranscodeEngine.Runtime.Plans;
+using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Videos;
 
 namespace MediaTranscodeEngine.Runtime.Tools;
@@ -21,14 +22,16 @@ public interface ITranscodeTool
     /// Determines whether the tool can execute the supplied plan.
     /// </summary>
     /// <param name="plan">Tool-agnostic transcode plan.</param>
+    /// <param name="executionSpec">Optional scenario-specific execution payload.</param>
     /// <returns><see langword="true"/> when the tool can execute the plan; otherwise <see langword="false"/>.</returns>
-    bool CanHandle(TranscodePlan plan);
+    bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null);
 
     /// <summary>
     /// Builds an executable recipe for the supplied source video and transcode plan.
     /// </summary>
     /// <param name="video">Normalized source video facts.</param>
     /// <param name="plan">Tool-agnostic transcode plan.</param>
+    /// <param name="executionSpec">Optional scenario-specific execution payload.</param>
     /// <returns>A concrete execution recipe for this tool.</returns>
-    ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan);
+    ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null);
 }
