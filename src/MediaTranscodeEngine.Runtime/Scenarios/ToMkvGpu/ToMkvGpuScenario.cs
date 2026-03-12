@@ -55,8 +55,8 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// <returns>A tool-agnostic plan describing the required MKV conversion work.</returns>
     protected override TranscodePlan BuildPlanCore(SourceVideo video)
     {
-        var applyDownscale = Request.VideoSettings?.TargetHeight.HasValue == true &&
-                             video.Height > Request.VideoSettings.TargetHeight.Value;
+        var applyDownscale = Request.Downscale is not null &&
+                             video.Height > Request.Downscale.TargetHeight;
         ValidateDownscale(video, applyDownscale);
 
         var effectiveVideoSettings = ResolveEffectiveVideoSettings(applyDownscale);
@@ -77,10 +77,11 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             targetVideoCodec: copyVideo ? null : "h264",
             preferredBackend: copyVideo ? null : "gpu",
             videoCompatibilityProfile: copyVideo ? null : VideoCompatibilityProfile.H264High,
-            targetHeight: applyDownscale ? Request.VideoSettings!.TargetHeight : null,
+            targetHeight: applyDownscale ? Request.Downscale!.TargetHeight : null,
             targetFramesPerSecond: applyFrameRateCap ? Request.MaxFramesPerSecond : null,
             useFrameInterpolation: false,
             videoSettings: effectiveVideoSettings,
+            downscale: applyDownscale ? Request.Downscale : null,
             copyVideo: copyVideo,
             copyAudio: copyAudio,
             fixTimestamps: requiresTimestampFix || Request.SynchronizeAudio,
@@ -93,7 +94,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)
     {
-        var targetHeight = Request.VideoSettings?.TargetHeight;
+        var targetHeight = Request.Downscale?.TargetHeight;
         if (!targetHeight.HasValue)
         {
             return;
@@ -123,17 +124,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             return null;
         }
 
-        if (applyDownscale)
-        {
-            return Request.VideoSettings;
-        }
-
-        if (!Request.VideoSettings.TargetHeight.HasValue)
-        {
-            return Request.VideoSettings;
-        }
-
-        return null;
+        return Request.VideoSettings;
     }
 
     private static bool AreAudioStreamsCopyCompatible(IReadOnlyList<string> audioCodecs)

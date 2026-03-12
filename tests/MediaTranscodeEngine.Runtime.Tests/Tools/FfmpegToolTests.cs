@@ -424,7 +424,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576),
+            videoSettings: new VideoSettingsRequest(),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -451,7 +451,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 480,
-            videoSettings: new VideoSettingsRequest(targetHeight: 480),
+            videoSettings: new VideoSettingsRequest(),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -472,7 +472,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 720,
-            videoSettings: new VideoSettingsRequest(targetHeight: 720),
+            videoSettings: new VideoSettingsRequest(),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -493,7 +493,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 424,
-            videoSettings: new VideoSettingsRequest(targetHeight: 424),
+            videoSettings: new VideoSettingsRequest(),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -514,7 +514,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime"),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -534,7 +534,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, qualityProfile: "high"),
+            videoSettings: new VideoSettingsRequest(qualityProfile: "high"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -560,7 +560,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576),
+            videoSettings: new VideoSettingsRequest(),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -628,7 +628,8 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, algorithm: "lanczos"),
+            videoSettings: new VideoSettingsRequest(),
+            downscale: new DownscaleRequest(576, "lanczos"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -647,7 +648,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, maxrate: 2.5m),
+            videoSettings: new VideoSettingsRequest(maxrate: 2.5m),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -666,7 +667,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", cq: 21),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", cq: 21),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -687,7 +688,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "mult", qualityProfile: "default", cq: 21),
+            videoSettings: new VideoSettingsRequest(contentProfile: "mult", qualityProfile: "default", cq: 21),
             outputPath: @"C:\video\output.mkv");
 
         var hdActual = sut.BuildExecution(hdVideo, plan);
@@ -722,7 +723,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", cq: 21),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", cq: 21),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -754,7 +755,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, autoSampleMode: "fast"),
+            videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -785,7 +786,7 @@ public sealed class FfmpegToolTests
                 targetVideoCodec: "h264",
                 preferredBackend: "gpu",
                 targetHeight: 576,
-                videoSettings: new VideoSettingsRequest(targetHeight: 576, autoSampleMode: "fast"),
+                videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
                 outputPath: Path.ChangeExtension(filePath, ".mkv"));
 
             var actual = sut.BuildExecution(video, plan);
@@ -821,7 +822,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, autoSampleMode: "fast"),
+            videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -847,7 +848,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, autoSampleMode: "fast"),
+            videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -880,7 +881,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", autoSampleMode: "accurate"),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", autoSampleMode: "accurate"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -894,8 +895,8 @@ public sealed class FfmpegToolTests
         logger.Entries.Should().Contain(entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Information &&
                                                  entry.Message.Contains("Video settings autosample resolved.", StringComparison.Ordinal) &&
                                                  Equals(entry.Properties["Mode"], "accurate") &&
-                                                 Equals(entry.Properties["Path"], "accurate") &&
-                                                 Equals(entry.Properties["Reason"], "in_range") &&
+                                                 Equals(entry.Properties["Path"], "sample") &&
+                                                 Equals(entry.Properties["Reason"], "resolved") &&
                                                  Equals(entry.Properties["Windows"], "105+30,285+30,465+30") &&
                                                  Equals(entry.Properties["LastReductionPercent"], 45m));
     }
@@ -921,7 +922,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default"),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -955,7 +956,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", autoSampleMode: "hybrid"),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", autoSampleMode: "hybrid"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -982,14 +983,14 @@ public sealed class FfmpegToolTests
             filePath: @"C:\video\input.mp4",
             height: 1080,
             duration: TimeSpan.FromMinutes(10),
-            bitrate: 4_500_000);
+            bitrate: 4_000_000);
         var plan = CreatePlan(
             copyVideo: false,
             copyAudio: false,
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", autoSampleMode: "hybrid"),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", autoSampleMode: "hybrid"),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -1023,7 +1024,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", maxrate: 2.7m),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", maxrate: 2.7m),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -1054,7 +1055,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default", bufsize: 7.0m),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", bufsize: 7.0m),
             outputPath: @"C:\video\input.mkv");
 
         var actual = sut.BuildExecution(video, plan);
@@ -1130,7 +1131,7 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "default"),
+            videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default"),
             outputPath: @"C:\video\input.mkv",
             applyOverlayBackground: true);
 
@@ -1403,6 +1404,7 @@ public sealed class FfmpegToolTests
         double? targetFramesPerSecond = null,
         bool useFrameInterpolation = false,
         VideoSettingsRequest? videoSettings = null,
+        DownscaleRequest? downscale = null,
         bool fixTimestamps = false,
         bool keepSource = false,
         string? encoderPreset = null,
@@ -1412,6 +1414,8 @@ public sealed class FfmpegToolTests
         string targetContainer = "mkv",
         FfmpegOptions? ffmpegOptions = null)
     {
+        downscale ??= targetHeight.HasValue ? new DownscaleRequest(targetHeight.Value) : null;
+
         return new TranscodePlan(
             targetContainer: targetContainer,
             targetVideoCodec: targetVideoCodec,
@@ -1421,6 +1425,7 @@ public sealed class FfmpegToolTests
             targetFramesPerSecond: targetFramesPerSecond,
             useFrameInterpolation: useFrameInterpolation,
             videoSettings: videoSettings,
+            downscale: downscale,
             copyVideo: copyVideo,
             copyAudio: copyAudio,
             fixTimestamps: fixTimestamps,

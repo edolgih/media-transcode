@@ -19,7 +19,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     private const int DefaultAudioBitrateKbps = 192;
     private const int MinAudioBitrateKbps = 48;
     private const int MaxAudioBitrateKbps = 320;
-    private static readonly ProfileDrivenVideoSettingsResolver VideoSettingsResolver = new(VideoSettingsProfiles.Default);
+    private static readonly VideoSettingsResolver VideoSettingsResolver = new(VideoSettingsProfiles.Default);
 
     /// <summary>
     /// Initializes a ToH264Gpu scenario with scenario-specific directives.
@@ -39,7 +39,8 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     protected override TranscodePlan BuildPlanCore(SourceVideo video)
     {
         var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
-        var useDownscale = Request.DownscaleTargetHeight.HasValue && video.Height > Request.DownscaleTargetHeight.Value;
+        var downscaleRequest = Request.BuildDownscaleRequest();
+        var useDownscale = downscaleRequest is not null && video.Height > downscaleRequest.TargetHeight;
         var synchronizeAudio = Request.SynchronizeAudio || RequiresAutomaticTimestampRepair(video);
         var videoCopyCompatible = CanCopyVideo(video, targetContainer, useDownscale);
         var copyVideo = !synchronizeAudio && videoCopyCompatible && CanCopyAudio(video) ||
@@ -47,21 +48,22 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var copyAudio = !synchronizeAudio && CanCopyAudio(video);
         var videoSettingsRequest = copyVideo
             ? null
-            : Request.BuildVideoSettingsRequest(includeTargetHeight: useDownscale);
+            : Request.BuildVideoSettingsRequest();
         var targetFramesPerSecond = copyVideo
             ? (double?)null
             : ResolveTargetFramesPerSecond(video, useDownscale);
-        var ffmpegOptions = BuildFfmpegOptions(video, copyVideo, copyAudio, useDownscale, targetContainer, videoSettingsRequest);
+        var ffmpegOptions = BuildFfmpegOptions(video, copyVideo, copyAudio, useDownscale, targetContainer, downscaleRequest, videoSettingsRequest);
 
         return new TranscodePlan(
             targetContainer: targetContainer,
             targetVideoCodec: copyVideo ? null : "h264",
             preferredBackend: copyVideo ? null : "gpu",
             videoCompatibilityProfile: copyVideo ? null : VideoCompatibilityProfile.H264High,
-            targetHeight: useDownscale ? Request.DownscaleTargetHeight : null,
+            targetHeight: useDownscale ? downscaleRequest!.TargetHeight : null,
             targetFramesPerSecond: targetFramesPerSecond,
             useFrameInterpolation: false,
             videoSettings: videoSettingsRequest,
+            downscale: useDownscale ? downscaleRequest : null,
             copyVideo: copyVideo,
             copyAudio: copyAudio,
             fixTimestamps: synchronizeAudio,
@@ -139,12 +141,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         bool copyAudio,
         bool useDownscale,
         string targetContainer,
+        DownscaleRequest? downscaleRequest,
         VideoSettingsRequest? videoSettingsRequest)
     {
         var audioBitrateKbps = ResolveAudioBitrateKbps(video);
         var videoSettings = copyVideo
             ? null
-            : ResolveVideoSettings(video, useDownscale, videoSettingsRequest);
+            : ResolveVideoSettings(video, useDownscale, downscaleRequest, videoSettingsRequest);
         var usesAmrAudio = IsAmrNb(video.PrimaryAudioCodec);
 
         return new FfmpegOptions(
@@ -165,12 +168,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             audioFilter: usesAmrAudio ? "aresample=48000:async=1:first_pts=0" : null);
     }
 
-    private static VideoSettingsDefaults ResolveVideoSettings(SourceVideo video, bool useDownscale, VideoSettingsRequest? request)
+    private static VideoSettingsDefaults ResolveVideoSettings(SourceVideo video, bool useDownscale, DownscaleRequest? downscaleRequest, VideoSettingsRequest? request)
     {
         if (useDownscale)
         {
             return VideoSettingsResolver.ResolveForDownscale(
-                request ?? throw new InvalidOperationException("Downscale request is required when downscale mode is active."),
+                downscaleRequest ?? throw new InvalidOperationException("Downscale request is required when downscale mode is active."),
+                videoSettings: request,
                 sourceHeight: video.Height,
                 duration: video.Duration,
                 sourceBitrate: ResolveSourceBitrate(video),

@@ -178,11 +178,12 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         var compatibilityPart = ResolveVideoCompatibilityPart(video, plan);
         var gop = ResolveGop(video, plan);
         var preset = plan.EncoderPreset ?? "p6";
+        var downscale = plan.Downscale;
 
-        if (plan.TargetHeight.HasValue)
+        if (downscale is not null)
         {
-            var algorithm = plan.VideoSettings?.Algorithm ?? "bicubic";
-            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo={algorithm}:format=nv12\" " +
+            var algorithm = downscale.Algorithm ?? "bicubic";
+            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={algorithm}:format=nv12\" " +
                    $"-c:v h264_nvenc -preset {preset} {rateControlPart}{aqPart}" +
                    $"{compatibilityPart}-g {gop}";
         }
@@ -262,7 +263,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         }
 
         return plan.RequiresVideoEncode &&
-               plan.TargetHeight.HasValue &&
+               plan.Downscale is not null &&
                string.Equals(plan.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -359,7 +360,8 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
 
     private static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, TranscodePlan plan)
     {
-        if (!plan.TargetHeight.HasValue)
+        var downscale = plan.Downscale;
+        if (downscale is null)
         {
             return (video.Width, video.Height);
         }
@@ -369,8 +371,8 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             return (video.Width, video.Height);
         }
 
-        var outputWidth = (int)Math.Round(video.Width * (double)plan.TargetHeight.Value / video.Height);
-        return (MakeEven(outputWidth), MakeEven(plan.TargetHeight.Value));
+        var outputWidth = (int)Math.Round(video.Width * (double)downscale.TargetHeight / video.Height);
+        return (MakeEven(outputWidth), MakeEven(downscale.TargetHeight));
     }
 
     private static int MakeEven(int value)

@@ -180,8 +180,9 @@ public sealed class ToMkvGpuScenarioTests
         var actual = sut.BuildPlan(video);
 
         actual.TargetHeight.Should().Be(576);
-        actual.VideoSettings.Should().NotBeNull();
-        actual.VideoSettings!.TargetHeight.Should().Be(576);
+        actual.VideoSettings.Should().BeNull();
+        actual.Downscale.Should().NotBeNull();
+        actual.Downscale!.TargetHeight.Should().Be(576);
         actual.CopyVideo.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
         actual.TargetVideoCodec.Should().Be("h264");
@@ -274,8 +275,9 @@ public sealed class ToMkvGpuScenarioTests
         var actual = sut.BuildPlan(video);
 
         actual.TargetHeight.Should().Be(720);
-        actual.VideoSettings.Should().NotBeNull();
-        actual.VideoSettings!.TargetHeight.Should().Be(720);
+        actual.VideoSettings.Should().BeNull();
+        actual.Downscale.Should().NotBeNull();
+        actual.Downscale!.TargetHeight.Should().Be(720);
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
         actual.TargetVideoCodec.Should().Be("h264");
@@ -300,7 +302,7 @@ public sealed class ToMkvGpuScenarioTests
             ],
             defaults: CreateDefaults());
         var sut = new ToMkvGpuScenario(
-            new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(targetHeight: 576)),
+            new ToMkvGpuRequest(downscale: new DownscaleRequest(576)),
             VideoSettingsProfiles.Create(profile));
         var video = CreateVideo(container: "mp4", height: 900, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
 
@@ -330,7 +332,7 @@ public sealed class ToMkvGpuScenarioTests
             ],
             defaults: CreateDefaults());
         var sut = new ToMkvGpuScenario(
-            new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(targetHeight: 576)),
+            new ToMkvGpuRequest(downscale: new DownscaleRequest(576)),
             VideoSettingsProfiles.Create(profile));
         var video = CreateVideo(container: "mp4", height: 1080, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
 
@@ -352,7 +354,7 @@ public sealed class ToMkvGpuScenarioTests
             overlayBackground: overlayBackground,
             synchronizeAudio: synchronizeAudio,
             keepSource: keepSource,
-            videoSettings: downscaleTarget.HasValue ? new VideoSettingsRequest(targetHeight: downscaleTarget) : null,
+            downscale: downscaleTarget.HasValue ? new DownscaleRequest(downscaleTarget.Value) : null,
             maxFramesPerSecond: maxFramesPerSecond));
     }
 

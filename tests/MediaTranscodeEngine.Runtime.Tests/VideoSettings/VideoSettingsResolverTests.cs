@@ -3,7 +3,7 @@ using MediaTranscodeEngine.Runtime.VideoSettings;
 
 namespace MediaTranscodeEngine.Runtime.Tests.VideoSettings;
 
-public sealed class ProfileDrivenVideoSettingsResolverTests
+public sealed class VideoSettingsResolverTests
 {
     [Fact]
     public void ResolveForEncode_WhenRequestIsNull_UsesResolvedOutputProfileAndFastMode()
@@ -21,27 +21,27 @@ public sealed class ProfileDrivenVideoSettingsResolverTests
 
         // Assert
         actual.Profile.TargetHeight.Should().Be(720);
-        actual.EffectiveRequest.TargetHeight.Should().Be(720);
         actual.EffectiveRequest.AutoSampleMode.Should().Be("fast");
     }
 
     [Fact]
-    public void ResolveForEncode_WhenRequestContainsTargetHeight_ThrowsArgumentException()
+    public void ResolveForEncode_WhenRequestContainsProfiles_UsesProvidedProfiles()
     {
         // Arrange
         var sut = CreateSut();
-        var request = CreateRequest(targetHeight: 576);
+        var request = CreateRequest(contentProfile: "anime", qualityProfile: "high");
 
         // Act
-        var action = () => sut.ResolveForEncode(
-            request,
+        var actual = sut.ResolveForEncode(
+            request: request,
             outputHeight: 650,
             duration: TimeSpan.FromMinutes(10),
             sourceBitrate: 4_000_000,
             hasAudio: true);
 
         // Assert
-        action.Should().Throw<ArgumentException>();
+        actual.BaseSettings.ContentProfile.Should().Be("anime");
+        actual.BaseSettings.QualityProfile.Should().Be("high");
     }
 
     [Fact]
@@ -49,11 +49,13 @@ public sealed class ProfileDrivenVideoSettingsResolverTests
     {
         // Arrange
         var sut = CreateSut();
-        var request = CreateRequest(targetHeight: 576, contentProfile: "anime", qualityProfile: "high");
+        var downscale = new DownscaleRequest(576);
+        var request = CreateRequest(contentProfile: "anime", qualityProfile: "high");
 
         // Act
         var actual = sut.ResolveForDownscale(
-            request,
+            request: downscale,
+            videoSettings: request,
             sourceHeight: 1080,
             duration: TimeSpan.FromMinutes(10),
             sourceBitrate: 4_000_000,
@@ -61,52 +63,47 @@ public sealed class ProfileDrivenVideoSettingsResolverTests
 
         // Assert
         actual.Profile.TargetHeight.Should().Be(576);
-        actual.EffectiveRequest.TargetHeight.Should().Be(576);
         actual.EffectiveRequest.AutoSampleMode.Should().Be("hybrid");
         actual.BaseSettings.ContentProfile.Should().Be("anime");
         actual.BaseSettings.QualityProfile.Should().Be("high");
     }
 
     [Fact]
-    public void ResolveForDownscale_WhenTargetHeightIsMissing_ThrowsArgumentException()
+    public void ResolveForDownscale_WhenRequestIsNull_ThrowsArgumentNullException()
     {
         // Arrange
         var sut = CreateSut();
-        var request = CreateRequest();
 
         // Act
         var action = () => sut.ResolveForDownscale(
-            request,
+            request: null!,
+            videoSettings: CreateRequest(),
             sourceHeight: 1080,
             duration: TimeSpan.FromMinutes(10),
             sourceBitrate: 4_000_000,
             hasAudio: true);
 
         // Assert
-        action.Should().Throw<ArgumentException>();
+        action.Should().Throw<ArgumentNullException>();
     }
 
-    private static ProfileDrivenVideoSettingsResolver CreateSut(VideoSettingsProfiles? profiles = null)
+    private static VideoSettingsResolver CreateSut(VideoSettingsProfiles? profiles = null)
     {
-        return new ProfileDrivenVideoSettingsResolver(profiles ?? VideoSettingsProfiles.Default);
+        return new VideoSettingsResolver(profiles ?? VideoSettingsProfiles.Default);
     }
 
     private static VideoSettingsRequest CreateRequest(
-        int? targetHeight = null,
         string? contentProfile = null,
         string? qualityProfile = null,
         string? autoSampleMode = null,
-        string? algorithm = null,
         int? cq = null,
         decimal? maxrate = null,
         decimal? bufsize = null)
     {
         return new VideoSettingsRequest(
-            targetHeight: targetHeight,
             contentProfile: contentProfile,
             qualityProfile: qualityProfile,
             autoSampleMode: autoSampleMode,
-            algorithm: algorithm,
             cq: cq,
             maxrate: maxrate,
             bufsize: bufsize);

@@ -326,23 +326,31 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
             return false;
         }
 
+        if (downscale is null && !string.IsNullOrWhiteSpace(algorithm))
+        {
+            errorText = "--downscale-algo requires --downscale.";
+            return false;
+        }
+
         try
         {
-            var downscaleRequest = new VideoSettingsRequest(
-                targetHeight: downscale,
+            var videoSettingsRequest = new VideoSettingsRequest(
                 contentProfile: contentProfile,
                 qualityProfile: qualityProfile,
                 autoSampleMode: autoSampleMode,
-                algorithm: algorithm,
                 cq: cq,
                 maxrate: maxrate,
                 bufsize: bufsize);
+            var downscaleRequest = downscale.HasValue
+                ? new DownscaleRequest(downscale.Value, algorithm)
+                : null;
 
             request = new ToMkvGpuRequest(
                 overlayBackground: overlayBackground,
                 synchronizeAudio: synchronizeAudio,
                 keepSource: keepSource,
-                videoSettings: downscaleRequest.HasValue ? downscaleRequest : null,
+                videoSettings: videoSettingsRequest.HasValue ? videoSettingsRequest : null,
+                downscale: downscaleRequest,
                 nvencPreset: nvencPreset,
                 maxFramesPerSecond: maxFramesPerSecond);
 

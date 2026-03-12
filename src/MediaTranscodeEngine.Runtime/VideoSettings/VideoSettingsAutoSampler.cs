@@ -3,22 +3,26 @@ using MediaTranscodeEngine.Runtime.VideoSettings.Profiles;
 namespace MediaTranscodeEngine.Runtime.VideoSettings;
 
 /*
-Этот компонент решает autosample-путь для video settings.
-Он берёт профиль, source facts и measured reduction и выбирает итоговые настройки.
+Это общий механизм autosample для video settings.
+Он используется и для ordinary encode, и для explicit downscale, если сценарий просит profile-driven подбор.
 */
 /// <summary>
-/// Resolves video-settings autosample settings from profile data and measured reduction values.
+/// Resolves autosampled video settings from a profile, an effective request, and source facts.
 /// </summary>
 internal sealed class VideoSettingsAutoSampler
 {
     private readonly VideoSettingsProfiles _profiles;
 
+    /// <summary>
+    /// Initializes an autosampler backed by the supplied profile catalog.
+    /// </summary>
     public VideoSettingsAutoSampler(VideoSettingsProfiles profiles)
     {
         _profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
     }
 
     public VideoSettingsDefaults Resolve(
+        VideoSettingsProfile profile,
         VideoSettingsRequest request,
         VideoSettingsDefaults baseSettings,
         int? sourceHeight,
@@ -28,6 +32,7 @@ internal sealed class VideoSettingsAutoSampler
         Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider = null)
     {
         return ResolveWithDiagnostics(
+            profile,
             request,
             baseSettings,
             sourceHeight,
@@ -38,6 +43,7 @@ internal sealed class VideoSettingsAutoSampler
     }
 
     internal VideoSettingsAutoSampleResolution ResolveWithDiagnostics(
+        VideoSettingsProfile profile,
         VideoSettingsRequest request,
         VideoSettingsDefaults baseSettings,
         int? sourceHeight,
@@ -46,6 +52,7 @@ internal sealed class VideoSettingsAutoSampler
         bool hasAudio,
         Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider = null)
     {
+        ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(baseSettings);
 
@@ -54,12 +61,6 @@ internal sealed class VideoSettingsAutoSampler
             return VideoSettingsAutoSampleResolution.Skip(baseSettings, "manual_override");
         }
 
-        if (!request.TargetHeight.HasValue)
-        {
-            return VideoSettingsAutoSampleResolution.Skip(baseSettings, "no_target_height");
-        }
-
-        var profile = _profiles.GetRequiredProfile(request.TargetHeight.Value);
         if (string.IsNullOrWhiteSpace(request.AutoSampleMode) && !profile.AutoSampling.EnabledByDefault)
         {
             return VideoSettingsAutoSampleResolution.Skip(baseSettings, "disabled_by_profile");
@@ -67,313 +68,348 @@ internal sealed class VideoSettingsAutoSampler
 
         if (duration <= TimeSpan.Zero)
         {
-            return VideoSettingsAutoSampleResolution.Skip(baseSettings, "missing_duration");
+            return VideoSettingsAutoSampleResolution.Skip(baseSettings, "invalid_duration");
         }
 
-        var range = profile.ResolveRange(sourceHeight, request.ContentProfile, request.QualityProfile);
-        if (range is null)
+        var corridor = profile.ResolveRange(
+            sourceHeight: sourceHeight,
+            contentProfile: request.ContentProfile,
+            qualityProfile: request.QualityProfile);
+
+        if (corridor is null)
         {
-            return VideoSettingsAutoSampleResolution.Skip(baseSettings, "missing_range");
+            return VideoSettingsAutoSampleResolution.Skip(baseSettings, "missing_corridor");
         }
 
         var mode = NormalizeMode(request.AutoSampleMode) ?? profile.AutoSampling.ModeDefault;
-        if (mode.Equals("fast", StringComparison.OrdinalIgnoreCase))
-        {
-            return VideoSettingsAutoSampleResolution.FromResult(
-                mode,
-                range,
-                [],
-                RunFast(profile, baseSettings, range, sourceBitrate, hasAudio));
-        }
 
-        var windows = profile.GetSampleWindows(duration);
-        if (mode.Equals("hybrid", StringComparison.OrdinalIgnoreCase))
+        return mode switch
         {
-            var result = RunHybrid(profile, baseSettings, range, windows, sourceBitrate, hasAudio, accurateReductionProvider);
-            return VideoSettingsAutoSampleResolution.FromResult(
-                mode,
-                range,
-                result.Path == "hybrid-accurate" ? windows : [],
-                result);
-        }
-
-        return VideoSettingsAutoSampleResolution.FromResult(
-            mode,
-            range,
-            windows,
-            RunAccurate(profile, baseSettings, range, windows, accurateReductionProvider, profile.AutoSampling.MaxIterations));
+            "fast" => ResolveFast(profile, baseSettings, corridor, sourceBitrate, duration, hasAudio),
+            "hybrid" => ResolveHybrid(profile, baseSettings, corridor, duration, sourceBitrate, hasAudio, accurateReductionProvider),
+            _ => RunAccurate(profile, baseSettings, corridor, duration, accurateReductionProvider)
+        };
     }
 
-    private static string? NormalizeMode(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value)
-            ? null
-            : value.Trim().ToLowerInvariant();
-    }
-
-    private static VideoSettingsAutoSampleResult RunFast(
+    private static VideoSettingsAutoSampleResolution ResolveFast(
         VideoSettingsProfile profile,
         VideoSettingsDefaults baseSettings,
-        VideoSettingsRange range,
+        VideoSettingsRange corridor,
         long? sourceBitrate,
+        TimeSpan duration,
         bool hasAudio)
     {
-        if (!sourceBitrate.HasValue || sourceBitrate.Value <= 0)
+        var sourceBitrateResolution = ResolveSourceBitrate(sourceBitrate, duration, hasAudio);
+        if (!sourceBitrateResolution.Bitrate.HasValue)
         {
-            return VideoSettingsAutoSampleResult.FromSettings(baseSettings, "fast", "missing_source_bitrate");
+            return VideoSettingsAutoSampleResolution.Skip(baseSettings, sourceBitrateResolution.Reason);
         }
 
-        return RunLoop(
-            profile,
-            baseSettings,
-            range,
-            profile.AutoSampling.MaxIterations,
-            "fast",
-            settings => EstimateReductionFromBitrate(
-                sourceBitrateBps: sourceBitrate.Value,
-                maxrateMbps: settings.Maxrate,
-                hasAudio: hasAudio,
-                audioBitrateEstimateMbps: profile.AutoSampling.AudioBitrateEstimateMbps));
+        return RunFast(profile, baseSettings, corridor, sourceBitrateResolution.Bitrate.Value);
     }
 
-    private static VideoSettingsAutoSampleResult RunAccurate(
+    private static VideoSettingsAutoSampleResolution ResolveHybrid(
         VideoSettingsProfile profile,
         VideoSettingsDefaults baseSettings,
-        VideoSettingsRange range,
-        IReadOnlyList<VideoSettingsSampleWindow> windows,
-        Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider,
-        int maxIterations)
-    {
-        if (accurateReductionProvider is null || windows.Count == 0)
-        {
-            return VideoSettingsAutoSampleResult.FromSettings(baseSettings, "accurate", "missing_accurate_measurement");
-        }
-
-        return RunLoop(
-            profile,
-            baseSettings,
-            range,
-            maxIterations,
-            "accurate",
-            settings => accurateReductionProvider(settings, windows));
-    }
-
-    private static VideoSettingsAutoSampleResult RunHybrid(
-        VideoSettingsProfile profile,
-        VideoSettingsDefaults baseSettings,
-        VideoSettingsRange range,
-        IReadOnlyList<VideoSettingsSampleWindow> windows,
+        VideoSettingsRange corridor,
+        TimeSpan duration,
         long? sourceBitrate,
         bool hasAudio,
         Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider)
     {
-        var fastResult = RunFast(profile, baseSettings, range, sourceBitrate, hasAudio);
-        if (fastResult.InBounds)
+        var sourceBitrateResolution = ResolveSourceBitrate(sourceBitrate, duration, hasAudio);
+        if (!sourceBitrateResolution.Bitrate.HasValue)
         {
-            return fastResult with { Path = "hybrid-fast" };
+            if (accurateReductionProvider is null)
+            {
+                return VideoSettingsAutoSampleResolution.Skip(baseSettings, sourceBitrateResolution.Reason);
+            }
+
+            var accurateResult = RunAccurate(profile, baseSettings, corridor, duration, accurateReductionProvider);
+            return accurateResult with { Mode = "hybrid", Path = "sample_only" };
         }
 
-        if (accurateReductionProvider is null || windows.Count == 0)
-        {
-            return fastResult with { Path = "hybrid-fast", Reason = "missing_accurate_measurement" };
-        }
-
-        var iterations = Math.Min(profile.AutoSampling.MaxIterations, Math.Max(profile.AutoSampling.HybridAccurateIterations, 1));
-        return RunLoop(
-            profile,
-            fastResult.Settings,
-            range,
-            iterations,
-            "hybrid-accurate",
-            settings => accurateReductionProvider(settings, windows));
+        return RunHybrid(profile, baseSettings, corridor, duration, sourceBitrateResolution.Bitrate.Value, accurateReductionProvider);
     }
 
-    private static VideoSettingsAutoSampleResult RunLoop(
+    private static VideoSettingsAutoSampleResolution RunFast(
         VideoSettingsProfile profile,
-        VideoSettingsDefaults startSettings,
-        VideoSettingsRange range,
-        int maxIterations,
-        string path,
-        Func<VideoSettingsDefaults, decimal?> reductionProvider)
+        VideoSettingsDefaults baseSettings,
+        VideoSettingsRange corridor,
+        long sourceBitrate)
     {
-        var current = startSettings;
+        var settings = baseSettings;
         decimal? lastReduction = null;
-        var iterations = 0;
 
-        for (var i = 0; i < maxIterations; i++)
+        for (var iteration = 1; iteration <= profile.AutoSampling.MaxIterations; iteration++)
         {
-            var reduction = reductionProvider(current);
-            if (!reduction.HasValue)
+            lastReduction = EstimateReductionPercent(sourceBitrate, settings);
+            if (lastReduction is null)
             {
-                return new VideoSettingsAutoSampleResult(current, lastReduction, InBounds: false, iterations, "missing_reduction", path);
+                return VideoSettingsAutoSampleResolution.Skip(baseSettings, "estimate_failed");
             }
 
-            iterations++;
-            lastReduction = reduction.Value;
-            if (range.Contains(reduction.Value))
+            var inBounds = corridor.Contains(lastReduction.Value);
+            if (inBounds)
             {
-                return new VideoSettingsAutoSampleResult(current, lastReduction, InBounds: true, iterations, "in_range", path);
+                return VideoSettingsAutoSampleResolution.Success(
+                    settings,
+                    mode: "fast",
+                    path: "estimate",
+                    corridor,
+                    windows: Array.Empty<VideoSettingsSampleWindow>(),
+                    iterationCount: iteration,
+                    lastReductionPercent: lastReduction,
+                    inBounds: true);
             }
 
-            var previous = current;
-            current = Adjust(current, range, reduction.Value, profile.RateModel);
-            if (previous.Cq == current.Cq && previous.Maxrate == current.Maxrate)
-            {
-                return new VideoSettingsAutoSampleResult(current, lastReduction, InBounds: false, iterations, "no_movement", path);
-            }
+            settings = StepTowardsCorridor(settings, corridor, lastReduction.Value, profile);
         }
 
-        return new VideoSettingsAutoSampleResult(current, lastReduction, InBounds: false, iterations, "max_iterations", path);
+        return VideoSettingsAutoSampleResolution.Success(
+            settings,
+            mode: "fast",
+            path: "estimate",
+            corridor,
+            windows: Array.Empty<VideoSettingsSampleWindow>(),
+            iterationCount: profile.AutoSampling.MaxIterations,
+            lastReductionPercent: lastReduction,
+            inBounds: lastReduction.HasValue && corridor.Contains(lastReduction.Value));
     }
 
-    private static VideoSettingsDefaults Adjust(
-        VideoSettingsDefaults current,
-        VideoSettingsRange range,
-        decimal reduction,
-        VideoSettingsRateModel rateModel)
+    private static VideoSettingsAutoSampleResolution RunHybrid(
+        VideoSettingsProfile profile,
+        VideoSettingsDefaults baseSettings,
+        VideoSettingsRange corridor,
+        TimeSpan duration,
+        long sourceBitrate,
+        Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider)
     {
-        var cq = current.Cq;
-        var maxrate = current.Maxrate;
-
-        if (IsBelowRange(range, reduction))
+        var fastResult = RunFast(profile, baseSettings, corridor, sourceBitrate);
+        if (fastResult.InBounds || accurateReductionProvider is null)
         {
-            if (cq < current.CqMax)
-            {
-                cq++;
-            }
-
-            maxrate = Math.Max(maxrate - rateModel.CqStepToMaxrateStep, current.MaxrateMin);
-        }
-        else
-        {
-            if (cq > current.CqMin)
-            {
-                cq--;
-            }
-
-            maxrate = Math.Min(maxrate + rateModel.CqStepToMaxrateStep, current.MaxrateMax);
+            return fastResult with { Mode = "hybrid", Path = fastResult.InBounds ? "estimate" : "estimate_only" };
         }
 
-        return current with
-        {
-            Cq = cq,
-            Maxrate = maxrate,
-            Bufsize = maxrate * rateModel.BufsizeMultiplier
-        };
+        var accurateResult = RunAccurate(profile, fastResult.Settings, corridor, duration, accurateReductionProvider);
+        return accurateResult with { Mode = "hybrid", Path = "estimate+sample" };
     }
 
-    private static bool IsBelowRange(VideoSettingsRange range, decimal value)
+    private static VideoSettingsAutoSampleResolution RunAccurate(
+        VideoSettingsProfile profile,
+        VideoSettingsDefaults baseSettings,
+        VideoSettingsRange corridor,
+        TimeSpan duration,
+        Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider)
     {
-        if (range.MinInclusive.HasValue)
+        if (accurateReductionProvider is null)
         {
-            return value < range.MinInclusive.Value;
+            return VideoSettingsAutoSampleResolution.Skip(baseSettings, "accurate_provider_missing");
         }
 
-        if (range.MinExclusive.HasValue)
+        var windows = profile.GetSampleWindows(duration);
+        var settings = baseSettings;
+        decimal? lastReduction = null;
+
+        for (var iteration = 1; iteration <= profile.AutoSampling.MaxIterations; iteration++)
         {
-            return value <= range.MinExclusive.Value;
+            lastReduction = accurateReductionProvider(settings, windows);
+            if (lastReduction is null)
+            {
+                return VideoSettingsAutoSampleResolution.Skip(baseSettings, "sample_failed");
+            }
+
+            var inBounds = corridor.Contains(lastReduction.Value);
+            if (inBounds)
+            {
+                return VideoSettingsAutoSampleResolution.Success(
+                    settings,
+                    mode: "accurate",
+                    path: "sample",
+                    corridor,
+                    windows,
+                    iterationCount: iteration,
+                    lastReductionPercent: lastReduction,
+                    inBounds: true);
+            }
+
+            settings = StepTowardsCorridor(settings, corridor, lastReduction.Value, profile);
         }
 
-        return false;
+        return VideoSettingsAutoSampleResolution.Success(
+            settings,
+            mode: "accurate",
+            path: "sample",
+            corridor,
+            windows,
+            iterationCount: profile.AutoSampling.MaxIterations,
+            lastReductionPercent: lastReduction,
+            inBounds: lastReduction.HasValue && corridor.Contains(lastReduction.Value));
     }
 
-    private static decimal? EstimateReductionFromBitrate(
-        long sourceBitrateBps,
-        decimal maxrateMbps,
-        bool hasAudio,
-        decimal audioBitrateEstimateMbps)
+    private static string? NormalizeMode(string? value)
     {
-        var sourceMbps = sourceBitrateBps / 1_000_000m;
-        if (sourceMbps <= 0m)
+        if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        var targetMbps = maxrateMbps;
-        if (hasAudio)
-        {
-            targetMbps += audioBitrateEstimateMbps;
-        }
-
-        if (targetMbps < 0m)
-        {
-            targetMbps = 0m;
-        }
-
-        var reduction = (1m - (targetMbps / sourceMbps)) * 100m;
-        reduction = Math.Max(-100m, Math.Min(100m, reduction));
-        return Math.Round(reduction, 2, MidpointRounding.AwayFromZero);
+        return value.Trim().ToLowerInvariant();
     }
-}
 
-/*
-Это внутренний результат одной autosample-итерации.
-Он хранит вычисленные настройки и признаки попадания в corridor.
-*/
-/// <summary>
-/// Represents one intermediate autosample result before the final diagnostics payload is assembled.
-/// </summary>
-internal sealed record VideoSettingsAutoSampleResult(
-    VideoSettingsDefaults Settings,
-    decimal? LastReduction,
-    bool InBounds,
-    int Iterations,
-    string Reason,
-    string Path)
-{
-    public static VideoSettingsAutoSampleResult FromSettings(VideoSettingsDefaults settings, string path, string reason)
+    private static VideoSettingsSourceBitrateResolution ResolveSourceBitrate(long? sourceBitrate, TimeSpan duration, bool hasAudio)
     {
-        return new VideoSettingsAutoSampleResult(settings, LastReduction: null, InBounds: false, Iterations: 0, Reason: reason, Path: path);
+        if (sourceBitrate.HasValue && sourceBitrate.Value > 0)
+        {
+            return new VideoSettingsSourceBitrateResolution(sourceBitrate.Value, "metadata");
+        }
+
+        return duration > TimeSpan.Zero
+            ? new VideoSettingsSourceBitrateResolution(null, "missing_source_bitrate")
+            : new VideoSettingsSourceBitrateResolution(null, "invalid_duration");
+    }
+
+    private static decimal? EstimateReductionPercent(long sourceBitrate, VideoSettingsDefaults settings)
+    {
+        if (sourceBitrate <= 0)
+        {
+            return null;
+        }
+
+        var targetBitrate = settings.Maxrate * 1_000_000m;
+        if (targetBitrate <= 0m)
+        {
+            return null;
+        }
+
+        var reduction = (1m - (targetBitrate / sourceBitrate)) * 100m;
+        return decimal.Round(reduction, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static VideoSettingsDefaults StepTowardsCorridor(
+        VideoSettingsDefaults settings,
+        VideoSettingsRange corridor,
+        decimal reductionPercent,
+        VideoSettingsProfile profile)
+    {
+        if (IsBelowCorridor(corridor, reductionPercent))
+        {
+            return Step(settings, profile, makeSmaller: true);
+        }
+
+        if (IsAboveCorridor(corridor, reductionPercent))
+        {
+            return Step(settings, profile, makeSmaller: false);
+        }
+
+        return settings;
+    }
+
+    private static VideoSettingsDefaults Step(VideoSettingsDefaults settings, VideoSettingsProfile profile, bool makeSmaller)
+    {
+        var cqDelta = makeSmaller ? 1 : -1;
+        var nextCq = Clamp(settings.Cq + cqDelta, settings.CqMin, settings.CqMax);
+
+        var maxrateDelta = makeSmaller
+            ? -profile.RateModel.CqStepToMaxrateStep
+            : profile.RateModel.CqStepToMaxrateStep;
+        var nextMaxrate = Clamp(settings.Maxrate + maxrateDelta, settings.MaxrateMin, settings.MaxrateMax);
+        var nextBufsize = nextMaxrate * profile.RateModel.BufsizeMultiplier;
+
+        return settings with
+        {
+            Cq = nextCq,
+            Maxrate = nextMaxrate,
+            Bufsize = nextBufsize
+        };
+    }
+
+    private static int Clamp(int value, int min, int max)
+    {
+        if (value < min)
+        {
+            return min;
+        }
+
+        return value > max ? max : value;
+    }
+
+    private static decimal Clamp(decimal value, decimal min, decimal max)
+    {
+        if (value < min)
+        {
+            return min;
+        }
+
+        return value > max ? max : value;
+    }
+
+    private static bool IsBelowCorridor(VideoSettingsRange corridor, decimal value)
+    {
+        return corridor.MinInclusive.HasValue && value < corridor.MinInclusive.Value ||
+               corridor.MinExclusive.HasValue && value <= corridor.MinExclusive.Value;
+    }
+
+    private static bool IsAboveCorridor(VideoSettingsRange corridor, decimal value)
+    {
+        return corridor.MaxInclusive.HasValue && value > corridor.MaxInclusive.Value ||
+               corridor.MaxExclusive.HasValue && value >= corridor.MaxExclusive.Value;
     }
 }
 
 /*
-Это итоговое разрешение autosample.
-Оно хранит финальные настройки и диагностику выбранного пути для логирования.
+Это узкий результат autosample.
+Он остается локальным рядом с алгоритмом, потому что нужен только resolver и тестам.
 */
 /// <summary>
-/// Represents the final autosample resolution together with diagnostics about the chosen path.
+/// Describes the autosampling result and diagnostics for video settings.
 /// </summary>
 internal sealed record VideoSettingsAutoSampleResolution(
     VideoSettingsDefaults Settings,
     string Mode,
     string Path,
     string Reason,
-    VideoSettingsRange? Range,
+    VideoSettingsRange? Corridor,
     IReadOnlyList<VideoSettingsSampleWindow> Windows,
-    decimal? LastReduction,
-    bool InBounds,
-    int Iterations)
+    int IterationCount,
+    decimal? LastReductionPercent,
+    bool InBounds)
 {
     public static VideoSettingsAutoSampleResolution Skip(VideoSettingsDefaults settings, string reason)
     {
         return new VideoSettingsAutoSampleResolution(
-            settings,
+            Settings: settings,
             Mode: "none",
             Path: "skip",
             Reason: reason,
-            Range: null,
-            Windows: [],
-            LastReduction: null,
-            InBounds: false,
-            Iterations: 0);
+            Corridor: null,
+            Windows: Array.Empty<VideoSettingsSampleWindow>(),
+            IterationCount: 0,
+            LastReductionPercent: null,
+            InBounds: false);
     }
 
-    public static VideoSettingsAutoSampleResolution FromResult(
+    public static VideoSettingsAutoSampleResolution Success(
+        VideoSettingsDefaults settings,
         string mode,
-        VideoSettingsRange range,
+        string path,
+        VideoSettingsRange corridor,
         IReadOnlyList<VideoSettingsSampleWindow> windows,
-        VideoSettingsAutoSampleResult result)
+        int iterationCount,
+        decimal? lastReductionPercent,
+        bool inBounds)
     {
         return new VideoSettingsAutoSampleResolution(
-            Settings: result.Settings,
+            Settings: settings,
             Mode: mode,
-            Path: result.Path,
-            Reason: result.Reason,
-            Range: range,
+            Path: path,
+            Reason: "resolved",
+            Corridor: corridor,
             Windows: windows,
-            LastReduction: result.LastReduction,
-            InBounds: result.InBounds,
-            Iterations: result.Iterations);
+            IterationCount: iterationCount,
+            LastReductionPercent: lastReductionPercent,
+            InBounds: inBounds);
     }
 }
+
+internal sealed record VideoSettingsSourceBitrateResolution(long? Bitrate, string Reason);

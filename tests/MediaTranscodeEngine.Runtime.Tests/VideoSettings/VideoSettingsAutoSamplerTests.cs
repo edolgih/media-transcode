@@ -9,13 +9,16 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenModeAccurate_UsesAccurateReductionProviderAndLongWindows()
     {
-        var sut = new VideoSettingsAutoSampler(VideoSettingsProfiles.Default);
+        var profiles = VideoSettingsProfiles.Default;
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
         IReadOnlyList<VideoSettingsSampleWindow>? actualWindows = null;
         var callCount = 0;
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -42,11 +45,14 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenModeAccurateAndReductionAboveCorridor_DecreasesCqAndIncreasesMaxrate()
     {
-        var sut = new VideoSettingsAutoSampler(CreateProfiles(maxIterations: 1));
+        var profiles = CreateProfiles(maxIterations: 1);
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -63,11 +69,14 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenAccurateReductionIsNull_ReturnsBaseSettings()
     {
-        var sut = new VideoSettingsAutoSampler(VideoSettingsProfiles.Default);
+        var profiles = VideoSettingsProfiles.Default;
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -82,11 +91,14 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenMaxIterationsReached_ReturnsLastResolvedSettings()
     {
-        var sut = new VideoSettingsAutoSampler(CreateProfiles(maxIterations: 1));
+        var profiles = CreateProfiles(maxIterations: 1);
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -103,7 +115,7 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenLimitsAreReachedAndStillOutsideCorridor_StopsWithoutFurtherChanges()
     {
-        var sut = new VideoSettingsAutoSampler(VideoSettingsProfiles.Create(
+        var profiles = VideoSettingsProfiles.Create(
             new VideoSettingsProfile(
                 targetHeight: 576,
                 defaultContentProfile: "anime",
@@ -124,11 +136,14 @@ public sealed class VideoSettingsAutoSamplerTests
                 defaults:
                 [
                     new VideoSettingsDefaults("anime", "default", Cq: 26, Maxrate: 2.0m, Bufsize: 4.0m, Algorithm: "bilinear", CqMin: 26, CqMax: 26, MaxrateMin: 2.0m, MaxrateMax: 2.0m)
-                ])));
+                ]));
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
         var baseSettings = sutResolveDefaults();
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -145,7 +160,7 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenMatchedBucketRangeDiffers_UsesMatchedBucketBounds()
     {
-        var sut = new VideoSettingsAutoSampler(VideoSettingsProfiles.Create(
+        var profiles = VideoSettingsProfiles.Create(
             new VideoSettingsProfile(
                 targetHeight: 576,
                 defaultContentProfile: "anime",
@@ -170,11 +185,14 @@ public sealed class VideoSettingsAutoSamplerTests
                 globalContentRanges:
                 [
                     new VideoSettingsRange("anime", "default", MinExclusive: 40.0m, MaxInclusive: 50.0m)
-                ])));
+                ]));
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
         var baseSettings = new VideoSettingsDefaults("anime", "default", Cq: 23, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: "bilinear", CqMin: 20, CqMax: 26, MaxrateMin: 2.0m, MaxrateMax: 3.0m);
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -191,12 +209,15 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenModeHybridAndFastEstimateIsWithinCorridor_SkipsAccurate()
     {
-        var sut = new VideoSettingsAutoSampler(CreateProfiles(maxIterations: 1, hybridAccurateIterations: 1));
+        var profiles = CreateProfiles(maxIterations: 1, hybridAccurateIterations: 1);
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "hybrid");
         var baseSettings = ResolveAnimeDefault();
         var accurateCalls = 0;
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -216,17 +237,20 @@ public sealed class VideoSettingsAutoSamplerTests
     [Fact]
     public void Resolve_WhenModeHybridAndFastEstimateIsOutsideCorridor_RunsAccurateFromFastSeed()
     {
-        var sut = new VideoSettingsAutoSampler(CreateProfiles(maxIterations: 1, hybridAccurateIterations: 1));
+        var profiles = CreateProfiles(maxIterations: 1, hybridAccurateIterations: 1);
+        var sut = new VideoSettingsAutoSampler(profiles);
+        var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "hybrid");
         var baseSettings = ResolveAnimeDefault();
         VideoSettingsDefaults? accurateStart = null;
 
         var actual = sut.Resolve(
+            profile,
             request,
             baseSettings,
             sourceHeight: 1080,
             duration: TimeSpan.FromMinutes(10),
-            sourceBitrate: 4_500_000,
+            sourceBitrate: 4_000_000,
             hasAudio: true,
             accurateReductionProvider: (settings, _) =>
             {
@@ -246,7 +270,6 @@ public sealed class VideoSettingsAutoSamplerTests
         string? autoSampleMode = null)
     {
         return new VideoSettingsRequest(
-            targetHeight: 576,
             contentProfile: "anime",
             qualityProfile: "default",
             autoSampleMode: autoSampleMode);

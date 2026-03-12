@@ -302,6 +302,12 @@ internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
             }
         }
 
+        if (!downscaleTargetHeight.HasValue && !string.IsNullOrWhiteSpace(downscaleAlgorithm))
+        {
+            errorText = "--downscale-algo requires --downscale.";
+            return false;
+        }
+
         request = new ToH264GpuRequest(
             keepSource: keepSource,
             downscaleTargetHeight: downscaleTargetHeight,

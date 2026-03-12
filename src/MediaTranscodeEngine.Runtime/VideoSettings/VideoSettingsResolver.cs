@@ -3,18 +3,21 @@ using MediaTranscodeEngine.Runtime.VideoSettings.Profiles;
 namespace MediaTranscodeEngine.Runtime.VideoSettings;
 
 /*
-Этот helper выбирает итоговые video settings из общего profile-based механизма.
-Он умеет брать bucket по output height, применять profile defaults, autosample и manual overrides.
+Это общий resolver profile-driven video settings.
+Он отдельно обслуживает ordinary encode и explicit downscale, но использует одну и ту же профильную математику.
 */
 /// <summary>
-/// Resolves profile-driven video settings for ordinary encode and downscale encode paths.
+/// Resolves effective profile-driven video settings for encode and downscale paths.
 /// </summary>
-internal sealed class ProfileDrivenVideoSettingsResolver
+internal sealed class VideoSettingsResolver
 {
     private readonly VideoSettingsProfiles _profiles;
     private readonly VideoSettingsAutoSampler _autoSampler;
 
-    public ProfileDrivenVideoSettingsResolver(VideoSettingsProfiles profiles)
+    /// <summary>
+    /// Initializes a resolver backed by the supplied profile catalog.
+    /// </summary>
+    public VideoSettingsResolver(VideoSettingsProfiles profiles)
     {
         _profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         _autoSampler = new VideoSettingsAutoSampler(_profiles);
@@ -31,16 +34,12 @@ internal sealed class ProfileDrivenVideoSettingsResolver
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(outputHeight);
 
-        if (request?.TargetHeight.HasValue == true)
-        {
-            throw new ArgumentException("Encode settings request must not specify a target height.", nameof(request));
-        }
-
         var profile = _profiles.ResolveOutputProfile(outputHeight);
-        var effectiveRequest = BuildEncodeRequest(request, profile.TargetHeight, defaultAutoSampleMode);
+        var effectiveRequest = BuildEffectiveVideoSettingsRequest(request, defaultAutoSampleMode);
         return ResolveCore(
             profile,
             effectiveRequest,
+            algorithmOverride: null,
             sourceHeightForRanges: null,
             duration,
             sourceBitrate,
@@ -49,7 +48,8 @@ internal sealed class ProfileDrivenVideoSettingsResolver
     }
 
     public ProfileDrivenVideoSettingsResolution ResolveForDownscale(
-        VideoSettingsRequest request,
+        DownscaleRequest request,
+        VideoSettingsRequest? videoSettings,
         int sourceHeight,
         TimeSpan duration,
         long? sourceBitrate,
@@ -60,17 +60,13 @@ internal sealed class ProfileDrivenVideoSettingsResolver
         ArgumentNullException.ThrowIfNull(request);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sourceHeight);
 
-        if (!request.TargetHeight.HasValue)
-        {
-            throw new ArgumentException("Video settings request for downscale must specify a target height.", nameof(request));
-        }
-
-        var profile = _profiles.GetRequiredProfile(request.TargetHeight.Value);
-        var effectiveRequest = BuildDownscaleRequest(request, defaultAutoSampleMode);
+        var profile = _profiles.GetRequiredProfile(request.TargetHeight);
+        var effectiveRequest = BuildEffectiveVideoSettingsRequest(videoSettings, defaultAutoSampleMode);
         return ResolveCore(
             profile,
             effectiveRequest,
-            sourceHeight,
+            algorithmOverride: request.Algorithm,
+            sourceHeightForRanges: sourceHeight,
             duration,
             sourceBitrate,
             hasAudio,
@@ -80,14 +76,20 @@ internal sealed class ProfileDrivenVideoSettingsResolver
     private ProfileDrivenVideoSettingsResolution ResolveCore(
         VideoSettingsProfile profile,
         VideoSettingsRequest effectiveRequest,
+        string? algorithmOverride,
         int? sourceHeightForRanges,
         TimeSpan duration,
         long? sourceBitrate,
         bool hasAudio,
         Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider)
     {
-        var baseSettings = profile.ResolveDefaults(sourceHeightForRanges, effectiveRequest.ContentProfile, effectiveRequest.QualityProfile);
+        var baseSettings = profile.ResolveDefaults(
+            sourceHeight: sourceHeightForRanges,
+            contentProfile: effectiveRequest.ContentProfile,
+            qualityProfile: effectiveRequest.QualityProfile);
+
         var autoSampleResolution = _autoSampler.ResolveWithDiagnostics(
+            profile,
             effectiveRequest,
             baseSettings,
             sourceHeightForRanges,
@@ -95,46 +97,29 @@ internal sealed class ProfileDrivenVideoSettingsResolver
             sourceBitrate,
             hasAudio,
             accurateReductionProvider);
-        var settings = ApplyOverrides(autoSampleResolution.Settings, effectiveRequest, profile);
 
+        var settings = ApplyOverrides(autoSampleResolution.Settings, effectiveRequest, profile, algorithmOverride);
         return new ProfileDrivenVideoSettingsResolution(profile, effectiveRequest, baseSettings, autoSampleResolution, settings);
     }
 
-    private static VideoSettingsRequest BuildEncodeRequest(
+    private static VideoSettingsRequest BuildEffectiveVideoSettingsRequest(
         VideoSettingsRequest? request,
-        int targetHeight,
         string? defaultAutoSampleMode)
     {
         return new VideoSettingsRequest(
-            targetHeight: targetHeight,
             contentProfile: request?.ContentProfile,
             qualityProfile: request?.QualityProfile,
             autoSampleMode: request?.AutoSampleMode ?? defaultAutoSampleMode,
-            algorithm: request?.Algorithm,
             cq: request?.Cq,
             maxrate: request?.Maxrate,
             bufsize: request?.Bufsize);
     }
 
-    private static VideoSettingsRequest BuildDownscaleRequest(VideoSettingsRequest request, string? defaultAutoSampleMode)
-    {
-        if (defaultAutoSampleMode is null || !string.IsNullOrWhiteSpace(request.AutoSampleMode))
-        {
-            return request;
-        }
-
-        return new VideoSettingsRequest(
-            targetHeight: request.TargetHeight,
-            contentProfile: request.ContentProfile,
-            qualityProfile: request.QualityProfile,
-            autoSampleMode: defaultAutoSampleMode,
-            algorithm: request.Algorithm,
-            cq: request.Cq,
-            maxrate: request.Maxrate,
-            bufsize: request.Bufsize);
-    }
-
-    private static VideoSettingsDefaults ApplyOverrides(VideoSettingsDefaults defaults, VideoSettingsRequest request, VideoSettingsProfile profile)
+    private static VideoSettingsDefaults ApplyOverrides(
+        VideoSettingsDefaults defaults,
+        VideoSettingsRequest request,
+        VideoSettingsProfile profile,
+        string? algorithmOverride)
     {
         var cq = request.Cq ?? defaults.Cq;
         var maxrate = request.Maxrate;
@@ -162,29 +147,30 @@ internal sealed class ProfileDrivenVideoSettingsResolver
             Cq: cq,
             Maxrate: maxrate.Value,
             Bufsize: bufsize.Value,
-            Algorithm: request.Algorithm ?? defaults.Algorithm,
+            Algorithm: algorithmOverride ?? defaults.Algorithm,
             CqMin: defaults.CqMin,
             CqMax: defaults.CqMax,
             MaxrateMin: defaults.MaxrateMin,
             MaxrateMax: defaults.MaxrateMax);
     }
 
-    private static decimal Clamp(decimal value, decimal minInclusive, decimal maxInclusive)
+    private static decimal Clamp(decimal value, decimal min, decimal max)
     {
-        return value < minInclusive
-            ? minInclusive
-            : value > maxInclusive
-                ? maxInclusive
-                : value;
+        if (value < min)
+        {
+            return min;
+        }
+
+        return value > max ? max : value;
     }
 }
 
 /*
-Это результат profile-driven выбора video settings.
-Он хранит выбранный профиль, базовые defaults, autosample-диагностику и итоговые настройки.
+Это диагностический результат разрешения video settings.
+Он нужен тестам и логированию, но не вводит отдельную доменную модель.
 */
 /// <summary>
-/// Represents one resolved profile-driven settings selection.
+/// Describes the full resolution result for profile-driven video settings.
 /// </summary>
 internal sealed record ProfileDrivenVideoSettingsResolution(
     VideoSettingsProfile Profile,

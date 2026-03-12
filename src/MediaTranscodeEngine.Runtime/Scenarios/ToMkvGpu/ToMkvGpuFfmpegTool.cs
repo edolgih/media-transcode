@@ -19,7 +19,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 {
     private readonly string _ffmpegPath;
     private readonly VideoSettingsProfiles _videoSettingsProfiles;
-    private readonly ProfileDrivenVideoSettingsResolver _settingsResolver;
+    private readonly VideoSettingsResolver _settingsResolver;
     private readonly FfmpegSampleMeasurer _sampleMeasurer;
     private readonly Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?> _sampleReductionProvider;
     private readonly ILogger<ToMkvGpuFfmpegTool> _logger;
@@ -43,7 +43,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
         _ffmpegPath = ffmpegPath.Trim();
         _videoSettingsProfiles = videoSettingsProfiles ?? throw new ArgumentNullException(nameof(videoSettingsProfiles));
-        _settingsResolver = new ProfileDrivenVideoSettingsResolver(_videoSettingsProfiles);
+        _settingsResolver = new VideoSettingsResolver(_videoSettingsProfiles);
         _sampleMeasurer = new FfmpegSampleMeasurer(_ffmpegPath);
         _sampleReductionProvider = sampleReductionProvider ?? _sampleMeasurer.MeasureAverageReduction;
         _logger = logger;
@@ -188,6 +188,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
             ? string.Empty
             : "-pix_fmt yuv420p ";
         var rateControlPart = $"-rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} ";
+        var downscale = plan.Downscale;
 
         if (plan.ApplyOverlayBackground)
         {
@@ -197,9 +198,9 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
                    $"{pixelFormatPart}{compatibilityPart}-g {gop}";
         }
 
-        if (plan.TargetHeight.HasValue)
+        if (downscale is not null)
         {
-            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{plan.TargetHeight.Value}:interp_algo={settings.Algorithm}:format=nv12\" " +
+            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={settings.Algorithm}:format=nv12\" " +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
                    $"{compatibilityPart}-g {gop}";
         }
@@ -271,12 +272,14 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
     private static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, TranscodePlan plan)
     {
+        var downscale = plan.Downscale;
+
         if (plan.ApplyOverlayBackground)
         {
             return ResolveOverlayOutputDimensions(video, plan.TargetHeight);
         }
 
-        if (!plan.TargetHeight.HasValue)
+        if (downscale is null)
         {
             return (video.Width, video.Height);
         }
@@ -286,8 +289,8 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
             return (video.Width, video.Height);
         }
 
-        var outputWidth = (int)Math.Round(video.Width * (double)plan.TargetHeight.Value / video.Height);
-        return (MakeEven(outputWidth), MakeEven(plan.TargetHeight.Value));
+        var outputWidth = (int)Math.Round(video.Width * (double)downscale.TargetHeight / video.Height);
+        return (MakeEven(outputWidth), MakeEven(downscale.TargetHeight));
     }
 
     private static (int Width, int Height) ResolveOverlayOutputDimensions(SourceVideo video, int? targetHeight)
@@ -333,17 +336,18 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         var outputHeight = ResolveOutputDimensions(video, plan).Height;
         if (outputHeight <= 0)
         {
-            outputHeight = plan.TargetHeight ?? video.Height;
+            outputHeight = plan.Downscale?.TargetHeight ?? plan.TargetHeight ?? video.Height;
         }
 
         var sourceBitrate = ResolveSourceBitrate(video);
-        var actualSampleHeight = plan.TargetHeight ?? outputHeight;
+        var actualSampleHeight = plan.Downscale?.TargetHeight ?? outputHeight;
         var accurateReductionProvider = actualSampleHeight > 0
             ? (Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>)((settings, windows) => _sampleReductionProvider(video.FilePath, actualSampleHeight, settings, windows))
             : null;
-        var resolution = plan.TargetHeight.HasValue
+        var resolution = plan.Downscale is not null
             ? _settingsResolver.ResolveForDownscale(
-                request: plan.VideoSettings ?? throw new InvalidOperationException("Downscale request is required when target height is specified."),
+                request: plan.Downscale,
+                videoSettings: plan.VideoSettings,
                 sourceHeight: video.Height,
                 duration: video.Duration,
                 sourceBitrate: sourceBitrate.Bitrate,
@@ -382,10 +386,10 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
             resolution.Reason,
             sourceBitrate.Origin,
             FormatBitrateMbps(sourceBitrate.Bitrate),
-            FormatRange(resolution.Range),
+            FormatRange(resolution.Corridor),
             FormatWindows(resolution.Windows),
-            resolution.Iterations,
-            resolution.LastReduction,
+            resolution.IterationCount,
+            resolution.LastReductionPercent,
             resolution.InBounds,
             FormatSettings(baseSettings),
             FormatSettings(resolution.Settings));

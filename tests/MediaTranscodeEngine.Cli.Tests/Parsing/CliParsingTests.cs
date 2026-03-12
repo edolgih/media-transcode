@@ -89,11 +89,12 @@ public sealed class CliParsingTests
         scenarioRequest.OverlayBackground.Should().BeTrue();
         scenarioRequest.SynchronizeAudio.Should().BeTrue();
         scenarioRequest.VideoSettings.Should().NotBeNull();
-        scenarioRequest.VideoSettings!.TargetHeight.Should().Be(576);
+        scenarioRequest.Downscale.Should().NotBeNull();
+        scenarioRequest.Downscale!.TargetHeight.Should().Be(576);
         scenarioRequest.VideoSettings.ContentProfile.Should().Be("film");
         scenarioRequest.VideoSettings.QualityProfile.Should().Be("default");
         scenarioRequest.VideoSettings.AutoSampleMode.Should().Be("fast");
-        scenarioRequest.VideoSettings.Algorithm.Should().Be("bicubic");
+        scenarioRequest.Downscale.Algorithm.Should().Be("bicubic");
         scenarioRequest.VideoSettings.Cq.Should().Be(24);
         scenarioRequest.VideoSettings.Maxrate.Should().Be(3.7m);
         scenarioRequest.VideoSettings.Bufsize.Should().Be(7.4m);
@@ -218,8 +219,8 @@ public sealed class CliParsingTests
 
         var scenario = handler.CreateScenario(request).Should().BeOfType<ToMkvGpuScenario>().Subject;
 
-        scenario.Request.VideoSettings.Should().NotBeNull();
-        scenario.Request.VideoSettings!.TargetHeight.Should().Be(720);
+        scenario.Request.Downscale.Should().NotBeNull();
+        scenario.Request.Downscale!.TargetHeight.Should().Be(720);
     }
 
     [Theory]

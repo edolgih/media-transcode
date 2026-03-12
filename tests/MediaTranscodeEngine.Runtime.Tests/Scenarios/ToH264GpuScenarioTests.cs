@@ -325,7 +325,7 @@ public sealed class ToH264GpuScenarioTests
 
         actual.TargetHeight.Should().Be(576);
         actual.TargetFramesPerSecond.Should().BeApproximately(30000d / 1001d, 0.0001);
-        actual.VideoSettings.Should().NotBeNull();
+        actual.VideoSettings.Should().BeNull();
     }
 
     [Fact]

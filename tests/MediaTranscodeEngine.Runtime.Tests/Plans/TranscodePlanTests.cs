@@ -85,7 +85,7 @@ public sealed class TranscodePlanTests
     }
 
     [Fact]
-    public void Ctor_WhenVideoSettingsTargetDoesNotMatchTargetHeight_ThrowsArgumentException()
+    public void Ctor_WhenDownscaleTargetDoesNotMatchTargetHeight_ThrowsArgumentException()
     {
         Action action = () => new TranscodePlan(
             targetContainer: "mkv",
@@ -95,18 +95,19 @@ public sealed class TranscodePlanTests
             targetHeight: 720,
             targetFramesPerSecond: null,
             useFrameInterpolation: false,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576),
+            videoSettings: new VideoSettingsRequest(),
+            downscale: new DownscaleRequest(576),
             copyVideo: false,
             copyAudio: true,
             fixTimestamps: false,
             keepSource: true);
 
         action.Should().Throw<ArgumentException>()
-            .WithMessage("*Video settings target must match target height*");
+            .WithMessage("*Downscale request target must match target height*");
     }
 
     [Fact]
-    public void Ctor_WhenVideoSettingsTargetIsProvidedWithoutPlanTargetHeight_ThrowsArgumentException()
+    public void Ctor_WhenDownscaleIsProvidedWithoutPlanTargetHeight_ThrowsArgumentException()
     {
         Action action = () => new TranscodePlan(
             targetContainer: "mkv",
@@ -116,14 +117,15 @@ public sealed class TranscodePlanTests
             targetHeight: null,
             targetFramesPerSecond: null,
             useFrameInterpolation: false,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576),
+            videoSettings: new VideoSettingsRequest(),
+            downscale: new DownscaleRequest(576),
             copyVideo: false,
             copyAudio: true,
             fixTimestamps: false,
             keepSource: true);
 
         action.Should().Throw<ArgumentException>()
-            .WithMessage("*Video settings target requires target height in the transcode plan*");
+            .WithMessage("*Downscale request requires target height in the transcode plan*");
     }
 
     [Fact]
@@ -137,7 +139,8 @@ public sealed class TranscodePlanTests
             targetHeight: 576,
             targetFramesPerSecond: 23.976,
             useFrameInterpolation: false,
-            videoSettings: new VideoSettingsRequest(targetHeight: 576),
+            videoSettings: new VideoSettingsRequest(contentProfile: "film"),
+            downscale: new DownscaleRequest(576),
             copyVideo: false,
             copyAudio: true,
             fixTimestamps: false,
@@ -151,6 +154,7 @@ public sealed class TranscodePlanTests
         actual.VideoCompatibilityProfile.Should().Be(VideoCompatibilityProfile.H264High);
         actual.EncoderPreset.Should().Be("p5");
         actual.OutputPath.Should().Be(Path.GetFullPath(@".\output.mkv"));
+        actual.Downscale!.TargetHeight.Should().Be(576);
     }
 
     [Fact]
@@ -188,6 +192,7 @@ public sealed class TranscodePlanTests
             targetFramesPerSecond: targetFramesPerSecond,
             useFrameInterpolation: useFrameInterpolation,
             videoSettings: null,
+            downscale: targetHeight.HasValue ? new DownscaleRequest(targetHeight.Value) : null,
             copyVideo: true,
             copyAudio: true,
             fixTimestamps: false,

@@ -36,6 +36,11 @@ public sealed class ToH264GpuRequest
             throw new ArgumentOutOfRangeException(nameof(downscaleTargetHeight), downscaleTargetHeight.Value, "Supported values: 720, 576, 480, 424.");
         }
 
+        if (!downscaleTargetHeight.HasValue && !string.IsNullOrWhiteSpace(downscaleAlgorithm))
+        {
+            throw new ArgumentException("Downscale algorithm requires downscale target height.", nameof(downscaleAlgorithm));
+        }
+
         if (cq.HasValue && (cq.Value <= 0 || cq.Value > 51))
         {
             throw new ArgumentOutOfRangeException(nameof(cq), cq.Value, "CQ must be between 1 and 51.");
@@ -137,20 +142,25 @@ public sealed class ToH264GpuRequest
     /// </summary>
     public bool OutputMkv { get; }
 
-    internal VideoSettingsRequest? BuildVideoSettingsRequest(bool includeTargetHeight = true)
+    internal VideoSettingsRequest? BuildVideoSettingsRequest()
     {
         var request = new VideoSettingsRequest(
-            targetHeight: includeTargetHeight ? DownscaleTargetHeight : null,
             contentProfile: ContentProfile,
             qualityProfile: QualityProfile,
             autoSampleMode: AutoSampleMode,
-            algorithm: DownscaleAlgorithm,
             cq: Cq,
             maxrate: Maxrate,
             bufsize: Bufsize);
 
         return request.HasValue
             ? request
+            : null;
+    }
+
+    internal DownscaleRequest? BuildDownscaleRequest()
+    {
+        return DownscaleTargetHeight.HasValue
+            ? new DownscaleRequest(DownscaleTargetHeight.Value, DownscaleAlgorithm)
             : null;
     }
 

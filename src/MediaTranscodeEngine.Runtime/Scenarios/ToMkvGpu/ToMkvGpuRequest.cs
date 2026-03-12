@@ -23,6 +23,7 @@ public sealed class ToMkvGpuRequest
     /// <param name="synchronizeAudio">Whether the audio sync-safe path should be forced.</param>
     /// <param name="keepSource">Whether the source file should be preserved after execution.</param>
     /// <param name="videoSettings">Reusable video-settings directives.</param>
+    /// <param name="downscale">Explicit downscale intent when the scenario requests resized output.</param>
     /// <param name="nvencPreset">Explicit NVENC preset override.</param>
     /// <param name="maxFramesPerSecond">Optional frame-rate cap applied only when the source frame rate is higher.</param>
     public ToMkvGpuRequest(
@@ -30,6 +31,7 @@ public sealed class ToMkvGpuRequest
         bool synchronizeAudio = false,
         bool keepSource = false,
         VideoSettingsRequest? videoSettings = null,
+        DownscaleRequest? downscale = null,
         string? nvencPreset = null,
         int? maxFramesPerSecond = null)
     {
@@ -45,6 +47,7 @@ public sealed class ToMkvGpuRequest
         SynchronizeAudio = synchronizeAudio;
         KeepSource = keepSource;
         VideoSettings = videoSettings?.HasValue == true ? videoSettings : null;
+        Downscale = downscale;
         NvencPreset = NormalizeName(nvencPreset);
         MaxFramesPerSecond = maxFramesPerSecond;
     }
@@ -58,6 +61,11 @@ public sealed class ToMkvGpuRequest
     /// Gets reusable video-settings directives when the scenario requests them.
     /// </summary>
     public VideoSettingsRequest? VideoSettings { get; }
+
+    /// <summary>
+    /// Gets explicit downscale intent when the scenario requests resized output.
+    /// </summary>
+    public DownscaleRequest? Downscale { get; }
 
     /// <summary>
     /// Gets a value indicating whether the audio sync-safe path should be forced.
