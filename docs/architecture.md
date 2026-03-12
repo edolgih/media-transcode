@@ -30,6 +30,7 @@ CLI flow at a high level:
 - the selected scenario validates its own scenario-specific arguments;
 - processing then loads source facts, asks the scenario to build a `TranscodePlan`, and picks the first tool that can execute that plan;
 - in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the runtime request/scenario types it uses; if the ffmpeg rendering policy differs materially, it may also justify a dedicated tool adapter instead of growing a shared one.
+- ordinary encode and downscale now share the same profile-driven video-settings axis: output-height buckets, content/quality profiles, bucket bounds, and autosample/bitrate-hint adjustment all come from the shared downscale profile catalog rather than scenario-local hardcoded fallbacks.
 
 ## Timing, FPS And Sync Notes
 
@@ -59,6 +60,8 @@ The new implementation already fixes and verifies:
 - `OverlayBg`
 - `downscale 576` profile behavior
 - `downscale 480` profile behavior
+- ordinary encode profile resolution by output height
+- ordinary encode fast autosample path
 - `max-fps` cap behavior
 - legacy CLI contract:
   - `chcp 65001`
