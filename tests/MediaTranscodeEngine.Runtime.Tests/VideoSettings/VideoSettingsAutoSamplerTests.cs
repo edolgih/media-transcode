@@ -20,12 +20,14 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
+        var selection = CreateSelection(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
         IReadOnlyList<VideoSettingsSampleWindow>? actualWindows = null;
         var callCount = 0;
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -56,10 +58,12 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
+        var selection = CreateSelection(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -80,10 +84,12 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
+        var selection = CreateSelection(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -102,10 +108,12 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
+        var selection = CreateSelection(autoSampleMode: "accurate");
         var baseSettings = ResolveAnimeDefault();
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -149,10 +157,12 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
+        var selection = CreateSelection(autoSampleMode: "accurate");
         var baseSettings = sutResolveDefaults();
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -199,10 +209,12 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
+        var selection = CreateSelection(autoSampleMode: "accurate");
         var baseSettings = new VideoSettingsDefaults("anime", "default", Cq: 23, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: "bilinear", CqMin: 20, CqMax: 26, MaxrateMin: 2.0m, MaxrateMax: 3.0m);
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -223,11 +235,13 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "hybrid");
+        var selection = CreateSelection(autoSampleMode: "hybrid");
         var baseSettings = ResolveAnimeDefault();
         var accurateCalls = 0;
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -251,11 +265,13 @@ public sealed class VideoSettingsAutoSamplerTests
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "hybrid");
+        var selection = CreateSelection(autoSampleMode: "hybrid");
         var baseSettings = ResolveAnimeDefault();
         VideoSettingsDefaults? accurateStart = null;
 
         var actual = sut.Resolve(
             profile,
+            selection,
             request,
             baseSettings,
             sourceHeight: 1080,
@@ -285,9 +301,17 @@ public sealed class VideoSettingsAutoSamplerTests
             autoSampleMode: autoSampleMode);
     }
 
+    private static EffectiveVideoSettingsSelection CreateSelection(string? autoSampleMode = null)
+    {
+        return new EffectiveVideoSettingsSelection(
+            ContentProfile: "anime",
+            QualityProfile: "default",
+            AutoSampleMode: autoSampleMode ?? "accurate");
+    }
+
     private static VideoSettingsDefaults ResolveAnimeDefault()
     {
-        return VideoSettingsProfiles.Default.GetRequiredProfile(576).ResolveDefaults("anime", "default");
+        return VideoSettingsProfiles.Default.GetRequiredProfile(576).ResolveDefaults(CreateSelection());
     }
 
     private static VideoSettingsProfiles CreateProfiles(int maxIterations, int hybridAccurateIterations = 2)

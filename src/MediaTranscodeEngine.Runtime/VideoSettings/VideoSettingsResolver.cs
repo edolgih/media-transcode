@@ -35,10 +35,11 @@ internal sealed class VideoSettingsResolver
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(outputHeight);
 
         var profile = _profiles.ResolveOutputProfile(outputHeight);
-        var effectiveRequest = BuildEffectiveVideoSettingsRequest(request, defaultAutoSampleMode);
+        var effectiveSelection = BuildEffectiveVideoSettingsSelection(profile, request, defaultAutoSampleMode);
         return ResolveCore(
             profile,
-            effectiveRequest,
+            effectiveSelection,
+            request,
             algorithmOverride: null,
             sourceHeightForRanges: null,
             duration,
@@ -61,10 +62,11 @@ internal sealed class VideoSettingsResolver
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sourceHeight);
 
         var profile = _profiles.GetRequiredProfile(request.TargetHeight);
-        var effectiveRequest = BuildEffectiveVideoSettingsRequest(videoSettings, defaultAutoSampleMode);
+        var effectiveSelection = BuildEffectiveVideoSettingsSelection(profile, videoSettings, defaultAutoSampleMode);
         return ResolveCore(
             profile,
-            effectiveRequest,
+            effectiveSelection,
+            videoSettings,
             algorithmOverride: request.Algorithm,
             sourceHeightForRanges: sourceHeight,
             duration,
@@ -75,7 +77,8 @@ internal sealed class VideoSettingsResolver
 
     private ProfileDrivenVideoSettingsResolution ResolveCore(
         VideoSettingsProfile profile,
-        VideoSettingsRequest effectiveRequest,
+        EffectiveVideoSettingsSelection effectiveSelection,
+        VideoSettingsRequest? request,
         string? algorithmOverride,
         int? sourceHeightForRanges,
         TimeSpan duration,
@@ -83,14 +86,12 @@ internal sealed class VideoSettingsResolver
         bool hasAudio,
         Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider)
     {
-        var baseSettings = profile.ResolveDefaults(
-            sourceHeight: sourceHeightForRanges,
-            contentProfile: effectiveRequest.ContentProfile,
-            qualityProfile: effectiveRequest.QualityProfile);
+        var baseSettings = profile.ResolveDefaults(sourceHeightForRanges, effectiveSelection);
 
         var autoSampleResolution = _autoSampler.ResolveWithDiagnostics(
             profile,
-            effectiveRequest,
+            effectiveSelection,
+            request,
             baseSettings,
             sourceHeightForRanges,
             duration,
@@ -98,34 +99,35 @@ internal sealed class VideoSettingsResolver
             hasAudio,
             accurateReductionProvider);
 
-        var settings = ApplyOverrides(autoSampleResolution.Settings, effectiveRequest, profile, algorithmOverride);
-        return new ProfileDrivenVideoSettingsResolution(profile, effectiveRequest, baseSettings, autoSampleResolution, settings);
+        var settings = ApplyOverrides(autoSampleResolution.Settings, request, profile, algorithmOverride);
+        return new ProfileDrivenVideoSettingsResolution(profile, effectiveSelection, baseSettings, autoSampleResolution, settings);
     }
 
-    private static VideoSettingsRequest BuildEffectiveVideoSettingsRequest(
+    private static EffectiveVideoSettingsSelection BuildEffectiveVideoSettingsSelection(
+        VideoSettingsProfile profile,
         VideoSettingsRequest? request,
         string? defaultAutoSampleMode)
     {
-        return VideoSettingsRequest.CreateOrNull(
-            contentProfile: request?.ContentProfile,
-            qualityProfile: request?.QualityProfile,
-            autoSampleMode: request?.AutoSampleMode ?? defaultAutoSampleMode,
-            cq: request?.Cq,
-            maxrate: request?.Maxrate,
-            bufsize: request?.Bufsize)
-            ?? throw new InvalidOperationException("Effective video settings selection must resolve to at least one value.");
+        ArgumentNullException.ThrowIfNull(profile);
+
+        return new EffectiveVideoSettingsSelection(
+            ContentProfile: request?.ContentProfile ?? profile.DefaultContentProfile,
+            QualityProfile: request?.QualityProfile ?? profile.DefaultQualityProfile,
+            AutoSampleMode: request?.AutoSampleMode ?? defaultAutoSampleMode ?? profile.AutoSampling.ModeDefault);
     }
 
     private static VideoSettingsDefaults ApplyOverrides(
         VideoSettingsDefaults defaults,
-        VideoSettingsRequest request,
+        VideoSettingsRequest? request,
         VideoSettingsProfile profile,
         string? algorithmOverride)
     {
-        var cq = request.Cq ?? defaults.Cq;
-        var maxrate = request.Maxrate;
+        var cq = request?.Cq ?? defaults.Cq;
+        var maxrate = request?.Maxrate;
+        var hasManualCq = request?.Cq.HasValue == true;
+        var hasManualMaxrate = request?.Maxrate.HasValue == true;
 
-        if (!maxrate.HasValue && request.Cq.HasValue)
+        if (!maxrate.HasValue && hasManualCq)
         {
             var delta = defaults.Cq - cq;
             var resolved = defaults.Maxrate + (delta * profile.RateModel.CqStepToMaxrateStep);
@@ -134,8 +136,8 @@ internal sealed class VideoSettingsResolver
 
         maxrate ??= defaults.Maxrate;
 
-        var bufsize = request.Bufsize;
-        if (!bufsize.HasValue && (request.Maxrate.HasValue || request.Cq.HasValue))
+        var bufsize = request?.Bufsize;
+        if (!bufsize.HasValue && (hasManualMaxrate || hasManualCq))
         {
             bufsize = maxrate.Value * profile.RateModel.BufsizeMultiplier;
         }
@@ -175,7 +177,7 @@ internal sealed class VideoSettingsResolver
 /// </summary>
 internal sealed record ProfileDrivenVideoSettingsResolution(
     VideoSettingsProfile Profile,
-    VideoSettingsRequest EffectiveRequest,
+    EffectiveVideoSettingsSelection EffectiveSelection,
     VideoSettingsDefaults BaseSettings,
     VideoSettingsAutoSampleResolution AutoSample,
     VideoSettingsDefaults Settings);

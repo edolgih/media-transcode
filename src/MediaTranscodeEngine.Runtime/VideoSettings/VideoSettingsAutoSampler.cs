@@ -7,23 +7,22 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 Он используется и для ordinary encode, и для explicit downscale, когда сценарий хочет profile-driven подбор внутри corridor профиля.
 */
 /// <summary>
-/// Resolves autosampled video settings from a profile, an effective request, and source facts.
+/// Resolves autosampled video settings from a profile, a resolved selection, optional overrides, and source facts.
 /// </summary>
 internal sealed class VideoSettingsAutoSampler
 {
-    private readonly VideoSettingsProfiles _profiles;
-
     /// <summary>
     /// Initializes an autosampler backed by the supplied profile catalog.
     /// </summary>
     public VideoSettingsAutoSampler(VideoSettingsProfiles profiles)
     {
-        _profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
+        ArgumentNullException.ThrowIfNull(profiles);
     }
 
     public VideoSettingsDefaults Resolve(
         VideoSettingsProfile profile,
-        VideoSettingsRequest request,
+        EffectiveVideoSettingsSelection selection,
+        VideoSettingsRequest? overrides,
         VideoSettingsDefaults baseSettings,
         int? sourceHeight,
         TimeSpan duration,
@@ -33,7 +32,8 @@ internal sealed class VideoSettingsAutoSampler
     {
         return ResolveWithDiagnostics(
             profile,
-            request,
+            selection,
+            overrides,
             baseSettings,
             sourceHeight,
             duration,
@@ -44,7 +44,8 @@ internal sealed class VideoSettingsAutoSampler
 
     internal VideoSettingsAutoSampleResolution ResolveWithDiagnostics(
         VideoSettingsProfile profile,
-        VideoSettingsRequest request,
+        EffectiveVideoSettingsSelection selection,
+        VideoSettingsRequest? overrides,
         VideoSettingsDefaults baseSettings,
         int? sourceHeight,
         TimeSpan duration,
@@ -53,17 +54,12 @@ internal sealed class VideoSettingsAutoSampler
         Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(baseSettings);
 
-        if (request.Cq.HasValue || request.Maxrate.HasValue || request.Bufsize.HasValue)
+        if (HasManualRateOverrides(overrides))
         {
             return VideoSettingsAutoSampleResolution.Skip(baseSettings, "manual_override");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.AutoSampleMode) && !profile.AutoSampling.EnabledByDefault)
-        {
-            return VideoSettingsAutoSampleResolution.Skip(baseSettings, "disabled_by_profile");
         }
 
         if (duration <= TimeSpan.Zero)
@@ -71,17 +67,14 @@ internal sealed class VideoSettingsAutoSampler
             return VideoSettingsAutoSampleResolution.Skip(baseSettings, "invalid_duration");
         }
 
-        var corridor = profile.ResolveRange(
-            sourceHeight: sourceHeight,
-            contentProfile: request.ContentProfile,
-            qualityProfile: request.QualityProfile);
+        var corridor = profile.ResolveRange(sourceHeight, selection);
 
         if (corridor is null)
         {
             return VideoSettingsAutoSampleResolution.Skip(baseSettings, "missing_corridor");
         }
 
-        var mode = NormalizeMode(request.AutoSampleMode) ?? profile.AutoSampling.ModeDefault;
+        var mode = selection.AutoSampleMode;
 
         return mode switch
         {
@@ -247,14 +240,11 @@ internal sealed class VideoSettingsAutoSampler
             inBounds: lastReduction.HasValue && corridor.Contains(lastReduction.Value));
     }
 
-    private static string? NormalizeMode(string? value)
+    private static bool HasManualRateOverrides(VideoSettingsRequest? overrides)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim().ToLowerInvariant();
+        return overrides?.Cq.HasValue == true ||
+               overrides?.Maxrate.HasValue == true ||
+               overrides?.Bufsize.HasValue == true;
     }
 
     private static VideoSettingsSourceBitrateResolution ResolveSourceBitrate(long? sourceBitrate, TimeSpan duration, bool hasAudio)

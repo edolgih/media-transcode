@@ -28,7 +28,7 @@ public sealed class VideoSettingsResolverTests
 
         // Assert
         actual.Profile.TargetHeight.Should().Be(720);
-        actual.EffectiveRequest.AutoSampleMode.Should().Be("fast");
+        actual.EffectiveSelection.AutoSampleMode.Should().Be("fast");
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class VideoSettingsResolverTests
 
         // Assert
         actual.Profile.TargetHeight.Should().Be(576);
-        actual.EffectiveRequest.AutoSampleMode.Should().Be("hybrid");
+        actual.EffectiveSelection.AutoSampleMode.Should().Be("hybrid");
         actual.BaseSettings.ContentProfile.Should().Be("anime");
         actual.BaseSettings.QualityProfile.Should().Be("high");
     }

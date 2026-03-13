@@ -43,7 +43,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(720);
 
-        var actual = sut.ResolveDefaults(contentProfile: null, qualityProfile: null);
+        var actual = sut.ResolveDefaults(CreateSelection(sut));
 
         actual.ContentProfile.Should().Be("film");
         actual.QualityProfile.Should().Be("default");
@@ -57,7 +57,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(1080);
 
-        var actual = sut.ResolveDefaults(contentProfile: null, qualityProfile: null);
+        var actual = sut.ResolveDefaults(CreateSelection(sut));
 
         actual.ContentProfile.Should().Be("film");
         actual.QualityProfile.Should().Be("default");
@@ -71,7 +71,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(720);
 
-        var actual = sut.ResolveDefaults(contentProfile: "anime", qualityProfile: "high");
+        var actual = sut.ResolveDefaults(CreateSelection(sut, contentProfile: "anime", qualityProfile: "high"));
 
         actual.Maxrate.Should().Be(3.6m);
         actual.Bufsize.Should().Be(7.2m);
@@ -100,7 +100,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(720);
 
-        var actual = sut.ResolveRange(sourceHeight: 1080, contentProfile: "film", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: 1080, CreateSelection(sut, contentProfile: "film", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinInclusive.Should().Be(30.0m);
@@ -112,7 +112,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(720);
 
-        var actual = sut.ResolveDefaults(sourceHeight: 1080, contentProfile: "mult", qualityProfile: "default");
+        var actual = sut.ResolveDefaults(sourceHeight: 1080, CreateSelection(sut, contentProfile: "mult", qualityProfile: "default"));
 
         actual.Cq.Should().Be(25);
         actual.CqMin.Should().Be(21);
@@ -126,7 +126,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(1080);
 
-        var actual = sut.ResolveRange(sourceHeight: 2160, contentProfile: "film", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: 2160, CreateSelection(sut, contentProfile: "film", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinInclusive.Should().Be(33.0m);
@@ -192,7 +192,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var actual = sut.ResolveDefaults(contentProfile: null, qualityProfile: null);
+        var actual = sut.ResolveDefaults(CreateSelection(sut));
 
         actual.ContentProfile.Should().Be("film");
         actual.QualityProfile.Should().Be("default");
@@ -207,7 +207,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(424);
 
-        var actual = sut.ResolveDefaults(contentProfile: null, qualityProfile: null);
+        var actual = sut.ResolveDefaults(CreateSelection(sut));
 
         actual.ContentProfile.Should().Be("film");
         actual.QualityProfile.Should().Be("default");
@@ -222,7 +222,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var actual = sut.ResolveDefaults(contentProfile: "anime", qualityProfile: null);
+        var actual = sut.ResolveDefaults(CreateSelection(sut, contentProfile: "anime"));
 
         actual.ContentProfile.Should().Be("anime");
         actual.QualityProfile.Should().Be("default");
@@ -236,7 +236,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var actual = sut.ResolveDefaults(contentProfile: null, qualityProfile: "high");
+        var actual = sut.ResolveDefaults(CreateSelection(sut, qualityProfile: "high"));
 
         actual.ContentProfile.Should().Be("film");
         actual.QualityProfile.Should().Be("high");
@@ -250,8 +250,8 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var defaultActual = sut.ResolveDefaults(sourceHeight: 720, contentProfile: "mult", qualityProfile: "default");
-        var highActual = sut.ResolveDefaults(sourceHeight: 720, contentProfile: "mult", qualityProfile: "high");
+        var defaultActual = sut.ResolveDefaults(sourceHeight: 720, CreateSelection(sut, contentProfile: "mult", qualityProfile: "default"));
+        var highActual = sut.ResolveDefaults(sourceHeight: 720, CreateSelection(sut, contentProfile: "mult", qualityProfile: "high"));
 
         defaultActual.ContentProfile.Should().Be("mult");
         defaultActual.QualityProfile.Should().Be("default");
@@ -279,8 +279,8 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var defaultActual = sut.ResolveDefaults(sourceHeight: 1080, contentProfile: "mult", qualityProfile: "default");
-        var lowActual = sut.ResolveDefaults(sourceHeight: 1080, contentProfile: "mult", qualityProfile: "low");
+        var defaultActual = sut.ResolveDefaults(sourceHeight: 1080, CreateSelection(sut, contentProfile: "mult", qualityProfile: "default"));
+        var lowActual = sut.ResolveDefaults(sourceHeight: 1080, CreateSelection(sut, contentProfile: "mult", qualityProfile: "low"));
 
         defaultActual.CqMin.Should().Be(23);
         defaultActual.CqMax.Should().Be(29);
@@ -421,7 +421,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var actual = sut.ResolveRange(sourceHeight: 1080, contentProfile: "anime", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: 1080, CreateSelection(sut, contentProfile: "anime", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinInclusive.Should().Be(45.0m);
@@ -433,7 +433,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var actual = sut.ResolveRange(sourceHeight: 1080, contentProfile: "mult", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: 1080, CreateSelection(sut, contentProfile: "mult", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinInclusive.Should().Be(42.0m);
@@ -445,7 +445,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(576);
 
-        var actual = sut.ResolveRange(sourceHeight: 1080, contentProfile: "film", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: 1080, CreateSelection(sut, contentProfile: "film", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinInclusive.Should().Be(35.0m);
@@ -457,7 +457,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = CreateProfileWithFallbacks(globalContentRanges: []);
 
-        var actual = sut.ResolveRange(sourceHeight: null, contentProfile: "anime", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: null, CreateSelection(sut, contentProfile: "anime", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinExclusive.Should().Be(40.0m);
@@ -469,7 +469,7 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = CreateProfileWithFallbacks();
 
-        var actual = sut.ResolveRange(sourceHeight: 900, contentProfile: "anime", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: 900, CreateSelection(sut, contentProfile: "anime", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinExclusive.Should().Be(40.0m);
@@ -501,7 +501,7 @@ public sealed class VideoSettingsProfilesTests
                     IsDefault: true)
             ]);
 
-        var actual = sut.ResolveRange(sourceHeight: null, contentProfile: "anime", qualityProfile: "default");
+        var actual = sut.ResolveRange(sourceHeight: null, CreateSelection(sut, contentProfile: "anime", qualityProfile: "default"));
 
         actual.Should().NotBeNull();
         actual!.MinExclusive.Should().Be(33.0m);
@@ -600,8 +600,20 @@ public sealed class VideoSettingsProfilesTests
                                      new VideoSettingsRange("anime", "default", MinExclusive: 40.0m, MaxInclusive: 50.0m)
                                  ],
             globalQualityRanges:
-            [
-                new VideoSettingsQualityRange("default", MinExclusive: 40.0m, MaxInclusive: 50.0m)
-            ]);
+             [
+                 new VideoSettingsQualityRange("default", MinExclusive: 40.0m, MaxInclusive: 50.0m)
+             ]);
+    }
+
+    private static EffectiveVideoSettingsSelection CreateSelection(
+        VideoSettingsProfile profile,
+        string? contentProfile = null,
+        string? qualityProfile = null,
+        string autoSampleMode = "accurate")
+    {
+        return new EffectiveVideoSettingsSelection(
+            ContentProfile: contentProfile ?? profile.DefaultContentProfile,
+            QualityProfile: qualityProfile ?? profile.DefaultQualityProfile,
+            AutoSampleMode: autoSampleMode);
     }
 }

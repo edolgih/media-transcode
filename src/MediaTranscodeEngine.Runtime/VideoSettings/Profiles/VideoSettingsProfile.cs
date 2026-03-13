@@ -121,19 +121,19 @@ internal sealed class VideoSettingsProfile
         return null;
     }
 
-    public VideoSettingsDefaults ResolveDefaults(string? contentProfile, string? qualityProfile)
+    public VideoSettingsDefaults ResolveDefaults(EffectiveVideoSettingsSelection selection)
     {
-        return ResolveDefaults(sourceHeight: null, contentProfile, qualityProfile);
+        return ResolveDefaults(sourceHeight: null, selection);
     }
 
-    public VideoSettingsDefaults ResolveDefaults(int? sourceHeight, string? contentProfile, string? qualityProfile)
+    public VideoSettingsDefaults ResolveDefaults(int? sourceHeight, EffectiveVideoSettingsSelection selection)
     {
-        var effectiveContentProfile = NormalizeProfileName(contentProfile) ?? DefaultContentProfile;
-        var effectiveQualityProfile = NormalizeProfileName(qualityProfile) ?? DefaultQualityProfile;
-        var key = BuildDefaultsKey(effectiveContentProfile, effectiveQualityProfile);
+        ArgumentNullException.ThrowIfNull(selection);
+
+        var key = BuildDefaultsKey(selection.ContentProfile, selection.QualityProfile);
         if (_defaultsByProfile.TryGetValue(key, out var defaults))
         {
-            var boundsOverride = ResolveSourceBucketDefinition(sourceHeight)?.ResolveBoundsOverride(effectiveContentProfile, effectiveQualityProfile);
+            var boundsOverride = ResolveSourceBucketDefinition(sourceHeight)?.ResolveBoundsOverride(selection.ContentProfile, selection.QualityProfile);
             return boundsOverride is null
                 ? defaults
                 : defaults with
@@ -146,7 +146,7 @@ internal sealed class VideoSettingsProfile
         }
 
         throw new InvalidOperationException(
-            $"Video settings defaults are not configured for content '{effectiveContentProfile}' and quality '{effectiveQualityProfile}'.");
+            $"Video settings defaults are not configured for content '{selection.ContentProfile}' and quality '{selection.QualityProfile}'.");
     }
 
     public IReadOnlyList<VideoSettingsSampleWindow> GetSampleWindows(TimeSpan duration)
@@ -154,26 +154,26 @@ internal sealed class VideoSettingsProfile
         return AutoSampling.GetSampleWindows(duration);
     }
 
-    public VideoSettingsRange? ResolveRange(int? sourceHeight, string? contentProfile, string? qualityProfile)
+    public VideoSettingsRange? ResolveRange(int? sourceHeight, EffectiveVideoSettingsSelection selection)
     {
-        var effectiveContentProfile = NormalizeProfileName(contentProfile) ?? DefaultContentProfile;
-        var effectiveQualityProfile = NormalizeProfileName(qualityProfile) ?? DefaultQualityProfile;
+        ArgumentNullException.ThrowIfNull(selection);
+
         var bucket = ResolveSourceBucketDefinition(sourceHeight);
-        var bucketRange = bucket?.ResolveRange(effectiveContentProfile, effectiveQualityProfile);
+        var bucketRange = bucket?.ResolveRange(selection.ContentProfile, selection.QualityProfile);
         if (bucketRange is not null)
         {
             return bucketRange;
         }
 
-        var key = BuildDefaultsKey(effectiveContentProfile, effectiveQualityProfile);
+        var key = BuildDefaultsKey(selection.ContentProfile, selection.QualityProfile);
         if (_globalContentRangesByProfile.TryGetValue(key, out var globalContentRange))
         {
             return globalContentRange;
         }
 
-        if (_globalQualityRangesByProfile.TryGetValue(effectiveQualityProfile, out var globalQualityRange))
+        if (_globalQualityRangesByProfile.TryGetValue(selection.QualityProfile, out var globalQualityRange))
         {
-            return globalQualityRange.ToContentRange(effectiveContentProfile);
+            return globalQualityRange.ToContentRange(selection.ContentProfile);
         }
 
         return null;
@@ -191,16 +191,6 @@ internal sealed class VideoSettingsProfile
         }
 
         return SourceBuckets.FirstOrDefault(static bucket => bucket.IsDefault);
-    }
-
-    private static string? NormalizeProfileName(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim().ToLowerInvariant();
     }
 
     private static string BuildDefaultsKey(string contentProfile, string qualityProfile)
