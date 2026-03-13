@@ -72,14 +72,15 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
             return false;
         }
 
-        if (plan.CopyVideo)
+        if (plan.Video is CopyVideoPlan)
         {
             return true;
         }
 
-        return plan.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
-               (plan.TargetVideoCodec?.Equals("h264", StringComparison.OrdinalIgnoreCase) == true ||
-                plan.TargetVideoCodec?.Equals("h265", StringComparison.OrdinalIgnoreCase) == true);
+        var encodeVideo = plan.EncodeVideo;
+        return encodeVideo?.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
+               (encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase) ||
+                encodeVideo.TargetVideoCodec.Equals("h265", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -168,28 +169,29 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
     private string BuildVideoPart(SourceVideo video, TranscodePlan plan)
     {
-        if (plan.CopyVideo)
+        if (plan.Video is CopyVideoPlan)
         {
             return UsesStrongSyncRemux(plan)
                 ? "-map 0:v:0 -c:v copy -copytb 1"
                 : "-map 0:v:0 -c:v copy";
         }
 
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
         var encoder = ResolveVideoEncoder(plan);
         var settings = ResolveVideoSettings(video, plan);
         var fpsToken = ResolveFrameRateToken(video, plan);
         var gop = ResolveGop(video, plan);
         var compatibilityPart = ResolveVideoCompatibilityPart(video, plan);
-        var preset = plan.EncoderPreset ?? "p6";
-        var frameRatePart = plan.TargetFramesPerSecond.HasValue
+        var preset = encodeVideo.EncoderPreset ?? "p6";
+        var frameRatePart = encodeVideo.TargetFramesPerSecond.HasValue
             ? $"-fps_mode:v cfr -r {fpsToken} "
             : string.Empty;
         var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32 ";
-        var pixelFormatPart = string.Equals(plan.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase)
+        var pixelFormatPart = string.Equals(encodeVideo.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase)
             ? string.Empty
             : "-pix_fmt yuv420p ";
         var rateControlPart = $"-rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} ";
-        var downscale = plan.Downscale;
+        var downscale = encodeVideo.Downscale;
 
         if (plan.ApplyOverlayBackground)
         {
@@ -232,7 +234,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
     private static string ResolveVideoEncoder(TranscodePlan plan)
     {
-        return plan.TargetVideoCodec switch
+        return GetRequiredEncodeVideoPlan(plan).TargetVideoCodec switch
         {
             "h264" => "h264_nvenc",
             "h265" => "hevc_nvenc",
@@ -242,9 +244,10 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
     private static string ResolveFrameRateToken(SourceVideo video, TranscodePlan plan)
     {
-        if (plan.TargetFramesPerSecond.HasValue)
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        if (encodeVideo.TargetFramesPerSecond.HasValue)
         {
-            return plan.TargetFramesPerSecond.Value.ToString("0.###", CultureInfo.InvariantCulture);
+            return encodeVideo.TargetFramesPerSecond.Value.ToString("0.###", CultureInfo.InvariantCulture);
         }
 
         return video.FramesPerSecond.ToString("0.###", CultureInfo.InvariantCulture);
@@ -252,17 +255,19 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
     private static int ResolveGop(SourceVideo video, TranscodePlan plan)
     {
-        var fps = plan.TargetFramesPerSecond ?? video.FramesPerSecond;
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         return (int)Math.Max(12, Math.Round(fps * 2.0));
     }
 
     private static string ResolveVideoCompatibilityPart(SourceVideo video, TranscodePlan plan)
     {
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
         var (width, height) = ResolveOutputDimensions(video, plan);
-        var fps = plan.TargetFramesPerSecond ?? video.FramesPerSecond;
+        var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         var compatibilityPart = VideoCodecCompatibility.ResolveArguments(
-            plan.TargetVideoCodec!,
-            plan.VideoCompatibilityProfile,
+            encodeVideo.TargetVideoCodec,
+            encodeVideo.CompatibilityProfile,
             width,
             height,
             fps);
@@ -273,7 +278,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
     private static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, TranscodePlan plan)
     {
-        var downscale = plan.Downscale;
+        var downscale = plan.EncodeVideo?.Downscale;
 
         if (plan.ApplyOverlayBackground)
         {
@@ -337,18 +342,18 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         var outputHeight = ResolveOutputDimensions(video, plan).Height;
         if (outputHeight <= 0)
         {
-            outputHeight = plan.Downscale?.TargetHeight ?? video.Height;
+            outputHeight = plan.EncodeVideo?.Downscale?.TargetHeight ?? video.Height;
         }
 
         var sourceBitrate = ResolveSourceBitrate(video);
-        var actualSampleHeight = plan.Downscale?.TargetHeight ?? outputHeight;
+        var actualSampleHeight = plan.EncodeVideo?.Downscale?.TargetHeight ?? outputHeight;
         var accurateReductionProvider = actualSampleHeight > 0
             ? (Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>)((settings, windows) => _sampleReductionProvider(video.FilePath, actualSampleHeight, settings, windows))
             : null;
-        var resolution = plan.Downscale is not null
+        var resolution = plan.EncodeVideo?.Downscale is not null
             ? _settingsResolver.ResolveForDownscale(
-                request: plan.Downscale,
-                videoSettings: plan.VideoSettings,
+                request: plan.EncodeVideo!.Downscale,
+                videoSettings: plan.EncodeVideo!.VideoSettings,
                 sourceHeight: video.Height,
                 duration: video.Duration,
                 sourceBitrate: sourceBitrate.Bitrate,
@@ -356,7 +361,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
                 defaultAutoSampleMode: "hybrid",
                 accurateReductionProvider: accurateReductionProvider)
             : _settingsResolver.ResolveForEncode(
-                request: plan.VideoSettings,
+                request: plan.EncodeVideo?.VideoSettings,
                 outputHeight: outputHeight,
                 duration: video.Duration,
                 sourceBitrate: sourceBitrate.Bitrate,
@@ -365,6 +370,12 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
                 accurateReductionProvider: accurateReductionProvider);
         LogAutoSampleResolution(video.FilePath, resolution.BaseSettings, resolution.AutoSample, sourceBitrate);
         return resolution.Settings;
+    }
+
+    private static EncodeVideoPlan GetRequiredEncodeVideoPlan(TranscodePlan plan)
+    {
+        return plan.EncodeVideo
+            ?? throw new InvalidOperationException("Video encode plan is required for this operation.");
     }
 
     private static string FormatRate(decimal value)

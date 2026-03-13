@@ -184,16 +184,19 @@ public sealed class ToMkvGpuInfoFormatterTests
         bool synchronizeAudio = false,
         double? targetFramesPerSecond = null)
     {
+        VideoPlan videoPlan = copyVideo
+            ? new CopyVideoPlan()
+            : new EncodeVideoPlan(
+                TargetVideoCodec: targetVideoCodec ?? "h264",
+                PreferredBackend: preferredBackend,
+                CompatibilityProfile: string.Equals(targetVideoCodec, "h264", StringComparison.OrdinalIgnoreCase)
+                    ? VideoCompatibilityProfile.H264High
+                    : null,
+                TargetFramesPerSecond: targetFramesPerSecond);
+
         return new TranscodePlan(
             targetContainer: "mkv",
-            targetVideoCodec: targetVideoCodec,
-            preferredBackend: preferredBackend,
-            videoCompatibilityProfile: copyVideo || !string.Equals(targetVideoCodec, "h264", StringComparison.OrdinalIgnoreCase) ? null : VideoCompatibilityProfile.H264High,
-            targetFramesPerSecond: targetFramesPerSecond,
-            useFrameInterpolation: false,
-            videoSettings: null,
-            downscale: null,
-            copyVideo: copyVideo,
+            video: videoPlan,
             copyAudio: copyAudio,
             fixTimestamps: false,
             keepSource: false,

@@ -58,14 +58,14 @@ public sealed class ToMkvGpuInfoFormatter
             parts.Add($"container .{video.Container}→{plan.TargetContainer}");
         }
 
-        if (!plan.CopyVideo)
+        if (plan.Video is EncodeVideoPlan)
         {
             parts.Add($"vcodec {video.VideoCodec}");
         }
 
-        if (plan.TargetFramesPerSecond.HasValue)
+        if (plan.EncodeVideo?.TargetFramesPerSecond is double targetFramesPerSecond)
         {
-            parts.Add($"fps {plan.TargetFramesPerSecond.Value:0.###}");
+            parts.Add($"fps {targetFramesPerSecond:0.###}");
         }
 
         if (HasNonAacAudio(video))

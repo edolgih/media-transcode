@@ -36,7 +36,7 @@ public sealed class ToH264GpuInfoFormatter
         ArgumentNullException.ThrowIfNull(plan);
 
         var parts = new List<string>();
-        if (plan.CopyVideo)
+        if (plan.Video is CopyVideoPlan)
         {
             parts.Add("remux-only");
         }

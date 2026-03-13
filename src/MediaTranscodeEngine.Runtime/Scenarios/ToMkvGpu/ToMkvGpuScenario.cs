@@ -81,21 +81,24 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         var copyAudio = !Request.SynchronizeAudio &&
                         copyVideo &&
                         AreAudioStreamsCopyCompatible(video.AudioCodecs);
+        VideoPlan videoPlan = copyVideo
+            ? new CopyVideoPlan()
+            : new EncodeVideoPlan(
+                TargetVideoCodec: "h264",
+                PreferredBackend: "gpu",
+                CompatibilityProfile: VideoCompatibilityProfile.H264High,
+                TargetFramesPerSecond: applyFrameRateCap ? Request.MaxFramesPerSecond : null,
+                UseFrameInterpolation: false,
+                VideoSettings: effectiveVideoSettings,
+                Downscale: applyDownscale ? Request.Downscale : null,
+                EncoderPreset: Request.NvencPreset);
 
         return new TranscodePlan(
             targetContainer: "mkv",
-            targetVideoCodec: copyVideo ? null : "h264",
-            preferredBackend: copyVideo ? null : "gpu",
-            videoCompatibilityProfile: copyVideo ? null : VideoCompatibilityProfile.H264High,
-            targetFramesPerSecond: applyFrameRateCap ? Request.MaxFramesPerSecond : null,
-            useFrameInterpolation: false,
-            videoSettings: effectiveVideoSettings,
-            downscale: applyDownscale ? Request.Downscale : null,
-            copyVideo: copyVideo,
+            video: videoPlan,
             copyAudio: copyAudio,
             fixTimestamps: requiresTimestampFix || Request.SynchronizeAudio,
             keepSource: Request.KeepSource,
-            encoderPreset: Request.NvencPreset,
             outputPath: ResolveOutputPath(video, copyVideo, copyAudio),
             applyOverlayBackground: Request.OverlayBackground,
             synchronizeAudio: Request.SynchronizeAudio);

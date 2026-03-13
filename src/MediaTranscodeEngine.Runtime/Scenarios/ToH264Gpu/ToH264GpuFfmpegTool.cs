@@ -59,13 +59,14 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             return false;
         }
 
-        if (plan.CopyVideo)
+        if (plan.Video is CopyVideoPlan)
         {
             return true;
         }
 
-        return plan.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
-               plan.TargetVideoCodec?.Equals("h264", StringComparison.OrdinalIgnoreCase) == true;
+        var encodeVideo = plan.EncodeVideo;
+        return encodeVideo?.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
+               encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -164,14 +165,15 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
 
     private static string BuildVideoPart(SourceVideo video, TranscodePlan plan, ToH264GpuExecutionSpec options)
     {
-        if (plan.CopyVideo)
+        if (plan.Video is CopyVideoPlan)
         {
             return UsesStrongSyncRemux(plan)
                 ? "-map 0:v:0 -c:v copy -copytb 1"
                 : "-map 0:v:0 -c:v copy";
         }
 
-        var frameRatePart = plan.TargetFramesPerSecond.HasValue
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        var frameRatePart = encodeVideo.TargetFramesPerSecond.HasValue
             ? $"-fps_mode:v cfr -r {ResolveFrameRateToken(video, plan)} "
             : string.Empty;
         var rateControlPart = BuildVideoRateControlPart(options);
@@ -184,8 +186,8 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             : $"-vf {FfmpegExecutionLayout.Quote(options.VideoFilter)} ";
         var compatibilityPart = ResolveVideoCompatibilityPart(video, plan);
         var gop = ResolveGop(video, plan);
-        var preset = plan.EncoderPreset ?? "p6";
-        var downscale = plan.Downscale;
+        var preset = encodeVideo.EncoderPreset ?? "p6";
+        var downscale = encodeVideo.Downscale;
 
         if (downscale is not null)
         {
@@ -268,9 +270,10 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             return spec.UseHardwareDecode.Value;
         }
 
-        return plan.RequiresVideoEncode &&
-               plan.Downscale is not null &&
-               string.Equals(plan.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase);
+        var encodeVideo = plan.EncodeVideo;
+        return encodeVideo is not null &&
+               encodeVideo.Downscale is not null &&
+               string.Equals(encodeVideo.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool RequiresMuxRewrite(ToH264GpuExecutionSpec options)
@@ -339,22 +342,25 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
 
     private static string ResolveFrameRateToken(SourceVideo video, TranscodePlan plan)
     {
-        return (plan.TargetFramesPerSecond ?? video.FramesPerSecond).ToString("0.###", CultureInfo.InvariantCulture);
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        return (encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond).ToString("0.###", CultureInfo.InvariantCulture);
     }
 
     private static int ResolveGop(SourceVideo video, TranscodePlan plan)
     {
-        var fps = plan.TargetFramesPerSecond ?? video.FramesPerSecond;
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         return (int)Math.Max(12, Math.Round(fps * 2.0));
     }
 
     private static string ResolveVideoCompatibilityPart(SourceVideo video, TranscodePlan plan)
     {
+        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
         var (width, height) = ResolveOutputDimensions(video, plan);
-        var fps = plan.TargetFramesPerSecond ?? video.FramesPerSecond;
+        var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         var compatibilityPart = VideoCodecCompatibility.ResolveArguments(
             "h264",
-            plan.VideoCompatibilityProfile,
+            encodeVideo.CompatibilityProfile,
             width,
             height,
             fps);
@@ -365,7 +371,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
 
     private static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, TranscodePlan plan)
     {
-        var downscale = plan.Downscale;
+        var downscale = plan.EncodeVideo?.Downscale;
         if (downscale is null)
         {
             return (video.Width, video.Height);
@@ -390,5 +396,11 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
         return (value % 2) == 0
             ? value
             : value + 1;
+    }
+
+    private static EncodeVideoPlan GetRequiredEncodeVideoPlan(TranscodePlan plan)
+    {
+        return plan.EncodeVideo
+            ?? throw new InvalidOperationException("Video encode plan is required for this operation.");
     }
 }

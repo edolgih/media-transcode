@@ -60,21 +60,24 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var targetFramesPerSecond = copyVideo
             ? (double?)null
             : ResolveTargetFramesPerSecond(video, useDownscale);
+        VideoPlan videoPlan = copyVideo
+            ? new CopyVideoPlan()
+            : new EncodeVideoPlan(
+                TargetVideoCodec: "h264",
+                PreferredBackend: "gpu",
+                CompatibilityProfile: VideoCompatibilityProfile.H264High,
+                TargetFramesPerSecond: targetFramesPerSecond,
+                UseFrameInterpolation: false,
+                VideoSettings: videoSettingsRequest,
+                Downscale: useDownscale ? downscaleRequest : null,
+                EncoderPreset: Request.NvencPreset ?? "p6");
 
         return new TranscodePlan(
             targetContainer: targetContainer,
-            targetVideoCodec: copyVideo ? null : "h264",
-            preferredBackend: copyVideo ? null : "gpu",
-            videoCompatibilityProfile: copyVideo ? null : VideoCompatibilityProfile.H264High,
-            targetFramesPerSecond: targetFramesPerSecond,
-            useFrameInterpolation: false,
-            videoSettings: videoSettingsRequest,
-            downscale: useDownscale ? downscaleRequest : null,
-            copyVideo: copyVideo,
+            video: videoPlan,
             copyAudio: copyAudio,
             fixTimestamps: synchronizeAudio,
             keepSource: Request.KeepSource,
-            encoderPreset: copyVideo ? null : (Request.NvencPreset ?? "p6"),
             outputPath: ResolveOutputPath(video, targetContainer),
             synchronizeAudio: synchronizeAudio);
     }
@@ -148,12 +151,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
 
     private ToH264GpuExecutionSpec BuildToH264GpuExecutionSpec(SourceVideo video, TranscodePlan plan)
     {
-        var copyVideo = plan.CopyVideo;
+        var encodeVideo = plan.EncodeVideo;
+        var copyVideo = encodeVideo is null;
         var copyAudio = plan.CopyAudio;
-        var useDownscale = plan.Downscale is not null;
+        var useDownscale = encodeVideo?.Downscale is not null;
         var targetContainer = plan.TargetContainer;
-        var downscaleRequest = plan.Downscale;
-        var videoSettingsRequest = plan.VideoSettings;
+        var downscaleRequest = encodeVideo?.Downscale;
+        var videoSettingsRequest = encodeVideo?.VideoSettings;
         var audioBitrateKbps = ResolveAudioBitrateKbps(video);
         var videoSettings = copyVideo
             ? null

@@ -388,14 +388,10 @@ public sealed class FfmpegToolTests
         var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4");
         var plan = new TranscodePlan(
             targetContainer: "mkv",
-            targetVideoCodec: "h264",
-            preferredBackend: "gpu",
-            videoCompatibilityProfile: VideoCompatibilityProfile.H264Main,
-            targetFramesPerSecond: null,
-            useFrameInterpolation: false,
-            videoSettings: null,
-            downscale: null,
-            copyVideo: false,
+            video: new EncodeVideoPlan(
+                TargetVideoCodec: "h264",
+                PreferredBackend: "gpu",
+                CompatibilityProfile: VideoCompatibilityProfile.H264Main),
             copyAudio: false,
             fixTimestamps: false,
             keepSource: false,
@@ -1422,21 +1418,24 @@ public sealed class FfmpegToolTests
         string targetContainer = "mkv")
     {
         downscale ??= targetHeight.HasValue ? new DownscaleRequest(targetHeight.Value) : null;
+        VideoPlan videoPlan = copyVideo
+            ? new CopyVideoPlan()
+            : new EncodeVideoPlan(
+                TargetVideoCodec: targetVideoCodec ?? "h264",
+                PreferredBackend: preferredBackend,
+                CompatibilityProfile: videoCompatibilityProfile ?? ResolveDefaultCompatibilityProfile(copyVideo, targetVideoCodec),
+                TargetFramesPerSecond: targetFramesPerSecond,
+                UseFrameInterpolation: useFrameInterpolation,
+                VideoSettings: videoSettings,
+                Downscale: downscale,
+                EncoderPreset: encoderPreset);
 
         return new TranscodePlan(
             targetContainer: targetContainer,
-            targetVideoCodec: targetVideoCodec,
-            preferredBackend: preferredBackend,
-            videoCompatibilityProfile: videoCompatibilityProfile ?? ResolveDefaultCompatibilityProfile(copyVideo, targetVideoCodec),
-            targetFramesPerSecond: targetFramesPerSecond,
-            useFrameInterpolation: useFrameInterpolation,
-            videoSettings: videoSettings,
-            downscale: downscale,
-            copyVideo: copyVideo,
+            video: videoPlan,
             copyAudio: copyAudio,
             fixTimestamps: fixTimestamps,
             keepSource: keepSource,
-            encoderPreset: encoderPreset,
             outputPath: outputPath,
             applyOverlayBackground: applyOverlayBackground,
             synchronizeAudio: synchronizeAudio);
