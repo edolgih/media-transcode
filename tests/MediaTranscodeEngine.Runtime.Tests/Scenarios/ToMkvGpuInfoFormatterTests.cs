@@ -193,14 +193,17 @@ public sealed class ToMkvGpuInfoFormatterTests
                     ? VideoCompatibilityProfile.H264High
                     : null,
                 TargetFramesPerSecond: targetFramesPerSecond);
+        AudioPlan audioPlan = copyAudio
+            ? new CopyAudioPlan()
+            : synchronizeAudio
+                ? new SynchronizeAudioPlan()
+                : new EncodeAudioPlan();
 
         return new TranscodePlan(
             targetContainer: "mkv",
             video: videoPlan,
-            copyAudio: copyAudio,
-            fixTimestamps: false,
+            audio: audioPlan,
             keepSource: false,
-            outputPath: outputPath,
-            synchronizeAudio: synchronizeAudio);
+            outputPath: outputPath);
     }
 }

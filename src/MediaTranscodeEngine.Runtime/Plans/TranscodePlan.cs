@@ -16,30 +16,24 @@ public sealed record TranscodePlan
     /// </summary>
     /// <param name="targetContainer">Target container identifier.</param>
     /// <param name="video">Normalized video intent: copy or encode.</param>
-    /// <param name="copyAudio">Whether compatible audio streams should be copied.</param>
-    /// <param name="fixTimestamps">Whether timestamp normalization is requested.</param>
+    /// <param name="audio">Normalized audio intent: copy or encode.</param>
     /// <param name="keepSource">Whether the source file should be preserved.</param>
     /// <param name="outputPath">Optional explicit output path.</param>
     /// <param name="applyOverlayBackground">Whether the plan requests background overlay during video encoding.</param>
-    /// <param name="synchronizeAudio">Whether the plan requests the sync-safe audio path.</param>
     public TranscodePlan(
         string targetContainer,
         VideoPlan video,
-        bool copyAudio,
-        bool fixTimestamps,
+        AudioPlan audio,
         bool keepSource,
         string? outputPath = null,
-        bool applyOverlayBackground = false,
-        bool synchronizeAudio = false)
+        bool applyOverlayBackground = false)
     {
         TargetContainer = NormalizeRequiredToken(targetContainer, nameof(targetContainer));
         Video = NormalizeVideoPlan(video);
-        CopyAudio = copyAudio;
-        FixTimestamps = fixTimestamps;
+        Audio = NormalizeAudioPlan(audio);
         KeepSource = keepSource;
         OutputPath = NormalizeOptionalPath(outputPath);
         ApplyOverlayBackground = applyOverlayBackground;
-        SynchronizeAudio = synchronizeAudio;
     }
 
     /// <summary>
@@ -56,6 +50,16 @@ public sealed record TranscodePlan
     /// Gets the encode-specific video intent when the plan requires video encoding.
     /// </summary>
     public EncodeVideoPlan? EncodeVideo => Video as EncodeVideoPlan;
+
+    /// <summary>
+    /// Gets the normalized audio intent.
+    /// </summary>
+    public AudioPlan Audio { get; }
+
+    /// <summary>
+    /// Gets the encode-specific audio intent when the plan requires audio encoding.
+    /// </summary>
+    public EncodeAudioPlan? EncodeAudio => Audio as EncodeAudioPlan;
 
     /// <summary>
     /// Gets the normalized target video codec identifier when re-encoding is required.
@@ -105,12 +109,12 @@ public sealed record TranscodePlan
     /// <summary>
     /// Gets a value indicating whether compatible audio streams should be copied.
     /// </summary>
-    public bool CopyAudio { get; }
+    public bool CopyAudio => Audio is CopyAudioPlan;
 
     /// <summary>
     /// Gets a value indicating whether timestamp normalization is required.
     /// </summary>
-    public bool FixTimestamps { get; }
+    public bool FixTimestamps => Audio is RepairAudioPlan;
 
     /// <summary>
     /// Gets a value indicating whether the source file should be preserved.
@@ -135,7 +139,7 @@ public sealed record TranscodePlan
     /// <summary>
     /// Gets a value indicating whether the scenario requests the sync-safe audio path.
     /// </summary>
-    public bool SynchronizeAudio { get; }
+    public bool SynchronizeAudio => Audio is SynchronizeAudioPlan;
 
     /// <summary>
     /// Gets a value indicating whether the plan requires video encoding.
@@ -166,6 +170,18 @@ public sealed record TranscodePlan
             CopyVideoPlan => video,
             EncodeVideoPlan encodeVideo => NormalizeEncodeVideoPlan(encodeVideo),
             _ => throw new ArgumentException($"Unsupported video plan type '{video.GetType().Name}'.", nameof(video))
+        };
+    }
+
+    private static AudioPlan NormalizeAudioPlan(AudioPlan audio)
+    {
+        ArgumentNullException.ThrowIfNull(audio);
+
+        return audio switch
+        {
+            CopyAudioPlan => audio,
+            EncodeAudioPlan => audio,
+            _ => throw new ArgumentException($"Unsupported audio plan type '{audio.GetType().Name}'.", nameof(audio))
         };
     }
 

@@ -30,6 +30,50 @@ public sealed class TranscodePlanTests
     }
 
     [Fact]
+    public void Ctor_WhenAudioPlanIsCopy_ExposesCopyModeWithoutRepairFlags()
+    {
+        var actual = CreateCopyVideoPlan();
+
+        actual.CopyAudio.Should().BeTrue();
+        actual.RequiresAudioEncode.Should().BeFalse();
+        actual.FixTimestamps.Should().BeFalse();
+        actual.SynchronizeAudio.Should().BeFalse();
+        actual.EncodeAudio.Should().BeNull();
+    }
+
+    [Fact]
+    public void Ctor_WhenAudioPlanRequiresRepair_ExposesRepairWithoutSynchronization()
+    {
+        var actual = new TranscodePlan(
+            targetContainer: "mkv",
+            video: new CopyVideoPlan(),
+            audio: new RepairAudioPlan(),
+            keepSource: true);
+
+        actual.CopyAudio.Should().BeFalse();
+        actual.RequiresAudioEncode.Should().BeTrue();
+        actual.FixTimestamps.Should().BeTrue();
+        actual.SynchronizeAudio.Should().BeFalse();
+        actual.EncodeAudio.Should().BeOfType<RepairAudioPlan>();
+    }
+
+    [Fact]
+    public void Ctor_WhenAudioPlanRequiresSynchronization_ExposesRepairAndSyncFlags()
+    {
+        var actual = new TranscodePlan(
+            targetContainer: "mkv",
+            video: new CopyVideoPlan(),
+            audio: new SynchronizeAudioPlan(),
+            keepSource: true);
+
+        actual.CopyAudio.Should().BeFalse();
+        actual.RequiresAudioEncode.Should().BeTrue();
+        actual.FixTimestamps.Should().BeTrue();
+        actual.SynchronizeAudio.Should().BeTrue();
+        actual.EncodeAudio.Should().BeOfType<SynchronizeAudioPlan>();
+    }
+
+    [Fact]
     public void Ctor_WhenInterpolationHasNoTargetFrameRate_ThrowsArgumentException()
     {
         Action action = () => new TranscodePlan(
@@ -40,8 +84,7 @@ public sealed class TranscodePlanTests
                 CompatibilityProfile: VideoCompatibilityProfile.H264High,
                 TargetFramesPerSecond: null,
                 UseFrameInterpolation: true),
-            copyAudio: true,
-            fixTimestamps: false,
+            audio: new CopyAudioPlan(),
             keepSource: true);
 
         action.Should().Throw<ArgumentException>()
@@ -59,8 +102,7 @@ public sealed class TranscodePlanTests
                 CompatibilityProfile: null,
                 TargetFramesPerSecond: null,
                 UseFrameInterpolation: false),
-            copyAudio: true,
-            fixTimestamps: false,
+            audio: new CopyAudioPlan(),
             keepSource: true);
 
         action.Should().Throw<ArgumentException>()
@@ -78,8 +120,7 @@ public sealed class TranscodePlanTests
                 CompatibilityProfile: VideoCompatibilityProfile.H264High,
                 VideoSettings: new VideoSettingsRequest(contentProfile: "film"),
                 Downscale: new DownscaleRequest(576)),
-            copyAudio: true,
-            fixTimestamps: false,
+            audio: new CopyAudioPlan(),
             keepSource: true);
 
         actual.TargetHeight.Should().Be(576);
@@ -98,8 +139,7 @@ public sealed class TranscodePlanTests
                 VideoSettings: new VideoSettingsRequest(contentProfile: "film"),
                 Downscale: new DownscaleRequest(576),
                 EncoderPreset: " P5 "),
-            copyAudio: true,
-            fixTimestamps: false,
+            audio: new CopyAudioPlan(),
             keepSource: true,
             outputPath: @".\output.mkv");
 
@@ -122,8 +162,7 @@ public sealed class TranscodePlanTests
                 TargetVideoCodec: "h264",
                 PreferredBackend: "nvenc",
                 CompatibilityProfile: VideoCompatibilityProfile.H264High),
-            copyAudio: true,
-            fixTimestamps: false,
+            audio: new CopyAudioPlan(),
             keepSource: true);
 
         actual.VideoSettings.Should().BeNull();
@@ -134,8 +173,7 @@ public sealed class TranscodePlanTests
         return new TranscodePlan(
             targetContainer: "mkv",
             video: new CopyVideoPlan(),
-            copyAudio: true,
-            fixTimestamps: false,
+            audio: new CopyAudioPlan(),
             keepSource: true);
     }
 }

@@ -54,6 +54,11 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var copyVideo = !synchronizeAudio && videoCopyCompatible && CanCopyAudio(video) ||
                         synchronizeAudio && videoCopyCompatible;
         var copyAudio = !synchronizeAudio && CanCopyAudio(video);
+        AudioPlan audioPlan = copyAudio
+            ? new CopyAudioPlan()
+            : synchronizeAudio
+                ? new SynchronizeAudioPlan()
+                : new EncodeAudioPlan();
         var videoSettingsRequest = copyVideo
             ? null
             : Request.VideoSettings;
@@ -75,11 +80,9 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return new TranscodePlan(
             targetContainer: targetContainer,
             video: videoPlan,
-            copyAudio: copyAudio,
-            fixTimestamps: synchronizeAudio,
+            audio: audioPlan,
             keepSource: Request.KeepSource,
-            outputPath: ResolveOutputPath(video, targetContainer),
-            synchronizeAudio: synchronizeAudio);
+            outputPath: ResolveOutputPath(video, targetContainer));
     }
 
     /// <inheritdoc />

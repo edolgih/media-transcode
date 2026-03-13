@@ -392,8 +392,7 @@ public sealed class FfmpegToolTests
                 TargetVideoCodec: "h264",
                 PreferredBackend: "gpu",
                 CompatibilityProfile: VideoCompatibilityProfile.H264Main),
-            copyAudio: false,
-            fixTimestamps: false,
+            audio: new EncodeAudioPlan(),
             keepSource: false,
             outputPath: @"C:\video\input.mkv");
 
@@ -1429,16 +1428,21 @@ public sealed class FfmpegToolTests
                 VideoSettings: videoSettings,
                 Downscale: downscale,
                 EncoderPreset: encoderPreset);
+        AudioPlan audioPlan = copyAudio
+            ? new CopyAudioPlan()
+            : synchronizeAudio
+                ? new SynchronizeAudioPlan()
+                : fixTimestamps
+                    ? new RepairAudioPlan()
+                    : new EncodeAudioPlan();
 
         return new TranscodePlan(
             targetContainer: targetContainer,
             video: videoPlan,
-            copyAudio: copyAudio,
-            fixTimestamps: fixTimestamps,
+            audio: audioPlan,
             keepSource: keepSource,
             outputPath: outputPath,
-            applyOverlayBackground: applyOverlayBackground,
-            synchronizeAudio: synchronizeAudio);
+            applyOverlayBackground: applyOverlayBackground);
     }
 
     private static ToH264GpuExecutionSpec CreateToH264GpuExecutionSpec(

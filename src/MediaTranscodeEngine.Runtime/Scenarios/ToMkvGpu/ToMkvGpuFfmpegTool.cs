@@ -215,21 +215,20 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
     private static string BuildAudioPart(TranscodePlan plan)
     {
-        return plan.CopyAudio
-            ? "-map 0:a? -c:a copy"
-            : RequiresAudioRepair(plan)
-                ? "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\""
-                : "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k";
+        return plan.Audio switch
+        {
+            CopyAudioPlan => "-map 0:a? -c:a copy",
+            SynchronizeAudioPlan => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"",
+            RepairAudioPlan => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"",
+            EncodeAudioPlan => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k",
+            _ => throw new InvalidOperationException("Unsupported audio plan type.")
+        };
     }
 
     private static bool UsesStrongSyncRemux(TranscodePlan plan)
     {
-        return plan.CopyVideo && plan.SynchronizeAudio;
-    }
-
-    private static bool RequiresAudioRepair(TranscodePlan plan)
-    {
-        return plan.SynchronizeAudio || plan.FixTimestamps;
+        return plan.Video is CopyVideoPlan &&
+               plan.Audio is SynchronizeAudioPlan;
     }
 
     private static string ResolveVideoEncoder(TranscodePlan plan)

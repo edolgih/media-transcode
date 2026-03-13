@@ -208,11 +208,14 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             ? "-map 0:a:0?"
             : "-map 0:a?";
 
-        return plan.CopyAudio
-            ? $"{mapPart} -c:a copy"
-            : RequiresAudioRepair(plan)
-                ? BuildRepairAudioEncodePart(mapPart, options)
-                : BuildAudioEncodePart(mapPart, options);
+        return plan.Audio switch
+        {
+            CopyAudioPlan => $"{mapPart} -c:a copy",
+            SynchronizeAudioPlan => BuildRepairAudioEncodePart(mapPart, options),
+            RepairAudioPlan => BuildRepairAudioEncodePart(mapPart, options),
+            EncodeAudioPlan => BuildAudioEncodePart(mapPart, options),
+            _ => throw new InvalidOperationException("Unsupported audio plan type.")
+        };
     }
 
     private static string BuildRepairAudioEncodePart(string mapPart, ToH264GpuExecutionSpec options)
@@ -255,12 +258,8 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
 
     private static bool UsesStrongSyncRemux(TranscodePlan plan)
     {
-        return plan.CopyVideo && plan.SynchronizeAudio;
-    }
-
-    private static bool RequiresAudioRepair(TranscodePlan plan)
-    {
-        return plan.SynchronizeAudio || plan.FixTimestamps;
+        return plan.Video is CopyVideoPlan &&
+               plan.Audio is SynchronizeAudioPlan;
     }
 
     private static bool ShouldUseHardwareDecode(TranscodePlan plan, ToH264GpuExecutionSpec spec)

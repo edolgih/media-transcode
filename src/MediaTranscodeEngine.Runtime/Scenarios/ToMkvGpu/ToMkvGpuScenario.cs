@@ -81,6 +81,13 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         var copyAudio = !Request.SynchronizeAudio &&
                         copyVideo &&
                         AreAudioStreamsCopyCompatible(video.AudioCodecs);
+        AudioPlan audioPlan = copyAudio
+            ? new CopyAudioPlan()
+            : Request.SynchronizeAudio
+                ? new SynchronizeAudioPlan()
+                : requiresTimestampFix
+                    ? new RepairAudioPlan()
+                    : new EncodeAudioPlan();
         VideoPlan videoPlan = copyVideo
             ? new CopyVideoPlan()
             : new EncodeVideoPlan(
@@ -96,12 +103,10 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         return new TranscodePlan(
             targetContainer: "mkv",
             video: videoPlan,
-            copyAudio: copyAudio,
-            fixTimestamps: requiresTimestampFix || Request.SynchronizeAudio,
+            audio: audioPlan,
             keepSource: Request.KeepSource,
             outputPath: ResolveOutputPath(video, copyVideo, copyAudio),
-            applyOverlayBackground: Request.OverlayBackground,
-            synchronizeAudio: Request.SynchronizeAudio);
+            applyOverlayBackground: Request.OverlayBackground);
     }
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)
