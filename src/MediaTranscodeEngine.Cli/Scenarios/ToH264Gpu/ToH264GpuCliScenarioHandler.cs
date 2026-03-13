@@ -12,7 +12,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 
 /*
 Это CLI-адаптер для сценария toh264gpu.
-Он валидирует и интерпретирует свои аргументы, строит runtime-request и переводит ошибки в короткие legacy-style маркеры.
+Он использует scenario-local parser для raw argv, строит runtime-request и переводит ошибки в короткие legacy-style маркеры.
 */
 /// <summary>
 /// Implements the CLI contract for the legacy <c>toh264gpu</c> application scenario.
@@ -33,16 +33,16 @@ internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     public IReadOnlyList<CliHelpOption> HelpOptions =>
     [
         new CliHelpOption("--keep-source", "Keep the source file instead of replacing it when output path matches the input."),
-        new CliHelpOption($"--downscale <{DownscaleRequest.SupportedTargetHeightsHelpDisplay}>", "GPU downscale when the source is higher than the target."),
+        new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "GPU downscale when the source is higher than the target."),
         new CliHelpOption("--keep-fps", "Keep the source FPS in downscale mode instead of capping to 30000/1001."),
-        new CliHelpOption($"--content-profile <{VideoSettingsRequest.SupportedContentProfilesHelpDisplay}>", "Quality-oriented content profile."),
-        new CliHelpOption($"--quality-profile <{VideoSettingsRequest.SupportedQualityProfilesHelpDisplay}>", "Quality-oriented quality profile."),
-        new CliHelpOption($"--autosample-mode <{VideoSettingsRequest.SupportedAutoSampleModesHelpDisplay}>", "Autosample mode."),
-        new CliHelpOption("--downscale-algo <bicubic|lanczos|bilinear>", "Downscale interpolation algorithm."),
+        new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile."),
+        new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile."),
+        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode."),
+        new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Downscale interpolation algorithm."),
         new CliHelpOption("--cq <1..51>", "Explicit CQ override."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s."),
         new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s."),
-        new CliHelpOption($"--nvenc-preset <{NvencPresetOptions.SupportedPresetsHelpDisplay}>", "Explicit NVENC preset override."),
+        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", "Explicit NVENC preset override."),
         new CliHelpOption("--denoise", "Enable denoise in normal encode mode."),
         new CliHelpOption("--sync-audio", "Use the explicit audio-sync repair path."),
         new CliHelpOption("--mkv", "Write MKV instead of MP4.")
@@ -62,14 +62,14 @@ internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
 
     public bool TryValidate(IReadOnlyList<string> args, out string? errorText)
     {
-        return ToH264GpuRequest.TryParseArgs(args, out _, out errorText);
+        return ToH264GpuCliRequestParser.TryParse(args, out _, out errorText);
     }
 
     public TranscodeScenario CreateScenario(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!ToH264GpuRequest.TryParseArgs(request.ScenarioArgs, out var runtimeRequest, out var errorText))
+        if (!ToH264GpuCliRequestParser.TryParse(request.ScenarioArgs, out var runtimeRequest, out var errorText))
         {
             throw new InvalidOperationException(errorText ?? "Invalid toh264gpu arguments.");
         }

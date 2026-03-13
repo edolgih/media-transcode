@@ -375,6 +375,42 @@ public sealed class CliParsingTests
     }
 
     [Fact]
+    public void TryParse_WhenTomkvgpuDownscaleAlgorithmIsUnsupported_ReturnsFalse()
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale", "576", "--downscale-algo", "nearest"],
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--downscale-algo must be one of: bilinear, bicubic, lanczos.");
+    }
+
+    [Fact]
+    public void TryParse_WhenToH264GpuDownscaleAlgorithmIsUnsupported_ReturnsFalse()
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--downscale", "576", "--downscale-algo", "nearest"],
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--downscale-algo must be one of: bilinear, bicubic, lanczos.");
+    }
+
+    [Fact]
+    public void TryParse_WhenToH264GpuCqIsAboveSupportedRange_ReturnsFalse()
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--cq", "52"],
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--cq must be an integer from 1 to 51.");
+    }
+
+    [Fact]
     public void TryParse_WhenScenarioIsMissing_ReturnsFalse()
     {
         var actual = CliArgumentParser.TryParse(

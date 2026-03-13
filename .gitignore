@@ -10,6 +10,7 @@
 docs/*
 !docs/architecture.md
 !docs/cli.md
+!docs/runtime-cli-boundary-plan.md
 !docs/reference/
 docs/reference/*
 !docs/reference/legacy-fe62f0c/

@@ -11,12 +11,14 @@ public static class NvencPresetOptions
 {
     private static readonly string[] SupportedPresetsValues = ["p1", "p2", "p3", "p4", "p5", "p6", "p7"];
 
+    /// <summary>
+    /// Gets the canonical NVENC preset values supported by Runtime.
+    /// </summary>
     public static IReadOnlyList<string> SupportedPresets => SupportedPresetsValues;
 
-    public static string SupportedPresetsDisplay => string.Join(", ", SupportedPresetsValues);
-
-    public static string SupportedPresetsHelpDisplay => string.Join("|", SupportedPresetsValues);
-
+    /// <summary>
+    /// Determines whether the supplied NVENC preset value is supported.
+    /// </summary>
     public static bool IsSupportedPreset(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))

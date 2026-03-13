@@ -10,27 +10,26 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 /// </summary>
 public sealed class VideoSettingsRequest
 {
-    private static readonly string[] SupportedContentProfilesValues = ["anime", "mult", "film"];
-    private static readonly string[] SupportedQualityProfilesValues = ["high", "default", "low"];
+    private static readonly string[] SupportedContentProfilesValues =
+        [.. VideoSettingsProfiles.Default.GetSupportedContentProfiles()];
+    private static readonly string[] SupportedQualityProfilesValues =
+        [.. VideoSettingsProfiles.Default.GetSupportedQualityProfiles()];
     private static readonly string[] SupportedAutoSampleModesValues = ["accurate", "fast", "hybrid"];
 
+    /// <summary>
+    /// Gets content-profile values supported by the runtime profile catalog.
+    /// </summary>
     public static IReadOnlyList<string> SupportedContentProfiles => SupportedContentProfilesValues;
 
-    public static string SupportedContentProfilesDisplay => string.Join(", ", SupportedContentProfilesValues);
-
-    public static string SupportedContentProfilesHelpDisplay => string.Join("|", SupportedContentProfilesValues);
-
+    /// <summary>
+    /// Gets quality-profile values supported by the runtime profile catalog.
+    /// </summary>
     public static IReadOnlyList<string> SupportedQualityProfiles => SupportedQualityProfilesValues;
 
-    public static string SupportedQualityProfilesDisplay => string.Join(", ", SupportedQualityProfilesValues);
-
-    public static string SupportedQualityProfilesHelpDisplay => string.Join("|", SupportedQualityProfilesValues);
-
+    /// <summary>
+    /// Gets autosample mode values supported by Runtime.
+    /// </summary>
     public static IReadOnlyList<string> SupportedAutoSampleModes => SupportedAutoSampleModesValues;
-
-    public static string SupportedAutoSampleModesDisplay => string.Join(", ", SupportedAutoSampleModesValues);
-
-    public static string SupportedAutoSampleModesHelpDisplay => string.Join("|", SupportedAutoSampleModesValues);
 
     /// <summary>
     /// Initializes reusable video-settings directives.
@@ -68,17 +67,17 @@ public sealed class VideoSettingsRequest
             contentProfile,
             nameof(contentProfile),
             SupportedContentProfilesValues,
-            SupportedContentProfilesDisplay);
+            GetSupportedValuesDisplay(SupportedContentProfilesValues));
         QualityProfile = NormalizeSupportedValue(
             qualityProfile,
             nameof(qualityProfile),
             SupportedQualityProfilesValues,
-            SupportedQualityProfilesDisplay);
+            GetSupportedValuesDisplay(SupportedQualityProfilesValues));
         AutoSampleMode = NormalizeSupportedValue(
             autoSampleMode,
             nameof(autoSampleMode),
             SupportedAutoSampleModesValues,
-            SupportedAutoSampleModesDisplay);
+            GetSupportedValuesDisplay(SupportedAutoSampleModesValues));
         Cq = cq;
         Maxrate = maxrate;
         Bufsize = bufsize;
@@ -125,16 +124,25 @@ public sealed class VideoSettingsRequest
         Maxrate.HasValue ||
         Bufsize.HasValue;
 
+    /// <summary>
+    /// Determines whether the supplied content-profile value is supported.
+    /// </summary>
     public static bool IsSupportedContentProfile(string? value)
     {
         return IsSupportedValue(value, SupportedContentProfilesValues);
     }
 
+    /// <summary>
+    /// Determines whether the supplied quality-profile value is supported.
+    /// </summary>
     public static bool IsSupportedQualityProfile(string? value)
     {
         return IsSupportedValue(value, SupportedQualityProfilesValues);
     }
 
+    /// <summary>
+    /// Determines whether the supplied autosample mode value is supported.
+    /// </summary>
     public static bool IsSupportedAutoSampleMode(string? value)
     {
         return IsSupportedValue(value, SupportedAutoSampleModesValues);
@@ -158,6 +166,11 @@ public sealed class VideoSettingsRequest
         }
 
         return supportedValues.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string GetSupportedValuesDisplay(IReadOnlyList<string> supportedValues)
+    {
+        return string.Join(", ", supportedValues);
     }
 
     private static string? NormalizeSupportedValue(

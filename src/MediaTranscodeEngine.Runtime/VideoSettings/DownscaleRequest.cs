@@ -11,6 +11,7 @@ public sealed class DownscaleRequest
 {
     private static readonly int[] SupportedTargetHeightsValues =
         [.. VideoSettingsProfiles.Default.GetSupportedDownscaleTargetHeights()];
+    private static readonly string[] SupportedAlgorithmsValues = ["bilinear", "bicubic", "lanczos"];
 
     /// <summary>
     /// Gets target heights that are supported by configured downscale profiles.
@@ -18,14 +19,9 @@ public sealed class DownscaleRequest
     public static IReadOnlyList<int> SupportedTargetHeights => SupportedTargetHeightsValues;
 
     /// <summary>
-    /// Gets a display string for supported downscale target heights.
+    /// Gets the canonical scaling algorithm values supported by Runtime.
     /// </summary>
-    public static string SupportedTargetHeightsDisplay => string.Join(", ", SupportedTargetHeightsValues);
-
-    /// <summary>
-    /// Gets a help-token string for supported downscale target heights.
-    /// </summary>
-    public static string SupportedTargetHeightsHelpDisplay => string.Join("|", SupportedTargetHeightsValues);
+    public static IReadOnlyList<string> SupportedAlgorithms => SupportedAlgorithmsValues;
 
     /// <summary>
     /// Initializes explicit downscale directives.
@@ -44,11 +40,20 @@ public sealed class DownscaleRequest
             throw new ArgumentOutOfRangeException(
                 nameof(targetHeight),
                 targetHeight,
-                $"Supported values: {SupportedTargetHeightsDisplay}.");
+                $"Supported values: {GetSupportedTargetHeightsDisplay()}.");
+        }
+
+        var normalizedAlgorithm = NormalizeName(algorithm);
+        if (normalizedAlgorithm is not null && !IsSupportedAlgorithm(normalizedAlgorithm))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(algorithm),
+                algorithm,
+                $"Supported values: {GetSupportedAlgorithmsDisplay()}.");
         }
 
         TargetHeight = targetHeight;
-        Algorithm = NormalizeName(algorithm);
+        Algorithm = normalizedAlgorithm;
     }
 
     /// <summary>
@@ -67,6 +72,29 @@ public sealed class DownscaleRequest
     public static bool IsSupportedTargetHeight(int targetHeight)
     {
         return Array.IndexOf(SupportedTargetHeightsValues, targetHeight) >= 0;
+    }
+
+    /// <summary>
+    /// Determines whether the supplied scaling algorithm is supported.
+    /// </summary>
+    public static bool IsSupportedAlgorithm(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return SupportedAlgorithmsValues.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string GetSupportedTargetHeightsDisplay()
+    {
+        return string.Join(", ", SupportedTargetHeightsValues);
+    }
+
+    private static string GetSupportedAlgorithmsDisplay()
+    {
+        return string.Join(", ", SupportedAlgorithmsValues);
     }
 
     private static string? NormalizeName(string? value)

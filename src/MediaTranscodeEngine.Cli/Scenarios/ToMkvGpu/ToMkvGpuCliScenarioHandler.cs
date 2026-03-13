@@ -12,7 +12,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 
 /*
 Это CLI-адаптер для сценария tomkvgpu.
-Он знает свои опции, валидирует их, строит runtime-request и переводит ошибки в legacy-compatible вывод.
+Он использует scenario-local parser для raw argv, строит runtime-request и переводит ошибки в legacy-compatible вывод.
 */
 /// <summary>
 /// Implements the CLI contract for the legacy <c>tomkvgpu</c> application scenario.
@@ -36,19 +36,19 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
 
     public IReadOnlyList<CliHelpOption> HelpOptions { get; } =
     [
-        new CliHelpOption($"--downscale <{DownscaleRequest.SupportedTargetHeightsHelpDisplay}>", "Downscale target height."),
+        new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "Downscale target height."),
         new CliHelpOption("--keep-source", "Keep source file and write output to a new path."),
         new CliHelpOption("--overlay-bg", "Apply overlay background path during encode."),
-        new CliHelpOption("--max-fps <50|40|30|24>", "Optional frame-rate cap. Supported values: 50, 40, 30, 24."),
+        new CliHelpOption($"--max-fps <{CliValueFormatter.FormatAlternatives(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}>", $"Optional frame-rate cap. Supported values: {CliValueFormatter.FormatList(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}."),
         new CliHelpOption("--sync-audio", "Force sync-safe audio path."),
-        new CliHelpOption($"--content-profile <{VideoSettingsRequest.SupportedContentProfilesHelpDisplay}>", "Quality-oriented content profile."),
-        new CliHelpOption($"--quality-profile <{VideoSettingsRequest.SupportedQualityProfilesHelpDisplay}>", "Quality-oriented quality profile."),
-        new CliHelpOption($"--autosample-mode <{VideoSettingsRequest.SupportedAutoSampleModesHelpDisplay}>", "Autosample mode."),
-        new CliHelpOption("--downscale-algo <bilinear|bicubic|lanczos>", "Explicit downscale algorithm override."),
+        new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile."),
+        new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile."),
+        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode."),
+        new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Explicit downscale algorithm override."),
         new CliHelpOption("--cq <int>", "Explicit NVENC CQ override."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s."),
         new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s."),
-        new CliHelpOption($"--nvenc-preset <{NvencPresetOptions.SupportedPresetsHelpDisplay}>", "Explicit NVENC preset override.")
+        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", "Explicit NVENC preset override.")
     ];
 
     /// <summary>
@@ -80,7 +80,7 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     /// <returns><see langword="true"/> when the arguments are valid; otherwise <see langword="false"/>.</returns>
     public bool TryValidate(IReadOnlyList<string> args, out string? errorText)
     {
-        return ToMkvGpuRequest.TryParseArgs(args, out _, out errorText);
+        return ToMkvGpuCliRequestParser.TryParse(args, out _, out errorText);
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (ToMkvGpuRequest.TryParseArgs(request.ScenarioArgs, out var runtimeRequest, out var errorText))
+        if (ToMkvGpuCliRequestParser.TryParse(request.ScenarioArgs, out var runtimeRequest, out var errorText))
         {
             return runtimeRequest;
         }

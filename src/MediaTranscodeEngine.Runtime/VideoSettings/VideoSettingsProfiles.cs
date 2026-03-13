@@ -13,6 +13,8 @@ internal sealed class VideoSettingsProfiles
 {
     private readonly IReadOnlyDictionary<int, VideoSettingsProfile> _profilesByTargetHeight;
     private readonly int[] _supportedDownscaleTargetHeights;
+    private readonly string[] _supportedContentProfiles;
+    private readonly string[] _supportedQualityProfiles;
 
     internal VideoSettingsProfiles(IReadOnlyDictionary<int, VideoSettingsProfile> profilesByTargetHeight)
     {
@@ -21,6 +23,16 @@ internal sealed class VideoSettingsProfiles
             .Where(static profile => profile.SupportsDownscale)
             .OrderByDescending(static profile => profile.TargetHeight)
             .Select(static profile => profile.TargetHeight)
+            .ToArray();
+        _supportedContentProfiles = profilesByTargetHeight.Values
+            .SelectMany(static profile => profile.Defaults)
+            .Select(static defaults => defaults.ContentProfile)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        _supportedQualityProfiles = profilesByTargetHeight.Values
+            .SelectMany(static profile => profile.Defaults)
+            .Select(static defaults => defaults.QualityProfile)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
@@ -54,6 +66,16 @@ internal sealed class VideoSettingsProfiles
     public IReadOnlyList<int> GetSupportedDownscaleTargetHeights()
     {
         return _supportedDownscaleTargetHeights;
+    }
+
+    public IReadOnlyList<string> GetSupportedContentProfiles()
+    {
+        return _supportedContentProfiles;
+    }
+
+    public IReadOnlyList<string> GetSupportedQualityProfiles()
+    {
+        return _supportedQualityProfiles;
     }
 
     public bool SupportsDownscaleTargetHeight(int targetHeight)

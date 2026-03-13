@@ -1,35 +1,30 @@
 using FluentAssertions;
 using MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
+using MediaTranscodeEngine.Runtime.VideoSettings;
 
 namespace MediaTranscodeEngine.Runtime.Tests.Scenarios;
 
 public sealed class ToH264GpuRequestTests
 {
     [Fact]
-    public void TryParseArgs_WithValidOptions_ReturnsRequest()
+    public void Constructor_WithValidOptions_NormalizesValues()
     {
-        var actual = ToH264GpuRequest.TryParseArgs(
-            [
-                "--keep-source",
-                "--downscale", "576",
-                "--keep-fps",
-                "--content-profile", "film",
-                "--quality-profile", "default",
-                "--autosample-mode", "fast",
-                "--downscale-algo", "lanczos",
-                "--cq", "21",
-                "--maxrate", "4.2",
-                "--bufsize", "8.4",
-                "--nvenc-preset", "p6",
-                "--denoise",
-                "--sync-audio",
-                "--mkv"
-            ],
-            out var request,
-            out var errorText);
+        var request = new ToH264GpuRequest(
+            keepSource: true,
+            downscale: new DownscaleRequest(576, "lanczos"),
+            keepFramesPerSecond: true,
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "film",
+                qualityProfile: "default",
+                autoSampleMode: "fast",
+                cq: 21,
+                maxrate: 4.2m,
+                bufsize: 8.4m),
+            nvencPreset: "P6",
+            denoise: true,
+            synchronizeAudio: true,
+            outputMkv: true);
 
-        actual.Should().BeTrue();
-        errorText.Should().BeNull();
         request.KeepSource.Should().BeTrue();
         request.Downscale.Should().NotBeNull();
         request.Downscale!.TargetHeight.Should().Be(576);
@@ -49,36 +44,21 @@ public sealed class ToH264GpuRequestTests
     }
 
     [Fact]
-    public void TryParseArgs_WhenDownscaleHeightIsUnsupported_ReturnsFalse()
+    public void Constructor_WhenNvencPresetIsUnsupported_Throws()
     {
-        var actual = ToH264GpuRequest.TryParseArgs(
-            [
-                "--downscale", "360"
-            ],
-            out _,
-            out var errorText);
+        Action action = static () => _ = new ToH264GpuRequest(nvencPreset: "p8");
 
-        actual.Should().BeFalse();
-        errorText.Should().Be("--downscale must be one of: 720, 576, 480, 424.");
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("nvencPreset");
     }
 
-    [Theory]
-    [InlineData("--content-profile", "other")]
-    [InlineData("--quality-profile", "other")]
-    [InlineData("--autosample-mode", "other")]
-    [InlineData("--nvenc-preset", "p8")]
-    public void TryParseArgs_WhenSharedOptionValueIsUnsupported_ReturnsFalse(
-        string optionName,
-        string optionValue)
+    [Fact]
+    public void Constructor_WhenCqIsAboveH264Limit_Throws()
     {
-        var actual = ToH264GpuRequest.TryParseArgs(
-            [
-                optionName, optionValue
-            ],
-            out _,
-            out var errorText);
+        Action action = static () => _ = new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(cq: 52));
 
-        actual.Should().BeFalse();
-        errorText.Should().NotBeNullOrWhiteSpace();
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("cq");
     }
 }

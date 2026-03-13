@@ -7,7 +7,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 
 /*
 Это CLI-контракт одного прикладного сценария:
-его имя, help, валидация аргументов, создание runtime-сценария и обработка ошибок.
+его имя, help, scenario-local parsing/validation, создание runtime-сценария и обработка ошибок.
 */
 /// <summary>
 /// Defines the CLI-facing contract for one registered application scenario.

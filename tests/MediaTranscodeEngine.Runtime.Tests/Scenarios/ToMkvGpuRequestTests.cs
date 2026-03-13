@@ -1,34 +1,29 @@
 using FluentAssertions;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
+using MediaTranscodeEngine.Runtime.VideoSettings;
 
 namespace MediaTranscodeEngine.Runtime.Tests.Scenarios;
 
 public sealed class ToMkvGpuRequestTests
 {
     [Fact]
-    public void TryParseArgs_WithValidOptions_ReturnsRequest()
+    public void Constructor_WithValidOptions_NormalizesValues()
     {
-        var actual = ToMkvGpuRequest.TryParseArgs(
-            [
-                "--keep-source",
-                "--overlay-bg",
-                "--sync-audio",
-                "--downscale", "576",
-                "--content-profile", "Film",
-                "--quality-profile", "Default",
-                "--autosample-mode", "Fast",
-                "--downscale-algo", "Bicubic",
-                "--max-fps", "40",
-                "--cq", "24",
-                "--maxrate", "3.7",
-                "--bufsize", "7.4",
-                "--nvenc-preset", "P6"
-            ],
-            out var request,
-            out var errorText);
+        var request = new ToMkvGpuRequest(
+            overlayBackground: true,
+            synchronizeAudio: true,
+            keepSource: true,
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "Film",
+                qualityProfile: "Default",
+                autoSampleMode: "Fast",
+                cq: 24,
+                maxrate: 3.7m,
+                bufsize: 7.4m),
+            downscale: new DownscaleRequest(576, "Bicubic"),
+            nvencPreset: "P6",
+            maxFramesPerSecond: 40);
 
-        actual.Should().BeTrue();
-        errorText.Should().BeNull();
         request.KeepSource.Should().BeTrue();
         request.OverlayBackground.Should().BeTrue();
         request.SynchronizeAudio.Should().BeTrue();
@@ -46,23 +41,21 @@ public sealed class ToMkvGpuRequestTests
         request.MaxFramesPerSecond.Should().Be(40);
     }
 
-    [Theory]
-    [InlineData("--content-profile", "other")]
-    [InlineData("--quality-profile", "other")]
-    [InlineData("--autosample-mode", "other")]
-    [InlineData("--nvenc-preset", "p8")]
-    public void TryParseArgs_WhenSharedOptionValueIsUnsupported_ReturnsFalse(
-        string optionName,
-        string optionValue)
+    [Fact]
+    public void Constructor_WhenNvencPresetIsUnsupported_Throws()
     {
-        var actual = ToMkvGpuRequest.TryParseArgs(
-            [
-                optionName, optionValue
-            ],
-            out _,
-            out var errorText);
+        Action action = static () => _ = new ToMkvGpuRequest(nvencPreset: "p8");
 
-        actual.Should().BeFalse();
-        errorText.Should().NotBeNullOrWhiteSpace();
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("nvencPreset");
+    }
+
+    [Fact]
+    public void DownscaleRequest_WhenAlgorithmIsUnsupported_Throws()
+    {
+        Action action = static () => _ = new DownscaleRequest(576, "nearest");
+
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("algorithm");
     }
 }

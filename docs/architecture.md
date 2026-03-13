@@ -21,6 +21,8 @@ CLI wiring:
 - `src/MediaTranscodeEngine.Cli/Program.cs`
 - `src/MediaTranscodeEngine.Cli/Scenarios/CliScenarioRegistry.cs`
 - `src/MediaTranscodeEngine.Cli/Scenarios/ICliScenarioHandler.cs`
+- `src/MediaTranscodeEngine.Cli/Scenarios/ToMkvGpu/ToMkvGpuCliRequestParser.cs`
+- `src/MediaTranscodeEngine.Cli/Scenarios/ToH264Gpu/ToH264GpuCliRequestParser.cs`
 - `src/MediaTranscodeEngine.Runtime/Inspection/FfprobeVideoProbe.cs`
 - `src/MediaTranscodeEngine.Runtime/Scenarios/ToMkvGpu/ToMkvGpuScenario.cs`
 - `src/MediaTranscodeEngine.Runtime/Scenarios/ToMkvGpu/ToMkvGpuFfmpegTool.cs`
@@ -28,10 +30,11 @@ CLI wiring:
 CLI flow at a high level:
 
 - the common CLI layer parses shared arguments such as the required scenario name, input paths, and `--info`;
-- the selected scenario validates its own scenario-specific arguments and maps them to its runtime request type;
+- the selected scenario owns its raw scenario-specific argv parsing in the CLI layer, validates those transport values, and maps them to its runtime request type;
 - processing then loads source facts, asks the scenario to build a `TranscodePlan` and an optional `TranscodeExecutionSpec`, and picks the first tool that can execute that combination;
 - in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the runtime request/scenario types it uses; if the ffmpeg rendering policy differs materially, it may also justify a dedicated tool adapter instead of growing a shared one.
 - ordinary encode and downscale now share the same profile-driven video-settings axis: output-height buckets, content/quality profiles, bucket bounds, and autosample/bitrate-hint adjustment all come from the shared video-settings profile catalog rather than scenario-local hardcoded fallbacks.
+- runtime request/value types no longer know raw `--option` spellings; the CLI layer is the transport adapter and runtime stays the domain source of truth.
 
 ## Timing, FPS And Sync Notes
 
