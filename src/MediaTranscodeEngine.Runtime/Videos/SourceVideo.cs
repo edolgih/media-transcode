@@ -31,7 +31,7 @@ public sealed record SourceVideo
         string filePath,
         string container,
         string videoCodec,
-        IReadOnlyList<string>? audioCodecs,
+        IReadOnlyList<string> audioCodecs,
         int width,
         int height,
         double framesPerSecond,
@@ -229,9 +229,11 @@ public sealed record SourceVideo
             : throw new ArgumentOutOfRangeException(paramName, value.Value, "Value must be greater than zero.");
     }
 
-    private static IReadOnlyList<string> NormalizeAudioCodecs(IReadOnlyList<string>? audioCodecs)
+    private static IReadOnlyList<string> NormalizeAudioCodecs(IReadOnlyList<string> audioCodecs)
     {
-        if (audioCodecs is null || audioCodecs.Count == 0)
+        ArgumentNullException.ThrowIfNull(audioCodecs);
+
+        if (audioCodecs.Count == 0)
         {
             return Array.Empty<string>();
         }

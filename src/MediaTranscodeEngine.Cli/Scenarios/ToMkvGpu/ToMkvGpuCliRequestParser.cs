@@ -185,7 +185,7 @@ internal static class ToMkvGpuCliRequestParser
 
         try
         {
-            var videoSettingsRequest = new VideoSettingsRequest(
+            var videoSettingsRequest = VideoSettingsRequest.CreateOrNull(
                 contentProfile: contentProfile,
                 qualityProfile: qualityProfile,
                 autoSampleMode: autoSampleMode,
@@ -200,7 +200,7 @@ internal static class ToMkvGpuCliRequestParser
                 overlayBackground: overlayBackground,
                 synchronizeAudio: synchronizeAudio,
                 keepSource: keepSource,
-                videoSettings: videoSettingsRequest.HasValue ? videoSettingsRequest : null,
+                videoSettings: videoSettingsRequest,
                 downscale: downscaleRequest,
                 nvencPreset: nvencPreset,
                 maxFramesPerSecond: maxFramesPerSecond);

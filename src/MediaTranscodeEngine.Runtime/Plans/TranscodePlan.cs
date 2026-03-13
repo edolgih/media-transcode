@@ -18,10 +18,10 @@ public sealed record TranscodePlan
     /// <param name="targetVideoCodec">Target video codec when video encoding is required.</param>
     /// <param name="preferredBackend">Preferred encoding backend, when applicable.</param>
     /// <param name="videoCompatibilityProfile">Scenario-selected compatibility profile when the target codec uses one.</param>
-    /// <param name="targetHeight">Target video height in pixels.</param>
     /// <param name="targetFramesPerSecond">Target frame rate.</param>
     /// <param name="useFrameInterpolation">Whether frame interpolation is requested.</param>
     /// <param name="videoSettings">Optional reusable video-settings intent.</param>
+    /// <param name="downscale">Explicit downscale request when the plan changes resolution.</param>
     /// <param name="copyVideo">Whether the source video stream should be copied without re-encoding.</param>
     /// <param name="copyAudio">Whether compatible audio streams should be copied.</param>
     /// <param name="fixTimestamps">Whether timestamp normalization is requested.</param>
@@ -35,65 +35,6 @@ public sealed record TranscodePlan
         string? targetVideoCodec,
         string? preferredBackend,
         VideoCompatibilityProfile? videoCompatibilityProfile,
-        int? targetHeight,
-        double? targetFramesPerSecond,
-        bool useFrameInterpolation,
-        VideoSettingsRequest? videoSettings,
-        bool copyVideo,
-        bool copyAudio,
-        bool fixTimestamps,
-        bool keepSource,
-        string? encoderPreset = null,
-        string? outputPath = null,
-        bool applyOverlayBackground = false,
-        bool synchronizeAudio = false)
-        : this(
-            targetContainer,
-            targetVideoCodec,
-            preferredBackend,
-            videoCompatibilityProfile,
-            targetHeight,
-            targetFramesPerSecond,
-            useFrameInterpolation,
-            videoSettings,
-            downscale: null,
-            copyVideo,
-            copyAudio,
-            fixTimestamps,
-            keepSource,
-            encoderPreset,
-            outputPath,
-            applyOverlayBackground,
-            synchronizeAudio)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a transcode plan with explicit downscale intent when resolution change is requested.
-    /// </summary>
-    /// <param name="targetContainer">Target output container identifier.</param>
-    /// <param name="targetVideoCodec">Target video codec when video encoding is required.</param>
-    /// <param name="preferredBackend">Preferred encoding backend.</param>
-    /// <param name="videoCompatibilityProfile">Optional compatibility profile for the selected video codec.</param>
-    /// <param name="targetHeight">Optional target output height.</param>
-    /// <param name="targetFramesPerSecond">Optional target frame rate.</param>
-    /// <param name="useFrameInterpolation">Whether frame interpolation is requested.</param>
-    /// <param name="videoSettings">Reusable video-settings directives.</param>
-    /// <param name="downscale">Explicit downscale request when the plan changes resolution.</param>
-    /// <param name="copyVideo">Whether the source video should be copied.</param>
-    /// <param name="copyAudio">Whether the source audio should be copied.</param>
-    /// <param name="fixTimestamps">Whether timestamp repair mode is requested.</param>
-    /// <param name="keepSource">Whether the source file must be preserved.</param>
-    /// <param name="encoderPreset">Optional explicit encoder preset.</param>
-    /// <param name="outputPath">Optional explicit output path.</param>
-    /// <param name="applyOverlayBackground">Whether the plan requests background overlay during video encoding.</param>
-    /// <param name="synchronizeAudio">Whether the plan requests the sync-safe audio path.</param>
-    public TranscodePlan(
-        string targetContainer,
-        string? targetVideoCodec,
-        string? preferredBackend,
-        VideoCompatibilityProfile? videoCompatibilityProfile,
-        int? targetHeight,
         double? targetFramesPerSecond,
         bool useFrameInterpolation,
         VideoSettingsRequest? videoSettings,
@@ -108,10 +49,9 @@ public sealed record TranscodePlan
         bool synchronizeAudio = false)
     {
         TargetContainer = NormalizeRequiredToken(targetContainer, nameof(targetContainer));
-        TargetHeight = NormalizeOptionalPositiveInt(targetHeight, nameof(targetHeight));
         TargetFramesPerSecond = NormalizeOptionalPositiveDouble(targetFramesPerSecond, nameof(targetFramesPerSecond));
-        VideoSettings = NormalizeOptionalVideoSettings(videoSettings);
-        Downscale = NormalizeOptionalDownscale(downscale, TargetHeight);
+        VideoSettings = videoSettings;
+        Downscale = downscale;
         CopyVideo = copyVideo;
         CopyAudio = copyAudio;
         FixTimestamps = fixTimestamps;
@@ -131,9 +71,9 @@ public sealed record TranscodePlan
                 throw new ArgumentException("Video copy plan cannot request compatibility profile.", nameof(videoCompatibilityProfile));
             }
 
-            if (TargetHeight.HasValue)
+            if (Downscale is not null)
             {
-                throw new ArgumentException("Video copy plan cannot request target height.", nameof(targetHeight));
+                throw new ArgumentException("Video copy plan cannot request downscale.", nameof(downscale));
             }
 
             if (TargetFramesPerSecond.HasValue)
@@ -187,7 +127,7 @@ public sealed record TranscodePlan
     /// <summary>
     /// Gets the target output height in pixels when resizing is required.
     /// </summary>
-    public int? TargetHeight { get; }
+    public int? TargetHeight => Downscale?.TargetHeight;
 
     /// <summary>
     /// Gets the target frame rate when the scenario requests a frame rate change.
@@ -289,18 +229,6 @@ public sealed record TranscodePlan
             : Path.GetFullPath(path.Trim());
     }
 
-    private static int? NormalizeOptionalPositiveInt(int? value, string paramName)
-    {
-        if (!value.HasValue)
-        {
-            return null;
-        }
-
-        return value.Value > 0
-            ? value.Value
-            : throw new ArgumentOutOfRangeException(paramName, value.Value, "Value must be greater than zero.");
-    }
-
     private static double? NormalizeOptionalPositiveDouble(double? value, string paramName)
     {
         if (!value.HasValue)
@@ -313,38 +241,4 @@ public sealed record TranscodePlan
             : throw new ArgumentOutOfRangeException(paramName, value.Value, "Value must be greater than zero.");
     }
 
-    private static VideoSettingsRequest? NormalizeOptionalVideoSettings(VideoSettingsRequest? videoSettings)
-    {
-        if (videoSettings is null)
-        {
-            return null;
-        }
-
-        return videoSettings.HasValue ? videoSettings : null;
-    }
-
-    private static DownscaleRequest? NormalizeOptionalDownscale(DownscaleRequest? downscale, int? targetHeight)
-    {
-        if (downscale is null)
-        {
-            if (targetHeight.HasValue)
-            {
-                throw new ArgumentException("Target height requires explicit downscale request in the transcode plan.", nameof(downscale));
-            }
-
-            return null;
-        }
-
-        if (!targetHeight.HasValue)
-        {
-            throw new ArgumentException("Downscale request requires target height in the transcode plan.", nameof(downscale));
-        }
-
-        if (downscale.TargetHeight != targetHeight.Value)
-        {
-            throw new ArgumentException("Downscale request target must match target height when both are provided.", nameof(downscale));
-        }
-
-        return downscale;
-    }
 }

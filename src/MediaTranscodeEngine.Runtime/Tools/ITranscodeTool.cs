@@ -24,7 +24,7 @@ public interface ITranscodeTool
     /// <param name="plan">Tool-agnostic transcode plan.</param>
     /// <param name="executionSpec">Optional scenario-specific execution payload.</param>
     /// <returns><see langword="true"/> when the tool can execute the plan; otherwise <see langword="false"/>.</returns>
-    bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null);
+    bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec);
 
     /// <summary>
     /// Builds an executable recipe for the supplied source video and transcode plan.
@@ -33,5 +33,5 @@ public interface ITranscodeTool
     /// <param name="plan">Tool-agnostic transcode plan.</param>
     /// <param name="executionSpec">Optional scenario-specific execution payload.</param>
     /// <returns>A concrete execution recipe for this tool.</returns>
-    ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null);
+    ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec);
 }

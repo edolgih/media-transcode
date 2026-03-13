@@ -106,13 +106,14 @@ internal sealed class VideoSettingsResolver
         VideoSettingsRequest? request,
         string? defaultAutoSampleMode)
     {
-        return new VideoSettingsRequest(
+        return VideoSettingsRequest.CreateOrNull(
             contentProfile: request?.ContentProfile,
             qualityProfile: request?.QualityProfile,
             autoSampleMode: request?.AutoSampleMode ?? defaultAutoSampleMode,
             cq: request?.Cq,
             maxrate: request?.Maxrate,
-            bufsize: request?.Bufsize);
+            bufsize: request?.Bufsize)
+            ?? throw new InvalidOperationException("Effective video settings selection must resolve to at least one value.");
     }
 
     private static VideoSettingsDefaults ApplyOverrides(

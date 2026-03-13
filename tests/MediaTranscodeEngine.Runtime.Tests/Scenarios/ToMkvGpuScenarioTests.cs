@@ -306,7 +306,9 @@ public sealed class ToMkvGpuScenarioTests
                     MaxHeight: 1300,
                     Ranges: CreateCompleteRanges())
             ],
-            defaults: CreateDefaults());
+            defaults: CreateDefaults(),
+            globalContentRanges: [],
+            globalQualityRanges: []);
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(downscale: new DownscaleRequest(576)),
             VideoSettingsProfiles.Create(profile));
@@ -335,7 +337,9 @@ public sealed class ToMkvGpuScenarioTests
                     MaxHeight: 1300,
                     Ranges: CreateCompleteRanges().Where(static range => !(range.ContentProfile == "mult" && range.QualityProfile == "low")).ToArray())
             ],
-            defaults: CreateDefaults());
+            defaults: CreateDefaults(),
+            globalContentRanges: [],
+            globalQualityRanges: []);
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(downscale: new DownscaleRequest(576)),
             VideoSettingsProfiles.Create(profile));

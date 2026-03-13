@@ -187,7 +187,7 @@ internal static class ToH264GpuCliRequestParser
 
         try
         {
-            var videoSettingsRequest = new VideoSettingsRequest(
+            var videoSettingsRequest = VideoSettingsRequest.CreateOrNull(
                 contentProfile: contentProfile,
                 qualityProfile: qualityProfile,
                 autoSampleMode: autoSampleMode,
@@ -202,7 +202,7 @@ internal static class ToH264GpuCliRequestParser
                 keepSource: keepSource,
                 downscale: downscaleRequest,
                 keepFramesPerSecond: keepFramesPerSecond,
-                videoSettings: videoSettingsRequest.HasValue ? videoSettingsRequest : null,
+                videoSettings: videoSettingsRequest,
                 nvencPreset: nvencPreset,
                 denoise: denoise,
                 synchronizeAudio: synchronizeAudio,

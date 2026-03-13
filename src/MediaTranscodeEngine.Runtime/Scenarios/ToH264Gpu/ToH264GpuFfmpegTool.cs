@@ -39,7 +39,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Determines whether the toh264gpu-specific ffmpeg tool can execute the supplied plan.
     /// </summary>
-    public bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
+    public bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
@@ -71,7 +71,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and plan.
     /// </summary>
-    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
+    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
     {
         ArgumentNullException.ThrowIfNull(video);
         ArgumentNullException.ThrowIfNull(plan);

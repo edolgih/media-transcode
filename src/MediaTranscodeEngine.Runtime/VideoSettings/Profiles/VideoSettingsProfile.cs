@@ -25,8 +25,8 @@ internal sealed class VideoSettingsProfile
         VideoSettingsAutoSampling autoSampling,
         IReadOnlyList<SourceHeightBucket> sourceBuckets,
         IReadOnlyList<VideoSettingsDefaults> defaults,
-        IReadOnlyList<VideoSettingsRange>? globalContentRanges = null,
-        IReadOnlyList<VideoSettingsQualityRange>? globalQualityRanges = null,
+        IReadOnlyList<VideoSettingsRange> globalContentRanges,
+        IReadOnlyList<VideoSettingsQualityRange> globalQualityRanges,
         bool supportsDownscale = true)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
@@ -34,6 +34,10 @@ internal sealed class VideoSettingsProfile
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultQualityProfile);
         ArgumentNullException.ThrowIfNull(rateModel);
         ArgumentNullException.ThrowIfNull(autoSampling);
+        ArgumentNullException.ThrowIfNull(sourceBuckets);
+        ArgumentNullException.ThrowIfNull(defaults);
+        ArgumentNullException.ThrowIfNull(globalContentRanges);
+        ArgumentNullException.ThrowIfNull(globalQualityRanges);
 
         TargetHeight = targetHeight;
         SupportsDownscale = supportsDownscale;
@@ -43,8 +47,8 @@ internal sealed class VideoSettingsProfile
         AutoSampling = autoSampling;
         SourceBuckets = sourceBuckets;
         Defaults = defaults;
-        GlobalContentRanges = globalContentRanges ?? Array.Empty<VideoSettingsRange>();
-        GlobalQualityRanges = globalQualityRanges ?? Array.Empty<VideoSettingsQualityRange>();
+        GlobalContentRanges = globalContentRanges;
+        GlobalQualityRanges = globalQualityRanges;
         _defaultsByProfile = defaults.ToDictionary(
             static entry => BuildDefaultsKey(entry.ContentProfile, entry.QualityProfile),
             StringComparer.OrdinalIgnoreCase);

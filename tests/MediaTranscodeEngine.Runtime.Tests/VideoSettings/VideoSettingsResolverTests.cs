@@ -84,7 +84,7 @@ public sealed class VideoSettingsResolverTests
         // Act
         var action = () => sut.ResolveForDownscale(
             request: null!,
-            videoSettings: CreateRequest(),
+            videoSettings: null,
             sourceHeight: 1080,
             duration: TimeSpan.FromMinutes(10),
             sourceBitrate: 4_000_000,

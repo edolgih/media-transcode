@@ -16,7 +16,7 @@ public sealed record ToolExecution
     /// <param name="commands">Command sequence to execute.</param>
     public ToolExecution(
         string toolName,
-        IReadOnlyList<string>? commands)
+        IReadOnlyList<string> commands)
     {
         ToolName = NormalizeToolName(toolName);
         Commands = NormalizeCommands(commands);
@@ -55,9 +55,11 @@ public sealed record ToolExecution
         return toolName.Trim();
     }
 
-    private static IReadOnlyList<string> NormalizeCommands(IReadOnlyList<string>? commands)
+    private static IReadOnlyList<string> NormalizeCommands(IReadOnlyList<string> commands)
     {
-        if (commands is null || commands.Count == 0)
+        ArgumentNullException.ThrowIfNull(commands);
+
+        if (commands.Count == 0)
         {
             return Array.Empty<string>();
         }

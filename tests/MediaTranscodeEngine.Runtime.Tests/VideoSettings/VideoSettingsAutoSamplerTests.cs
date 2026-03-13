@@ -143,7 +143,9 @@ public sealed class VideoSettingsAutoSamplerTests
                 defaults:
                 [
                     new VideoSettingsDefaults("anime", "default", Cq: 26, Maxrate: 2.0m, Bufsize: 4.0m, Algorithm: "bilinear", CqMin: 26, CqMax: 26, MaxrateMin: 2.0m, MaxrateMax: 2.0m)
-                ]));
+                ],
+                globalContentRanges: [],
+                globalQualityRanges: []));
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
@@ -192,7 +194,8 @@ public sealed class VideoSettingsAutoSamplerTests
                 globalContentRanges:
                 [
                     new VideoSettingsRange("anime", "default", MinExclusive: 40.0m, MaxInclusive: 50.0m)
-                ]));
+                ],
+                globalQualityRanges: []));
         var sut = new VideoSettingsAutoSampler(profiles);
         var profile = profiles.GetRequiredProfile(576);
         var request = CreateRequest(autoSampleMode: "accurate");
@@ -302,7 +305,9 @@ public sealed class VideoSettingsAutoSamplerTests
                     HybridAccurateIterations = hybridAccurateIterations
                 },
                 sourceBuckets: profile.SourceBuckets,
-                defaults: profile.Defaults));
+                defaults: profile.Defaults,
+                globalContentRanges: profile.GlobalContentRanges,
+                globalQualityRanges: profile.GlobalQualityRanges));
     }
 
     private static VideoSettingsAutoSampling CreateAutoSampling(int maxIterations, int hybridAccurateIterations)

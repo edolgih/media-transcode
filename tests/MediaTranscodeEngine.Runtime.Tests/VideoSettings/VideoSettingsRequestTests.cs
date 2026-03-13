@@ -25,4 +25,21 @@ public sealed class VideoSettingsRequestTests
         VideoSettingsRequest.SupportedAutoSampleModes.Should().Equal("accurate", "fast", "hybrid");
         DownscaleRequest.SupportedAlgorithms.Should().Equal("bilinear", "bicubic", "lanczos");
     }
+
+    [Fact]
+    public void Ctor_WhenNoOverridesAreProvided_ThrowsArgumentException()
+    {
+        Action action = static () => _ = new VideoSettingsRequest();
+
+        action.Should().Throw<ArgumentException>()
+            .WithMessage("*At least one video settings override is required*");
+    }
+
+    [Fact]
+    public void CreateOrNull_WhenNoOverridesAreProvided_ReturnsNull()
+    {
+        var actual = VideoSettingsRequest.CreateOrNull();
+
+        actual.Should().BeNull();
+    }
 }

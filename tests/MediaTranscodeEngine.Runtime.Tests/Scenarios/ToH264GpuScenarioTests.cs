@@ -497,7 +497,9 @@ public sealed class ToH264GpuScenarioTests
 
     private static ToH264GpuScenario CreateSut(ToH264GpuRequest? request = null)
     {
-        return new ToH264GpuScenario(request);
+        return request is null
+            ? new ToH264GpuScenario()
+            : new ToH264GpuScenario(request);
     }
 
     private static ToH264GpuExecutionSpec BuildExecutionSpec(ToH264GpuScenario sut, SourceVideo video, TranscodePlan plan)

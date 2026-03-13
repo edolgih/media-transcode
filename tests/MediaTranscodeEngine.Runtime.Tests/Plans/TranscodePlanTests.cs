@@ -14,12 +14,12 @@ namespace MediaTranscodeEngine.Runtime.Tests.Plans;
 public sealed class TranscodePlanTests
 {
     [Fact]
-    public void Ctor_WhenCopyVideoPlanRequestsTargetHeight_ThrowsArgumentException()
+    public void Ctor_WhenCopyVideoPlanRequestsDownscale_ThrowsArgumentException()
     {
         Action action = () => CreateCopyVideoPlan(targetHeight: 576);
 
         action.Should().Throw<ArgumentException>()
-            .WithMessage("*Video copy plan cannot request target height*");
+            .WithMessage("*Video copy plan cannot request downscale*");
     }
 
     [Fact]
@@ -57,10 +57,10 @@ public sealed class TranscodePlanTests
             targetVideoCodec: "h264",
             preferredBackend: "nvenc",
             videoCompatibilityProfile: VideoCompatibilityProfile.H264High,
-            targetHeight: null,
             targetFramesPerSecond: null,
             useFrameInterpolation: true,
             videoSettings: null,
+            downscale: null,
             copyVideo: false,
             copyAudio: true,
             fixTimestamps: false,
@@ -78,10 +78,10 @@ public sealed class TranscodePlanTests
             targetVideoCodec: "h264",
             preferredBackend: "nvenc",
             videoCompatibilityProfile: null,
-            targetHeight: null,
             targetFramesPerSecond: null,
             useFrameInterpolation: false,
             videoSettings: null,
+            downscale: null,
             copyVideo: false,
             copyAudio: true,
             fixTimestamps: false,
@@ -92,47 +92,23 @@ public sealed class TranscodePlanTests
     }
 
     [Fact]
-    public void Ctor_WhenDownscaleTargetDoesNotMatchTargetHeight_ThrowsArgumentException()
+    public void Ctor_WhenDownscaleIsProvided_DerivesTargetHeightFromDownscale()
     {
-        Action action = () => new TranscodePlan(
+        var actual = new TranscodePlan(
             targetContainer: "mkv",
             targetVideoCodec: "h264",
             preferredBackend: "nvenc",
             videoCompatibilityProfile: VideoCompatibilityProfile.H264High,
-            targetHeight: 720,
             targetFramesPerSecond: null,
             useFrameInterpolation: false,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: new VideoSettingsRequest(contentProfile: "film"),
             downscale: new DownscaleRequest(576),
             copyVideo: false,
             copyAudio: true,
             fixTimestamps: false,
             keepSource: true);
 
-        action.Should().Throw<ArgumentException>()
-            .WithMessage("*Downscale request target must match target height*");
-    }
-
-    [Fact]
-    public void Ctor_WhenDownscaleIsProvidedWithoutPlanTargetHeight_ThrowsArgumentException()
-    {
-        Action action = () => new TranscodePlan(
-            targetContainer: "mkv",
-            targetVideoCodec: "h264",
-            preferredBackend: "nvenc",
-            videoCompatibilityProfile: VideoCompatibilityProfile.H264High,
-            targetHeight: null,
-            targetFramesPerSecond: null,
-            useFrameInterpolation: false,
-            videoSettings: new VideoSettingsRequest(),
-            downscale: new DownscaleRequest(576),
-            copyVideo: false,
-            copyAudio: true,
-            fixTimestamps: false,
-            keepSource: true);
-
-        action.Should().Throw<ArgumentException>()
-            .WithMessage("*Downscale request requires target height in the transcode plan*");
+        actual.TargetHeight.Should().Be(576);
     }
 
     [Fact]
@@ -143,7 +119,6 @@ public sealed class TranscodePlanTests
             targetVideoCodec: " H264 ",
             preferredBackend: " Nvenc ",
             videoCompatibilityProfile: VideoCompatibilityProfile.H264High,
-            targetHeight: 576,
             targetFramesPerSecond: 23.976,
             useFrameInterpolation: false,
             videoSettings: new VideoSettingsRequest(contentProfile: "film"),
@@ -161,21 +136,22 @@ public sealed class TranscodePlanTests
         actual.VideoCompatibilityProfile.Should().Be(VideoCompatibilityProfile.H264High);
         actual.EncoderPreset.Should().Be("p5");
         actual.OutputPath.Should().Be(Path.GetFullPath(@".\output.mkv"));
+        actual.TargetHeight.Should().Be(576);
         actual.Downscale!.TargetHeight.Should().Be(576);
     }
 
     [Fact]
-    public void Ctor_WhenVideoSettingsHasNoValue_DropsIt()
+    public void Ctor_WhenVideoSettingsIsNull_KeepsItNull()
     {
         var actual = new TranscodePlan(
             targetContainer: "mkv",
             targetVideoCodec: "h264",
             preferredBackend: "nvenc",
             videoCompatibilityProfile: VideoCompatibilityProfile.H264High,
-            targetHeight: null,
             targetFramesPerSecond: null,
             useFrameInterpolation: false,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: null,
+            downscale: null,
             copyVideo: false,
             copyAudio: true,
             fixTimestamps: false,
@@ -195,7 +171,6 @@ public sealed class TranscodePlanTests
             targetVideoCodec: null,
             preferredBackend: null,
             videoCompatibilityProfile: videoCompatibilityProfile,
-            targetHeight: targetHeight,
             targetFramesPerSecond: targetFramesPerSecond,
             useFrameInterpolation: useFrameInterpolation,
             videoSettings: null,

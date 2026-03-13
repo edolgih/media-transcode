@@ -58,7 +58,7 @@ public sealed class ToMkvGpuRequest
         OverlayBackground = overlayBackground;
         SynchronizeAudio = synchronizeAudio;
         KeepSource = keepSource;
-        VideoSettings = videoSettings?.HasValue == true ? videoSettings : null;
+        VideoSettings = videoSettings;
         Downscale = downscale;
         NvencPreset = normalizedNvencPreset;
         MaxFramesPerSecond = maxFramesPerSecond;

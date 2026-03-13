@@ -24,10 +24,18 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// <summary>
     /// Initializes a ToH264Gpu scenario with scenario-specific directives.
     /// </summary>
-    public ToH264GpuScenario(ToH264GpuRequest? request = null)
+    public ToH264GpuScenario()
+        : this(new ToH264GpuRequest())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a ToH264Gpu scenario with scenario-specific directives.
+    /// </summary>
+    public ToH264GpuScenario(ToH264GpuRequest request)
         : base("toh264gpu")
     {
-        Request = request ?? new ToH264GpuRequest();
+        Request = request ?? throw new ArgumentNullException(nameof(request));
     }
 
     /// <summary>
@@ -58,7 +66,6 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             targetVideoCodec: copyVideo ? null : "h264",
             preferredBackend: copyVideo ? null : "gpu",
             videoCompatibilityProfile: copyVideo ? null : VideoCompatibilityProfile.H264High,
-            targetHeight: useDownscale ? downscaleRequest!.TargetHeight : null,
             targetFramesPerSecond: targetFramesPerSecond,
             useFrameInterpolation: false,
             videoSettings: videoSettingsRequest,

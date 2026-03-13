@@ -25,7 +25,7 @@ public sealed class FfmpegToolTests
         var video = CreateVideo();
         var plan = CreatePlan(copyVideo: true, copyAudio: true, outputPath: video.FilePath);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.ToolName.Should().Be("ffmpeg");
         actual.IsEmpty.Should().BeTrue();
@@ -54,7 +54,7 @@ public sealed class FfmpegToolTests
         var video = CreateVideo(container: "mp4", filePath: @"C:\video\input.mp4");
         var plan = CreatePlan(copyVideo: true, copyAudio: true, outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands.Should().HaveCount(2);
         actual.Commands[0].Should().Contain("-c:v copy");
@@ -117,7 +117,7 @@ public sealed class FfmpegToolTests
         var video = CreateVideo(container: "mp4", filePath: @"C:\video\my file (1).mp4");
         var plan = CreatePlan(copyVideo: true, copyAudio: true, outputPath: @"C:\video\my file (1).mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-i \"C:\\video\\my file (1).mp4\"");
         actual.Commands[0].Should().Contain("\"C:\\video\\my file (1).mkv\"");
@@ -136,7 +136,7 @@ public sealed class FfmpegToolTests
             preferredBackend: "gpu",
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands.Should().HaveCount(2);
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
@@ -183,7 +183,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 21");
         actual.Commands[0].Should().Contain("-maxrate 3.4M -bufsize 6.8M");
@@ -206,7 +206,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 21");
         actual.Commands[0].Should().Contain("-maxrate 5.2M -bufsize 10.4M");
@@ -357,7 +357,7 @@ public sealed class FfmpegToolTests
             encoderPreset: "p5",
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-preset p5");
     }
@@ -375,7 +375,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(cq: 23),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 23");
         actual.Commands[0].Should().Contain("-maxrate 4.4M -bufsize 8.8M");
@@ -391,17 +391,17 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             videoCompatibilityProfile: VideoCompatibilityProfile.H264Main,
-            targetHeight: null,
             targetFramesPerSecond: null,
             useFrameInterpolation: false,
             videoSettings: null,
+            downscale: null,
             copyVideo: false,
             copyAudio: false,
             fixTimestamps: false,
             keepSource: false,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-profile:v main -level:v 4.0");
     }
@@ -413,7 +413,7 @@ public sealed class FfmpegToolTests
         var video = CreateVideo(container: "mp4", audioCodecs: [], filePath: @"C:\video\input.mp4");
         var plan = CreatePlan(copyVideo: true, copyAudio: true, outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-map 0:a? -c:a copy");
         actual.Commands[0].Should().NotContain("-c:a aac");
@@ -430,10 +430,10 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: null,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
@@ -457,10 +457,10 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 480,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: null,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("scale_cuda=-2:480:interp_algo=bilinear:format=nv12");
         actual.Commands[0].Should().Contain("-cq 27");
@@ -478,10 +478,10 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 720,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: null,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("scale_cuda=-2:720:interp_algo=bilinear:format=nv12");
         actual.Commands[0].Should().Contain("-cq 23");
@@ -499,10 +499,10 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 424,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: null,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("scale_cuda=-2:424:interp_algo=bilinear:format=nv12");
         actual.Commands[0].Should().Contain("-cq 28");
@@ -523,7 +523,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 23");
         actual.Commands[0].Should().Contain("-maxrate 2.4M -bufsize 4.8M");
@@ -543,7 +543,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(qualityProfile: "high"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 24");
         actual.Commands[0].Should().Contain("-maxrate 3.7M -bufsize 7.4M");
@@ -566,10 +566,10 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: null,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-profile:v high -level:v 3.2");
         actual.Commands[0].Should().NotContain(" -r ");
@@ -593,7 +593,7 @@ public sealed class FfmpegToolTests
             preferredBackend: "gpu",
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-profile:v high -level:v 4.2");
         actual.Commands[0].Should().NotContain(" -r ");
@@ -617,7 +617,7 @@ public sealed class FfmpegToolTests
             preferredBackend: "gpu",
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-profile:v high -level:v 4.0");
         actual.Commands[0].Should().NotContain(" -r ");
@@ -634,11 +634,11 @@ public sealed class FfmpegToolTests
             targetVideoCodec: "h264",
             preferredBackend: "gpu",
             targetHeight: 576,
-            videoSettings: new VideoSettingsRequest(),
+            videoSettings: null,
             downscale: new DownscaleRequest(576, "lanczos"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("interp_algo=lanczos");
     }
@@ -657,7 +657,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(maxrate: 2.5m),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-maxrate 2.5M -bufsize 5M");
     }
@@ -676,7 +676,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", cq: 21),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 21");
         actual.Commands[0].Should().Contain("-maxrate 3M -bufsize 6M");
@@ -697,8 +697,8 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "mult", qualityProfile: "default", cq: 21),
             outputPath: @"C:\video\output.mkv");
 
-        var hdActual = sut.BuildExecution(hdVideo, plan);
-        var fhdActual = sut.BuildExecution(fhdVideo, plan);
+        var hdActual = sut.BuildExecution(hdVideo, plan, null);
+        var fhdActual = sut.BuildExecution(fhdVideo, plan, null);
 
         hdActual.Commands[0].Should().Contain("-cq 21");
         hdActual.Commands[0].Should().Contain("-maxrate 3.6M -bufsize 7.2M");
@@ -732,7 +732,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", cq: 21),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         providerCalls.Should().Be(0);
         actual.Commands[0].Should().Contain("-cq 21");
@@ -764,7 +764,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 24");
         actual.Commands[0].Should().Contain("-maxrate 4.2M -bufsize 8.4M");
@@ -795,7 +795,7 @@ public sealed class FfmpegToolTests
                 videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
                 outputPath: Path.ChangeExtension(filePath, ".mkv"));
 
-            var actual = sut.BuildExecution(video, plan);
+            var actual = sut.BuildExecution(video, plan, null);
 
             actual.Commands[0].Should().Contain("-cq 24");
             actual.Commands[0].Should().Contain("-maxrate 4.2M -bufsize 8.4M");
@@ -831,7 +831,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 28");
         actual.Commands[0].Should().Contain("-maxrate 2.6M -bufsize 5.2M");
@@ -857,7 +857,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(autoSampleMode: "fast"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 26");
         actual.Commands[0].Should().Contain("-maxrate 3.4M -bufsize 6.9M");
@@ -890,7 +890,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", autoSampleMode: "accurate"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-cq 23");
         actual.Commands[0].Should().Contain("-maxrate 2.4M -bufsize 4.8M");
@@ -931,7 +931,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         providerCalls.Should().Be(1);
         actual.Commands[0].Should().Contain("-cq 23");
@@ -965,7 +965,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", autoSampleMode: "hybrid"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         providerCalls.Should().Be(0);
         actual.Commands[0].Should().Contain("-cq 23");
@@ -999,7 +999,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", autoSampleMode: "hybrid"),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actualStart.Should().NotBeNull();
         actualStart!.Cq.Should().Be(24);
@@ -1033,7 +1033,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", maxrate: 2.7m),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         providerCalls.Should().Be(0);
         actual.Commands[0].Should().Contain("-maxrate 2.7M -bufsize 5.4M");
@@ -1064,7 +1064,7 @@ public sealed class FfmpegToolTests
             videoSettings: new VideoSettingsRequest(contentProfile: "anime", qualityProfile: "default", bufsize: 7.0m),
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         providerCalls.Should().Be(0);
         actual.Commands[0].Should().Contain("-maxrate 2.4M -bufsize 7M");
@@ -1083,7 +1083,7 @@ public sealed class FfmpegToolTests
             applyOverlayBackground: true,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-filter_complex");
         actual.Commands[0].Should().Contain("-map \"[v]\"");
@@ -1103,7 +1103,7 @@ public sealed class FfmpegToolTests
             applyOverlayBackground: true,
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("scale=1280:-1,crop=1280:720");
     }
@@ -1121,7 +1121,7 @@ public sealed class FfmpegToolTests
             outputPath: @"C:\video\input.mkv",
             applyOverlayBackground: true);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("scale=1920:-1,crop=1920:1080");
     }
@@ -1141,7 +1141,7 @@ public sealed class FfmpegToolTests
             outputPath: @"C:\video\input.mkv",
             applyOverlayBackground: true);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-filter_complex");
         actual.Commands[0].Should().Contain("overlay_cuda");
@@ -1161,7 +1161,7 @@ public sealed class FfmpegToolTests
             preferredBackend: "gpu",
             outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands.Should().HaveCount(3);
         actual.Commands[0].Should().Contain("\"C:\\video\\input_temp.mkv\"");
@@ -1176,7 +1176,7 @@ public sealed class FfmpegToolTests
         var video = CreateVideo(container: "mp4", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mp4");
         var plan = CreatePlan(copyVideo: true, copyAudio: false, outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-c:a aac");
@@ -1194,7 +1194,7 @@ public sealed class FfmpegToolTests
         var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["ac3"], filePath: @"C:\video\input.mkv");
         var plan = CreatePlan(copyVideo: true, copyAudio: false, outputPath: @"C:\video\input_out.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
@@ -1213,7 +1213,7 @@ public sealed class FfmpegToolTests
             fixTimestamps: true,
             outputPath: @"C:\video\input_out.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-c:a aac");
@@ -1233,7 +1233,7 @@ public sealed class FfmpegToolTests
             outputPath: @"C:\video\input_out.mkv",
             synchronizeAudio: true);
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-c:v copy");
         actual.Commands[0].Should().Contain("-copytb 1");
@@ -1251,7 +1251,7 @@ public sealed class FfmpegToolTests
         var video = CreateVideo(container: "mp4", videoCodec: "av1", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
         var plan = CreatePlan(copyVideo: false, copyAudio: false, targetVideoCodec: "h264", preferredBackend: "gpu", outputPath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-sn");
     }
@@ -1269,7 +1269,7 @@ public sealed class FfmpegToolTests
             targetFramesPerSecond: 50,
             outputPath: @"C:\video\input_out.mkv");
 
-        var actual = sut.BuildExecution(video, plan);
+        var actual = sut.BuildExecution(video, plan, null);
 
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("-avoid_negative_ts make_zero");
@@ -1293,7 +1293,7 @@ public sealed class FfmpegToolTests
             targetFramesPerSecond: 60,
             useFrameInterpolation: true);
 
-        var actual = sut.CanHandle(plan);
+        var actual = sut.CanHandle(plan, null);
 
         actual.Should().BeFalse();
     }
@@ -1340,7 +1340,9 @@ public sealed class FfmpegToolTests
                     HybridAccurateIterations = hybridAccurateIterations
                 },
                 sourceBuckets: profile.SourceBuckets,
-                defaults: profile.Defaults));
+                defaults: profile.Defaults,
+                globalContentRanges: profile.GlobalContentRanges,
+                globalQualityRanges: profile.GlobalQualityRanges));
     }
 
     private static SourceVideo CreateVideo(
@@ -1426,7 +1428,6 @@ public sealed class FfmpegToolTests
             targetVideoCodec: targetVideoCodec,
             preferredBackend: preferredBackend,
             videoCompatibilityProfile: videoCompatibilityProfile ?? ResolveDefaultCompatibilityProfile(copyVideo, targetVideoCodec),
-            targetHeight: targetHeight,
             targetFramesPerSecond: targetFramesPerSecond,
             useFrameInterpolation: useFrameInterpolation,
             videoSettings: videoSettings,

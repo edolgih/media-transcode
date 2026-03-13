@@ -58,7 +58,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Determines whether the mkv-oriented ffmpeg tool can execute the supplied plan.
     /// </summary>
-    public bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
+    public bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
@@ -85,7 +85,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and plan.
     /// </summary>
-    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec = null)
+    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
     {
         ArgumentNullException.ThrowIfNull(video);
         ArgumentNullException.ThrowIfNull(plan);
@@ -337,7 +337,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         var outputHeight = ResolveOutputDimensions(video, plan).Height;
         if (outputHeight <= 0)
         {
-            outputHeight = plan.Downscale?.TargetHeight ?? plan.TargetHeight ?? video.Height;
+            outputHeight = plan.Downscale?.TargetHeight ?? video.Height;
         }
 
         var sourceBitrate = ResolveSourceBitrate(video);

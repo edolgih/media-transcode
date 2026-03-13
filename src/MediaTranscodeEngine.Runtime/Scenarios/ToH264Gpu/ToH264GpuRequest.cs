@@ -42,7 +42,7 @@ public sealed class ToH264GpuRequest
         KeepSource = keepSource;
         Downscale = downscale;
         KeepFramesPerSecond = keepFramesPerSecond;
-        VideoSettings = videoSettings?.HasValue == true ? videoSettings : null;
+        VideoSettings = videoSettings;
         NvencPreset = normalizedNvencPreset;
         Denoise = denoise;
         SynchronizeAudio = synchronizeAudio;

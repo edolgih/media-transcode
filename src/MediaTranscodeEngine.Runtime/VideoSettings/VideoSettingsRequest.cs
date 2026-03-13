@@ -40,6 +40,7 @@ public sealed class VideoSettingsRequest
     /// <param name="cq">Explicit CQ override.</param>
     /// <param name="maxrate">Explicit maxrate override in Mbit/s.</param>
     /// <param name="bufsize">Explicit bufsize override in Mbit/s.</param>
+    /// <exception cref="ArgumentException">Thrown when no overrides are supplied.</exception>
     public VideoSettingsRequest(
         string? contentProfile = null,
         string? qualityProfile = null,
@@ -81,6 +82,11 @@ public sealed class VideoSettingsRequest
         Cq = cq;
         Maxrate = maxrate;
         Bufsize = bufsize;
+
+        if (!HasAnyValue(ContentProfile, QualityProfile, AutoSampleMode, Cq, Maxrate, Bufsize))
+        {
+            throw new ArgumentException("At least one video settings override is required.");
+        }
     }
 
     /// <summary>
@@ -114,15 +120,20 @@ public sealed class VideoSettingsRequest
     public decimal? Bufsize { get; }
 
     /// <summary>
-    /// Gets a value indicating whether any video-settings directive is actually present.
+    /// Creates a request when at least one override is provided; otherwise returns <see langword="null"/>.
     /// </summary>
-    public bool HasValue =>
-        !string.IsNullOrWhiteSpace(ContentProfile) ||
-        !string.IsNullOrWhiteSpace(QualityProfile) ||
-        !string.IsNullOrWhiteSpace(AutoSampleMode) ||
-        Cq.HasValue ||
-        Maxrate.HasValue ||
-        Bufsize.HasValue;
+    public static VideoSettingsRequest? CreateOrNull(
+        string? contentProfile = null,
+        string? qualityProfile = null,
+        string? autoSampleMode = null,
+        int? cq = null,
+        decimal? maxrate = null,
+        decimal? bufsize = null)
+    {
+        return HasAnyValue(contentProfile, qualityProfile, autoSampleMode, cq, maxrate, bufsize)
+            ? new VideoSettingsRequest(contentProfile, qualityProfile, autoSampleMode, cq, maxrate, bufsize)
+            : null;
+    }
 
     /// <summary>
     /// Determines whether the supplied content-profile value is supported.
@@ -191,5 +202,21 @@ public sealed class VideoSettingsRequest
         }
 
         return normalizedValue;
+    }
+
+    private static bool HasAnyValue(
+        string? contentProfile,
+        string? qualityProfile,
+        string? autoSampleMode,
+        int? cq,
+        decimal? maxrate,
+        decimal? bufsize)
+    {
+        return !string.IsNullOrWhiteSpace(contentProfile) ||
+               !string.IsNullOrWhiteSpace(qualityProfile) ||
+               !string.IsNullOrWhiteSpace(autoSampleMode) ||
+               cq.HasValue ||
+               maxrate.HasValue ||
+               bufsize.HasValue;
     }
 }

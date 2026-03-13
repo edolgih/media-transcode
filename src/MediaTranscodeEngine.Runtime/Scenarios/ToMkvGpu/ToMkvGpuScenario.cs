@@ -32,15 +32,24 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// Initializes a ToMkvGpu scenario with scenario-specific directives.
     /// </summary>
     /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
-    public ToMkvGpuScenario(ToMkvGpuRequest? request = null)
+    public ToMkvGpuScenario()
+        : this(new ToMkvGpuRequest(), VideoSettingsProfiles.Default)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a ToMkvGpu scenario with scenario-specific directives.
+    /// </summary>
+    /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
+    public ToMkvGpuScenario(ToMkvGpuRequest request)
         : this(request, VideoSettingsProfiles.Default)
     {
     }
 
-    internal ToMkvGpuScenario(ToMkvGpuRequest? request, VideoSettingsProfiles videoSettingsProfiles)
+    internal ToMkvGpuScenario(ToMkvGpuRequest request, VideoSettingsProfiles videoSettingsProfiles)
         : base("tomkvgpu")
     {
-        Request = request ?? new ToMkvGpuRequest();
+        Request = request ?? throw new ArgumentNullException(nameof(request));
         _videoSettingsProfiles = videoSettingsProfiles ?? throw new ArgumentNullException(nameof(videoSettingsProfiles));
     }
 
@@ -78,7 +87,6 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             targetVideoCodec: copyVideo ? null : "h264",
             preferredBackend: copyVideo ? null : "gpu",
             videoCompatibilityProfile: copyVideo ? null : VideoCompatibilityProfile.H264High,
-            targetHeight: applyDownscale ? Request.Downscale!.TargetHeight : null,
             targetFramesPerSecond: applyFrameRateCap ? Request.MaxFramesPerSecond : null,
             useFrameInterpolation: false,
             videoSettings: effectiveVideoSettings,
