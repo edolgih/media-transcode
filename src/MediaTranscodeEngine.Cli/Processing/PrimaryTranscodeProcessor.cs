@@ -122,16 +122,21 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
 
     private void LogPlanBuilt(CliTranscodeRequest request, TranscodePlan plan)
     {
+        var encodeVideo = plan.Video as EncodeVideoPlan;
+        var targetHeight = encodeVideo?.Downscale?.TargetHeight;
+        var targetFramesPerSecond = encodeVideo?.TargetFramesPerSecond;
+        var targetVideoCodec = encodeVideo?.TargetVideoCodec;
+
         _logger.LogInformation(
             "Transcode plan built. InputPath={InputPath} Scenario={Scenario} TargetContainer={TargetContainer} TargetVideoCodec={TargetVideoCodec} CopyVideo={CopyVideo} CopyAudio={CopyAudio} TargetHeight={TargetHeight} TargetFramesPerSecond={TargetFramesPerSecond} RequiresVideoEncode={RequiresVideoEncode} RequiresAudioEncode={RequiresAudioEncode} ApplyOverlayBackground={ApplyOverlayBackground} SynchronizeAudio={SynchronizeAudio}",
             request.InputPath,
             request.ScenarioName,
             plan.TargetContainer,
-            plan.TargetVideoCodec,
+            targetVideoCodec,
             plan.CopyVideo,
             plan.CopyAudio,
-            plan.TargetHeight,
-            plan.TargetFramesPerSecond,
+            targetHeight,
+            targetFramesPerSecond,
             plan.RequiresVideoEncode,
             plan.RequiresAudioEncode,
             plan.ApplyOverlayBackground,

@@ -20,13 +20,9 @@ public sealed class TranscodePlanTests
 
         actual.CopyVideo.Should().BeTrue();
         actual.RequiresVideoEncode.Should().BeFalse();
-        actual.TargetVideoCodec.Should().BeNull();
-        actual.PreferredBackend.Should().BeNull();
-        actual.VideoCompatibilityProfile.Should().BeNull();
-        actual.TargetFramesPerSecond.Should().BeNull();
-        actual.VideoSettings.Should().BeNull();
-        actual.Downscale.Should().BeNull();
-        actual.EncoderPreset.Should().BeNull();
+        actual.ChangesResolution.Should().BeFalse();
+        actual.ChangesFrameRate.Should().BeFalse();
+        actual.Video.Should().BeOfType<CopyVideoPlan>();
     }
 
     [Fact]
@@ -38,7 +34,7 @@ public sealed class TranscodePlanTests
         actual.RequiresAudioEncode.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
         actual.SynchronizeAudio.Should().BeFalse();
-        actual.EncodeAudio.Should().BeNull();
+        actual.Audio.Should().BeOfType<CopyAudioPlan>();
     }
 
     [Fact]
@@ -54,7 +50,7 @@ public sealed class TranscodePlanTests
         actual.RequiresAudioEncode.Should().BeTrue();
         actual.FixTimestamps.Should().BeTrue();
         actual.SynchronizeAudio.Should().BeFalse();
-        actual.EncodeAudio.Should().BeOfType<RepairAudioPlan>();
+        actual.Audio.Should().BeOfType<RepairAudioPlan>();
     }
 
     [Fact]
@@ -70,7 +66,7 @@ public sealed class TranscodePlanTests
         actual.RequiresAudioEncode.Should().BeTrue();
         actual.FixTimestamps.Should().BeTrue();
         actual.SynchronizeAudio.Should().BeTrue();
-        actual.EncodeAudio.Should().BeOfType<SynchronizeAudioPlan>();
+        actual.Audio.Should().BeOfType<SynchronizeAudioPlan>();
     }
 
     [Fact]
@@ -123,7 +119,8 @@ public sealed class TranscodePlanTests
             audio: new CopyAudioPlan(),
             keepSource: true);
 
-        actual.TargetHeight.Should().Be(576);
+        actual.ChangesResolution.Should().BeTrue();
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(576);
     }
 
     [Fact]
@@ -143,14 +140,14 @@ public sealed class TranscodePlanTests
             keepSource: true,
             outputPath: @".\output.mkv");
 
+        var encodeVideo = GetRequiredEncodeVideo(actual);
         actual.TargetContainer.Should().Be("mkv");
-        actual.TargetVideoCodec.Should().Be("h264");
-        actual.PreferredBackend.Should().Be("nvenc");
-        actual.VideoCompatibilityProfile.Should().Be(VideoCompatibilityProfile.H264High);
-        actual.EncoderPreset.Should().Be("p5");
         actual.OutputPath.Should().Be(Path.GetFullPath(@".\output.mkv"));
-        actual.TargetHeight.Should().Be(576);
-        actual.Downscale!.TargetHeight.Should().Be(576);
+        encodeVideo.TargetVideoCodec.Should().Be("h264");
+        encodeVideo.PreferredBackend.Should().Be("nvenc");
+        encodeVideo.CompatibilityProfile.Should().Be(VideoCompatibilityProfile.H264High);
+        encodeVideo.EncoderPreset.Should().Be("p5");
+        encodeVideo.Downscale!.TargetHeight.Should().Be(576);
     }
 
     [Fact]
@@ -165,7 +162,7 @@ public sealed class TranscodePlanTests
             audio: new CopyAudioPlan(),
             keepSource: true);
 
-        actual.VideoSettings.Should().BeNull();
+        GetRequiredEncodeVideo(actual).VideoSettings.Should().BeNull();
     }
 
     private static TranscodePlan CreateCopyVideoPlan()
@@ -175,5 +172,10 @@ public sealed class TranscodePlanTests
             video: new CopyVideoPlan(),
             audio: new CopyAudioPlan(),
             keepSource: true);
+    }
+
+    private static EncodeVideoPlan GetRequiredEncodeVideo(TranscodePlan plan)
+    {
+        return plan.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
     }
 }

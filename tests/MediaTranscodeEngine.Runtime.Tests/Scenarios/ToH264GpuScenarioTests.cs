@@ -32,7 +32,7 @@ public sealed class ToH264GpuScenarioTests
         actual.TargetContainer.Should().Be("mp4");
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
-        actual.TargetVideoCodec.Should().BeNull();
+        actual.Video.Should().BeOfType<CopyVideoPlan>();
         actual.OutputPath.Should().Be(@"C:\video\input.mp4");
         spec.OptimizeForFastStart.Should().BeTrue();
         spec.MapPrimaryAudioOnly.Should().BeTrue();
@@ -56,7 +56,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildPlan(video);
 
         actual.CopyVideo.Should().BeFalse();
-        actual.TargetVideoCodec.Should().Be("h264");
+        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be("h264");
         actual.CopyAudio.Should().BeTrue();
     }
 
@@ -294,7 +294,7 @@ public sealed class ToH264GpuScenarioTests
 
         var actual = sut.BuildPlan(video);
 
-        actual.EncoderPreset.Should().Be("p6");
+        GetRequiredEncodeVideo(actual).EncoderPreset.Should().Be("p6");
     }
 
     [Fact]
@@ -329,8 +329,7 @@ public sealed class ToH264GpuScenarioTests
 
         var actual = sut.BuildPlan(video);
 
-        actual.TargetHeight.Should().BeNull();
-        actual.VideoSettings.Should().BeNull();
+        actual.Video.Should().BeOfType<CopyVideoPlan>();
         actual.CopyVideo.Should().BeTrue();
     }
 
@@ -367,10 +366,11 @@ public sealed class ToH264GpuScenarioTests
             framesPerSecond: 59.94);
 
         var actual = sut.BuildPlan(video);
+        var encodeVideo = GetRequiredEncodeVideo(actual);
 
-        actual.TargetHeight.Should().Be(576);
-        actual.TargetFramesPerSecond.Should().BeApproximately(30000d / 1001d, 0.0001);
-        actual.VideoSettings.Should().BeNull();
+        encodeVideo.Downscale!.TargetHeight.Should().Be(576);
+        encodeVideo.TargetFramesPerSecond.Should().BeApproximately(30000d / 1001d, 0.0001);
+        encodeVideo.VideoSettings.Should().BeNull();
     }
 
     [Fact]
@@ -392,7 +392,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildPlan(video);
         var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.TargetHeight.Should().Be(576);
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(576);
         spec.VideoCq.Should().Be(23);
         spec.VideoMaxrateKbps.Should().Be(2400);
         spec.VideoBufferSizeKbps.Should().Be(4800);
@@ -417,7 +417,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildPlan(video);
         var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.TargetHeight.Should().Be(480);
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(480);
         spec.VideoCq.Should().Be(27);
         spec.VideoMaxrateKbps.Should().Be(2600);
         spec.VideoBufferSizeKbps.Should().Be(5200);
@@ -442,7 +442,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildPlan(video);
         var spec = BuildExecutionSpec(sut, video, actual);
 
-        actual.TargetHeight.Should().Be(424);
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
         spec.VideoCq.Should().Be(26);
         spec.VideoMaxrateKbps.Should().Be(2900);
         spec.VideoBufferSizeKbps.Should().Be(5800);
@@ -533,6 +533,11 @@ public sealed class ToH264GpuScenarioTests
     private static ToH264GpuExecutionSpec BuildExecutionSpec(ToH264GpuScenario sut, SourceVideo video, TranscodePlan plan)
     {
         return sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToH264GpuExecutionSpec>().Subject;
+    }
+
+    private static EncodeVideoPlan GetRequiredEncodeVideo(TranscodePlan plan)
+    {
+        return plan.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
     }
 
     private static SourceVideo CreateVideo(

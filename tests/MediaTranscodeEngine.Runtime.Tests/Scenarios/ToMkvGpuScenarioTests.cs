@@ -28,8 +28,7 @@ public sealed class ToMkvGpuScenarioTests
         var actual = sut.BuildPlan(video);
 
         actual.CopyVideo.Should().BeTrue();
-        actual.TargetVideoCodec.Should().BeNull();
-        actual.PreferredBackend.Should().BeNull();
+        actual.Video.Should().BeOfType<CopyVideoPlan>();
         actual.TargetContainer.Should().Be("mkv");
         actual.OutputPath.Should().Be(video.FilePath);
     }
@@ -72,7 +71,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
         actual.FixTimestamps.Should().BeTrue();
-        actual.TargetVideoCodec.Should().Be("h264");
+        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be("h264");
     }
 
     [Fact]
@@ -82,11 +81,12 @@ public sealed class ToMkvGpuScenarioTests
         var video = CreateVideo(videoCodec: "av1", audioCodecs: ["aac"]);
 
         var actual = sut.BuildPlan(video);
+        var encodeVideo = GetRequiredEncodeVideo(actual);
 
         actual.CopyVideo.Should().BeFalse();
-        actual.TargetVideoCodec.Should().Be("h264");
-        actual.VideoCompatibilityProfile.Should().Be(VideoCompatibilityProfile.H264High);
-        actual.PreferredBackend.Should().Be("gpu");
+        encodeVideo.TargetVideoCodec.Should().Be("h264");
+        encodeVideo.CompatibilityProfile.Should().Be(VideoCompatibilityProfile.H264High);
+        encodeVideo.PreferredBackend.Should().Be("gpu");
         actual.CopyAudio.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
     }
@@ -101,7 +101,7 @@ public sealed class ToMkvGpuScenarioTests
 
         actual.CopyVideo.Should().BeFalse();
         actual.ApplyOverlayBackground.Should().BeTrue();
-        actual.TargetVideoCodec.Should().Be("h264");
+        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be("h264");
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public sealed class ToMkvGpuScenarioTests
 
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
-        actual.TargetFramesPerSecond.Should().Be(50);
+        GetRequiredEncodeVideo(actual).TargetFramesPerSecond.Should().Be(50);
         actual.FixTimestamps.Should().BeFalse();
     }
 
@@ -155,7 +155,7 @@ public sealed class ToMkvGpuScenarioTests
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
-        actual.TargetFramesPerSecond.Should().BeNull();
+        actual.Video.Should().BeOfType<CopyVideoPlan>();
     }
 
     [Fact]
@@ -186,14 +186,14 @@ public sealed class ToMkvGpuScenarioTests
         var video = CreateVideo(height: 1080, videoCodec: "h264", audioCodecs: ["aac"]);
 
         var actual = sut.BuildPlan(video);
+        var encodeVideo = GetRequiredEncodeVideo(actual);
 
-        actual.TargetHeight.Should().Be(576);
-        actual.VideoSettings.Should().BeNull();
-        actual.Downscale.Should().NotBeNull();
-        actual.Downscale!.TargetHeight.Should().Be(576);
+        encodeVideo.VideoSettings.Should().BeNull();
+        encodeVideo.Downscale.Should().NotBeNull();
+        encodeVideo.Downscale!.TargetHeight.Should().Be(576);
         actual.CopyVideo.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
-        actual.TargetVideoCodec.Should().Be("h264");
+        encodeVideo.TargetVideoCodec.Should().Be("h264");
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public sealed class ToMkvGpuScenarioTests
 
         var actual = sut.BuildPlan(video);
 
-        actual.TargetHeight.Should().BeNull();
+        actual.Video.Should().BeOfType<CopyVideoPlan>();
         actual.CopyVideo.Should().BeTrue();
     }
 
@@ -216,7 +216,7 @@ public sealed class ToMkvGpuScenarioTests
 
         var actual = sut.BuildPlan(video);
 
-        actual.TargetHeight.Should().Be(480);
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(480);
         actual.CopyVideo.Should().BeFalse();
     }
 
@@ -228,7 +228,7 @@ public sealed class ToMkvGpuScenarioTests
 
         var actual = sut.BuildPlan(video);
 
-        actual.TargetHeight.Should().Be(424);
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
         actual.CopyVideo.Should().BeFalse();
     }
 
@@ -267,9 +267,10 @@ public sealed class ToMkvGpuScenarioTests
         var actual = sut.BuildPlan(video);
 
         actual.CopyVideo.Should().BeFalse();
-        actual.VideoSettings.Should().NotBeNull();
-        actual.VideoSettings!.Cq.Should().Be(23);
-        actual.EncoderPreset.Should().Be("p5");
+        var encodeVideo = GetRequiredEncodeVideo(actual);
+        encodeVideo.VideoSettings.Should().NotBeNull();
+        encodeVideo.VideoSettings!.Cq.Should().Be(23);
+        encodeVideo.EncoderPreset.Should().Be("p5");
     }
 
     [Fact]
@@ -279,14 +280,14 @@ public sealed class ToMkvGpuScenarioTests
         var video = CreateVideo();
 
         var actual = sut.BuildPlan(video);
+        var encodeVideo = GetRequiredEncodeVideo(actual);
 
-        actual.TargetHeight.Should().Be(720);
-        actual.VideoSettings.Should().BeNull();
-        actual.Downscale.Should().NotBeNull();
-        actual.Downscale!.TargetHeight.Should().Be(720);
+        encodeVideo.VideoSettings.Should().BeNull();
+        encodeVideo.Downscale.Should().NotBeNull();
+        encodeVideo.Downscale!.TargetHeight.Should().Be(720);
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
-        actual.TargetVideoCodec.Should().Be("h264");
+        encodeVideo.TargetVideoCodec.Should().Be("h264");
     }
 
     [Fact]
@@ -364,6 +365,11 @@ public sealed class ToMkvGpuScenarioTests
             keepSource: keepSource,
             downscale: downscaleTarget.HasValue ? new DownscaleRequest(downscaleTarget.Value) : null,
             maxFramesPerSecond: maxFramesPerSecond));
+    }
+
+    private static EncodeVideoPlan GetRequiredEncodeVideo(TranscodePlan plan)
+    {
+        return plan.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
     }
 
     private static SourceVideo CreateVideo(

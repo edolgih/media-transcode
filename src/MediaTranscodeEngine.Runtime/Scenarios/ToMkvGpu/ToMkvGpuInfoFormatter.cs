@@ -63,7 +63,7 @@ public sealed class ToMkvGpuInfoFormatter
             parts.Add($"vcodec {video.VideoCodec}");
         }
 
-        if (plan.EncodeVideo?.TargetFramesPerSecond is double targetFramesPerSecond)
+        if (plan.Video is EncodeVideoPlan { TargetFramesPerSecond: double targetFramesPerSecond })
         {
             parts.Add($"fps {targetFramesPerSecond:0.###}");
         }

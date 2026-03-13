@@ -47,59 +47,9 @@ public sealed record TranscodePlan
     public VideoPlan Video { get; }
 
     /// <summary>
-    /// Gets the encode-specific video intent when the plan requires video encoding.
-    /// </summary>
-    public EncodeVideoPlan? EncodeVideo => Video as EncodeVideoPlan;
-
-    /// <summary>
     /// Gets the normalized audio intent.
     /// </summary>
     public AudioPlan Audio { get; }
-
-    /// <summary>
-    /// Gets the encode-specific audio intent when the plan requires audio encoding.
-    /// </summary>
-    public EncodeAudioPlan? EncodeAudio => Audio as EncodeAudioPlan;
-
-    /// <summary>
-    /// Gets the normalized target video codec identifier when re-encoding is required.
-    /// </summary>
-    public string? TargetVideoCodec => EncodeVideo?.TargetVideoCodec;
-
-    /// <summary>
-    /// Gets the normalized preferred backend identifier when a backend is relevant.
-    /// </summary>
-    public string? PreferredBackend => EncodeVideo?.PreferredBackend;
-
-    /// <summary>
-    /// Gets the normalized compatibility profile selected by the scenario when the target codec uses one.
-    /// </summary>
-    public VideoCompatibilityProfile? VideoCompatibilityProfile => EncodeVideo?.CompatibilityProfile;
-
-    /// <summary>
-    /// Gets the target output height in pixels when resizing is required.
-    /// </summary>
-    public int? TargetHeight => EncodeVideo?.Downscale?.TargetHeight;
-
-    /// <summary>
-    /// Gets the target frame rate when the scenario requests a frame rate change.
-    /// </summary>
-    public double? TargetFramesPerSecond => EncodeVideo?.TargetFramesPerSecond;
-
-    /// <summary>
-    /// Gets a value indicating whether frame interpolation is required.
-    /// </summary>
-    public bool UseFrameInterpolation => EncodeVideo?.UseFrameInterpolation ?? false;
-
-    /// <summary>
-    /// Gets reusable video-settings directives when the plan needs profile-driven output settings.
-    /// </summary>
-    public VideoSettingsRequest? VideoSettings => EncodeVideo?.VideoSettings;
-
-    /// <summary>
-    /// Gets explicit downscale intent when the plan requests a resized output.
-    /// </summary>
-    public DownscaleRequest? Downscale => EncodeVideo?.Downscale;
 
     /// <summary>
     /// Gets a value indicating whether the source video stream should be copied.
@@ -120,11 +70,6 @@ public sealed record TranscodePlan
     /// Gets a value indicating whether the source file should be preserved.
     /// </summary>
     public bool KeepSource { get; }
-
-    /// <summary>
-    /// Gets the preferred encoder preset when the scenario wants to influence encode speed/quality tradeoffs.
-    /// </summary>
-    public string? EncoderPreset => EncodeVideo?.EncoderPreset;
 
     /// <summary>
     /// Gets an explicit output path when the scenario chooses one.
@@ -154,12 +99,12 @@ public sealed record TranscodePlan
     /// <summary>
     /// Gets a value indicating whether the plan changes the output height.
     /// </summary>
-    public bool ChangesResolution => EncodeVideo?.Downscale is not null;
+    public bool ChangesResolution => Video is EncodeVideoPlan { Downscale: not null };
 
     /// <summary>
     /// Gets a value indicating whether the plan changes the frame rate.
     /// </summary>
-    public bool ChangesFrameRate => EncodeVideo?.TargetFramesPerSecond is not null;
+    public bool ChangesFrameRate => Video is EncodeVideoPlan { TargetFramesPerSecond: not null };
 
     private static VideoPlan NormalizeVideoPlan(VideoPlan video)
     {

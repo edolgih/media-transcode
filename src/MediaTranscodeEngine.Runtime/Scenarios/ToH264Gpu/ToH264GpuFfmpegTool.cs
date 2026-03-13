@@ -48,7 +48,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             return false;
         }
 
-        if (plan.UseFrameInterpolation)
+        if (plan.Video is EncodeVideoPlan { UseFrameInterpolation: true })
         {
             return false;
         }
@@ -76,8 +76,8 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
             return true;
         }
 
-        var encodeVideo = plan.EncodeVideo;
-        return encodeVideo?.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
+        return plan.Video is EncodeVideoPlan encodeVideo &&
+               encodeVideo.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
                encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -337,7 +337,9 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
 
     private static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, TranscodePlan plan)
     {
-        var downscale = plan.EncodeVideo?.Downscale;
+        var downscale = plan.Video is EncodeVideoPlan { Downscale: { } explicitDownscale }
+            ? explicitDownscale
+            : null;
         if (downscale is null)
         {
             return (video.Width, video.Height);
@@ -366,7 +368,7 @@ public sealed class ToH264GpuFfmpegTool : ITranscodeTool
 
     private static EncodeVideoPlan GetRequiredEncodeVideoPlan(TranscodePlan plan)
     {
-        return plan.EncodeVideo
+        return plan.Video as EncodeVideoPlan
             ?? throw new InvalidOperationException("Video encode plan is required for this operation.");
     }
 

@@ -154,7 +154,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
 
     private ToH264GpuExecutionSpec BuildToH264GpuExecutionSpec(SourceVideo video, TranscodePlan plan)
     {
-        var encodeVideo = plan.EncodeVideo;
+        var encodeVideo = plan.Video as EncodeVideoPlan;
         var copyVideo = encodeVideo is null;
         var copyAudio = plan.CopyAudio;
         var useDownscale = encodeVideo?.Downscale is not null;

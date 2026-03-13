@@ -50,9 +50,9 @@ public sealed class ToH264GpuInfoFormatter
             parts.Add($"container .{video.Container}->{plan.TargetContainer}");
         }
 
-        if (plan.TargetHeight.HasValue)
+        if (plan.Video is EncodeVideoPlan { Downscale: { } downscale })
         {
-            parts.Add($"downscale {plan.TargetHeight.Value}p");
+            parts.Add($"downscale {downscale.TargetHeight}p");
         }
 
         if (plan.SynchronizeAudio)
