@@ -1,4 +1,5 @@
 using MediaTranscodeEngine.Runtime.Plans;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Videos;
 
 namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
@@ -20,7 +21,7 @@ public sealed class ToH264GpuInfoFormatter
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(exception);
 
-        var marker = exception.Message.Contains("video stream", StringComparison.OrdinalIgnoreCase)
+        var marker = exception is RuntimeFailureException runtimeFailure && runtimeFailure.Code == RuntimeFailureCode.NoVideoStream
             ? "no video stream"
             : "ffprobe failed";
         return $"{Path.GetFileName(filePath.Trim())}: [{marker}]";

@@ -1,4 +1,6 @@
 using FluentAssertions;
+using System.Text.Json;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 using MediaTranscodeEngine.Runtime.Videos;
@@ -91,7 +93,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.FormatFailure(
             @"C:\nested\folder\input.mp4",
-            new InvalidOperationException("ffprobe returned invalid JSON output."));
+            RuntimeFailures.ProbeInvalidJson(new JsonException()));
 
         actual.Should().Be("input.mp4: [ffprobe failed]");
     }
@@ -103,7 +105,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.FormatFailure(
             @"C:\nested\folder\input.mp4",
-            new InvalidOperationException("Video probe did not return a video stream."));
+            RuntimeFailures.NoVideoStream());
 
         actual.Should().Be("input.mp4: [no video stream]");
     }
@@ -115,7 +117,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.FormatFailure(
             @"C:\nested\folder\input.mp4",
-            new InvalidOperationException("Video probe did not return a valid video height."));
+            RuntimeFailures.InvalidVideoHeight());
 
         actual.Should().Be("input.mp4: [unknown dimensions]");
     }
@@ -127,7 +129,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.FormatFailure(
             @"C:\nested\folder\input.mp4",
-            new InvalidOperationException("576 source bucket missing: height 900; add SourceBuckets"));
+            RuntimeFailures.DownscaleSourceBucketIssue("576 source bucket missing: height 900; add SourceBuckets"));
 
         actual.Should().Be("input.mp4: [576 source bucket missing: height 900; add SourceBuckets]");
     }
@@ -139,7 +141,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.FormatFailure(
             @"C:\nested\folder\input.mp4",
-            new InvalidOperationException("576 source bucket invalid: missing corridor 'mult/low'"));
+            RuntimeFailures.DownscaleSourceBucketIssue("576 source bucket invalid: missing corridor 'mult/low'"));
 
         actual.Should().Be("input.mp4: [576 source bucket invalid: missing corridor 'mult/low']");
     }

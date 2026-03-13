@@ -10,6 +10,28 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 /// </summary>
 public sealed class VideoSettingsRequest
 {
+    private static readonly string[] SupportedContentProfilesValues = ["anime", "mult", "film"];
+    private static readonly string[] SupportedQualityProfilesValues = ["high", "default", "low"];
+    private static readonly string[] SupportedAutoSampleModesValues = ["accurate", "fast", "hybrid"];
+
+    public static IReadOnlyList<string> SupportedContentProfiles => SupportedContentProfilesValues;
+
+    public static string SupportedContentProfilesDisplay => string.Join(", ", SupportedContentProfilesValues);
+
+    public static string SupportedContentProfilesHelpDisplay => string.Join("|", SupportedContentProfilesValues);
+
+    public static IReadOnlyList<string> SupportedQualityProfiles => SupportedQualityProfilesValues;
+
+    public static string SupportedQualityProfilesDisplay => string.Join(", ", SupportedQualityProfilesValues);
+
+    public static string SupportedQualityProfilesHelpDisplay => string.Join("|", SupportedQualityProfilesValues);
+
+    public static IReadOnlyList<string> SupportedAutoSampleModes => SupportedAutoSampleModesValues;
+
+    public static string SupportedAutoSampleModesDisplay => string.Join(", ", SupportedAutoSampleModesValues);
+
+    public static string SupportedAutoSampleModesHelpDisplay => string.Join("|", SupportedAutoSampleModesValues);
+
     /// <summary>
     /// Initializes reusable video-settings directives.
     /// </summary>
@@ -42,9 +64,21 @@ public sealed class VideoSettingsRequest
             throw new ArgumentOutOfRangeException(nameof(bufsize), bufsize.Value, "Bufsize must be greater than zero.");
         }
 
-        ContentProfile = NormalizeName(contentProfile);
-        QualityProfile = NormalizeName(qualityProfile);
-        AutoSampleMode = NormalizeName(autoSampleMode);
+        ContentProfile = NormalizeSupportedValue(
+            contentProfile,
+            nameof(contentProfile),
+            SupportedContentProfilesValues,
+            SupportedContentProfilesDisplay);
+        QualityProfile = NormalizeSupportedValue(
+            qualityProfile,
+            nameof(qualityProfile),
+            SupportedQualityProfilesValues,
+            SupportedQualityProfilesDisplay);
+        AutoSampleMode = NormalizeSupportedValue(
+            autoSampleMode,
+            nameof(autoSampleMode),
+            SupportedAutoSampleModesValues,
+            SupportedAutoSampleModesDisplay);
         Cq = cq;
         Maxrate = maxrate;
         Bufsize = bufsize;
@@ -91,6 +125,21 @@ public sealed class VideoSettingsRequest
         Maxrate.HasValue ||
         Bufsize.HasValue;
 
+    public static bool IsSupportedContentProfile(string? value)
+    {
+        return IsSupportedValue(value, SupportedContentProfilesValues);
+    }
+
+    public static bool IsSupportedQualityProfile(string? value)
+    {
+        return IsSupportedValue(value, SupportedQualityProfilesValues);
+    }
+
+    public static bool IsSupportedAutoSampleMode(string? value)
+    {
+        return IsSupportedValue(value, SupportedAutoSampleModesValues);
+    }
+
     private static string? NormalizeName(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -99,5 +148,35 @@ public sealed class VideoSettingsRequest
         }
 
         return value.Trim().ToLowerInvariant();
+    }
+
+    private static bool IsSupportedValue(string? value, IReadOnlyList<string> supportedValues)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return supportedValues.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string? NormalizeSupportedValue(
+        string? value,
+        string paramName,
+        IReadOnlyList<string> supportedValues,
+        string display)
+    {
+        var normalizedValue = NormalizeName(value);
+        if (normalizedValue is null)
+        {
+            return null;
+        }
+
+        if (!supportedValues.Contains(normalizedValue, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ArgumentOutOfRangeException(paramName, value, $"Supported values: {display}.");
+        }
+
+        return normalizedValue;
     }
 }

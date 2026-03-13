@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using MediaTranscodeEngine.Runtime.Failures;
 
 namespace MediaTranscodeEngine.Runtime.Inspection;
 
@@ -43,12 +44,12 @@ public sealed class FfprobeVideoProbe : IVideoProbe
 
         if (run.ExitCode != 0)
         {
-            throw new InvalidOperationException(BuildProcessFailureMessage(run.ExitCode, run.StandardError));
+            throw RuntimeFailures.ProbeProcessFailed(BuildProcessFailureMessage(run.ExitCode, run.StandardError));
         }
 
         if (string.IsNullOrWhiteSpace(run.StandardOutput))
         {
-            throw new InvalidOperationException("ffprobe returned empty JSON output.");
+            throw RuntimeFailures.ProbeEmptyOutput();
         }
 
         try
@@ -57,7 +58,7 @@ public sealed class FfprobeVideoProbe : IVideoProbe
         }
         catch (JsonException exception)
         {
-            throw new InvalidOperationException("ffprobe returned invalid JSON output.", exception);
+            throw RuntimeFailures.ProbeInvalidJson(exception);
         }
     }
 
@@ -69,7 +70,7 @@ public sealed class FfprobeVideoProbe : IVideoProbe
         if (!root.TryGetProperty("streams", out var streamsElement) ||
             streamsElement.ValueKind != JsonValueKind.Array)
         {
-            throw new InvalidOperationException("ffprobe JSON is missing required field 'streams'.");
+            throw RuntimeFailures.ProbeMissingStreamsField();
         }
 
         var streams = new List<VideoProbeStream>();
@@ -77,7 +78,7 @@ public sealed class FfprobeVideoProbe : IVideoProbe
         {
             if (streamElement.ValueKind != JsonValueKind.Object)
             {
-                throw new InvalidOperationException("ffprobe JSON contained an invalid stream entry.");
+                throw RuntimeFailures.ProbeInvalidStreamEntry();
             }
 
             var streamType = ReadRequiredString(streamElement, "codec_type", "stream");
@@ -194,8 +195,7 @@ public sealed class FfprobeVideoProbe : IVideoProbe
         var value = TryGetString(element, propertyName);
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new InvalidOperationException(
-                $"ffprobe JSON is missing required field '{propertyName}' in {scope}.");
+            throw RuntimeFailures.ProbeMissingRequiredField(propertyName, scope);
         }
 
         return value.Trim();
@@ -292,7 +292,7 @@ public sealed class FfprobeVideoProbe : IVideoProbe
         }
         catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
         {
-            throw new InvalidOperationException("ffprobe process failed to start.", exception);
+            throw RuntimeFailures.ProbeProcessFailed("ffprobe process failed to start.", exception);
         }
 
         var standardOutputTask = process.StandardOutput.ReadToEndAsync();

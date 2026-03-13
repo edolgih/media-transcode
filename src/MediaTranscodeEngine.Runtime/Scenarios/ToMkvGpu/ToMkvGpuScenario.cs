@@ -1,4 +1,5 @@
 using MediaTranscodeEngine.Runtime.VideoSettings;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Videos;
 
@@ -113,7 +114,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         var issue = profile.ResolveSourceBucketIssue(video.Height);
         if (!string.IsNullOrWhiteSpace(issue))
         {
-            throw new InvalidOperationException(issue);
+            throw RuntimeFailures.DownscaleSourceBucketIssue(issue);
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using MediaTranscodeEngine.Runtime.VideoSettings;
+using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 
 namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 
@@ -58,12 +59,18 @@ public sealed class ToMkvGpuRequest
                 $"Supported values: {SupportedMaxFramesPerSecondDisplay}.");
         }
 
+        var normalizedNvencPreset = NormalizeName(nvencPreset);
+        if (normalizedNvencPreset is not null && !NvencPresetOptions.IsSupportedPreset(normalizedNvencPreset))
+        {
+            throw new ArgumentOutOfRangeException(nameof(nvencPreset), nvencPreset, $"Supported values: {NvencPresetOptions.SupportedPresetsDisplay}.");
+        }
+
         OverlayBackground = overlayBackground;
         SynchronizeAudio = synchronizeAudio;
         KeepSource = keepSource;
         VideoSettings = videoSettings?.HasValue == true ? videoSettings : null;
         Downscale = downscale;
-        NvencPreset = NormalizeName(nvencPreset);
+        NvencPreset = normalizedNvencPreset;
         MaxFramesPerSecond = maxFramesPerSecond;
     }
 
@@ -317,6 +324,10 @@ public sealed class ToMkvGpuRequest
                 "maxrate" => "--maxrate must be greater than zero.",
                 "bufsize" => "--bufsize must be greater than zero.",
                 "maxFramesPerSecond" => $"--max-fps must be one of: {SupportedMaxFramesPerSecondDisplay}.",
+                "contentProfile" => $"--content-profile must be one of: {VideoSettingsRequest.SupportedContentProfilesDisplay}.",
+                "qualityProfile" => $"--quality-profile must be one of: {VideoSettingsRequest.SupportedQualityProfilesDisplay}.",
+                "autoSampleMode" => $"--autosample-mode must be one of: {VideoSettingsRequest.SupportedAutoSampleModesDisplay}.",
+                "nvencPreset" => $"--nvenc-preset must be one of: {NvencPresetOptions.SupportedPresetsDisplay}.",
                 _ => exception.Message
             };
 

@@ -45,4 +45,24 @@ public sealed class ToMkvGpuRequestTests
         request.NvencPreset.Should().Be("p6");
         request.MaxFramesPerSecond.Should().Be(40);
     }
+
+    [Theory]
+    [InlineData("--content-profile", "other")]
+    [InlineData("--quality-profile", "other")]
+    [InlineData("--autosample-mode", "other")]
+    [InlineData("--nvenc-preset", "p8")]
+    public void TryParseArgs_WhenSharedOptionValueIsUnsupported_ReturnsFalse(
+        string optionName,
+        string optionValue)
+    {
+        var actual = ToMkvGpuRequest.TryParseArgs(
+            [
+                optionName, optionValue
+            ],
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().NotBeNullOrWhiteSpace();
+    }
 }

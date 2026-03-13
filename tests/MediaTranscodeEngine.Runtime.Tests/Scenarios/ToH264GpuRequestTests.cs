@@ -61,4 +61,24 @@ public sealed class ToH264GpuRequestTests
         actual.Should().BeFalse();
         errorText.Should().Be("--downscale must be one of: 720, 576, 480, 424.");
     }
+
+    [Theory]
+    [InlineData("--content-profile", "other")]
+    [InlineData("--quality-profile", "other")]
+    [InlineData("--autosample-mode", "other")]
+    [InlineData("--nvenc-preset", "p8")]
+    public void TryParseArgs_WhenSharedOptionValueIsUnsupported_ReturnsFalse(
+        string optionName,
+        string optionValue)
+    {
+        var actual = ToH264GpuRequest.TryParseArgs(
+            [
+                optionName, optionValue
+            ],
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().NotBeNullOrWhiteSpace();
+    }
 }

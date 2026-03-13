@@ -1,5 +1,7 @@
 using MediaTranscodeEngine.Cli.Parsing;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.VideoSettings;
+using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
@@ -39,14 +41,14 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--overlay-bg", "Apply overlay background path during encode."),
         new CliHelpOption("--max-fps <50|40|30|24>", "Optional frame-rate cap. Supported values: 50, 40, 30, 24."),
         new CliHelpOption("--sync-audio", "Force sync-safe audio path."),
-        new CliHelpOption("--content-profile <anime|mult|film>", "Quality-oriented content profile."),
-        new CliHelpOption("--quality-profile <high|default|low>", "Quality-oriented quality profile."),
-        new CliHelpOption("--autosample-mode <accurate|fast|hybrid>", "Autosample mode."),
+        new CliHelpOption($"--content-profile <{VideoSettingsRequest.SupportedContentProfilesHelpDisplay}>", "Quality-oriented content profile."),
+        new CliHelpOption($"--quality-profile <{VideoSettingsRequest.SupportedQualityProfilesHelpDisplay}>", "Quality-oriented quality profile."),
+        new CliHelpOption($"--autosample-mode <{VideoSettingsRequest.SupportedAutoSampleModesHelpDisplay}>", "Autosample mode."),
         new CliHelpOption("--downscale-algo <bilinear|bicubic|lanczos>", "Explicit downscale algorithm override."),
         new CliHelpOption("--cq <int>", "Explicit NVENC CQ override."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s."),
         new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s."),
-        new CliHelpOption("--nvenc-preset <preset>", "Explicit NVENC preset override.")
+        new CliHelpOption($"--nvenc-preset <{NvencPresetOptions.SupportedPresetsHelpDisplay}>", "Explicit NVENC preset override.")
     ];
 
     /// <summary>
@@ -154,30 +156,27 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
             return new HandledFailure(HandledFailureKind.IoError, "io_error", LogLevel.Error);
         }
 
-        var message = exception.Message;
-        if (request.OverlayBackground &&
-            (message.Contains("valid video width", StringComparison.OrdinalIgnoreCase) ||
-             message.Contains("valid video height", StringComparison.OrdinalIgnoreCase)))
+        if (exception is RuntimeFailureException runtimeFailure)
         {
-            return new HandledFailure(HandledFailureKind.UnknownDimensionsOverlay, "unknown_dimensions", LogLevel.Warning);
-        }
+            if (request.OverlayBackground && runtimeFailure.Code.IsUnknownDimensions())
+            {
+                return new HandledFailure(HandledFailureKind.UnknownDimensionsOverlay, "unknown_dimensions", LogLevel.Warning);
+            }
 
-        if (message.Contains("video stream", StringComparison.OrdinalIgnoreCase))
-        {
-            return new HandledFailure(HandledFailureKind.NoVideoStream, "no_video_stream", LogLevel.Warning);
-        }
+            if (runtimeFailure.Code == RuntimeFailureCode.NoVideoStream)
+            {
+                return new HandledFailure(HandledFailureKind.NoVideoStream, "no_video_stream", LogLevel.Warning);
+            }
 
-        if (message.Contains("source bucket missing", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("source bucket invalid", StringComparison.OrdinalIgnoreCase))
-        {
-            return new HandledFailure(HandledFailureKind.DownscaleSourceBucket, "downscale_source_bucket", LogLevel.Warning);
-        }
+            if (runtimeFailure.Code == RuntimeFailureCode.DownscaleSourceBucketIssue)
+            {
+                return new HandledFailure(HandledFailureKind.DownscaleSourceBucket, "downscale_source_bucket", LogLevel.Warning);
+            }
 
-        if (message.Contains("ffprobe", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("video probe", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("streams", StringComparison.OrdinalIgnoreCase))
-        {
-            return new HandledFailure(HandledFailureKind.ProbeFailure, "probe_failure", LogLevel.Warning);
+            if (runtimeFailure.Code.IsProbeFailure())
+            {
+                return new HandledFailure(HandledFailureKind.ProbeFailure, "probe_failure", LogLevel.Warning);
+            }
         }
 
         return new HandledFailure(HandledFailureKind.UnexpectedFailure, "unexpected_failure", LogLevel.Warning);

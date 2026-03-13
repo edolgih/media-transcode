@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Inspection;
 
 namespace MediaTranscodeEngine.Runtime.Tests.Inspection;
@@ -37,7 +38,7 @@ public sealed class FfprobeVideoProbeTests
     }
 
     [Fact]
-    public void Probe_WhenProcessFails_ThrowsInvalidOperationException()
+    public void Probe_WhenProcessFails_ThrowsRuntimeFailureException()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
             ExitCode: 1,
@@ -46,12 +47,13 @@ public sealed class FfprobeVideoProbeTests
 
         Action action = () => sut.Probe(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*ffprobe process failed*ExitCode=1*ffprobe exploded*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeProcessFailed);
     }
 
     [Fact]
-    public void Probe_WhenStdOutIsEmpty_ThrowsInvalidOperationException()
+    public void Probe_WhenStdOutIsEmpty_ThrowsRuntimeFailureException()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
             ExitCode: 0,
@@ -60,12 +62,13 @@ public sealed class FfprobeVideoProbeTests
 
         Action action = () => sut.Probe(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*empty JSON output*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeEmptyOutput);
     }
 
     [Fact]
-    public void Probe_WhenJsonIsInvalid_ThrowsInvalidOperationException()
+    public void Probe_WhenJsonIsInvalid_ThrowsRuntimeFailureException()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
             ExitCode: 0,
@@ -74,12 +77,13 @@ public sealed class FfprobeVideoProbeTests
 
         Action action = () => sut.Probe(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*invalid JSON output*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeInvalidJson);
     }
 
     [Fact]
-    public void Probe_WhenRequiredStreamFieldIsMissing_ThrowsInvalidOperationException()
+    public void Probe_WhenRequiredStreamFieldIsMissing_ThrowsRuntimeFailureException()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
             ExitCode: 0,
@@ -88,12 +92,13 @@ public sealed class FfprobeVideoProbeTests
 
         Action action = () => sut.Probe(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*required field*codec_name*stream*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeMissingRequiredField);
     }
 
     [Fact]
-    public void Probe_WhenStreamsFieldIsMissing_ThrowsInvalidOperationException()
+    public void Probe_WhenStreamsFieldIsMissing_ThrowsRuntimeFailureException()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
             ExitCode: 0,
@@ -108,12 +113,13 @@ public sealed class FfprobeVideoProbeTests
 
         Action action = () => sut.Probe(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*missing required field 'streams'*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeMissingStreamsField);
     }
 
     [Fact]
-    public void Probe_WhenStreamEntryIsInvalid_ThrowsInvalidOperationException()
+    public void Probe_WhenStreamEntryIsInvalid_ThrowsRuntimeFailureException()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
             ExitCode: 0,
@@ -126,8 +132,9 @@ public sealed class FfprobeVideoProbeTests
 
         Action action = () => sut.Probe(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*invalid stream entry*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeInvalidStreamEntry);
     }
 
     [Fact]

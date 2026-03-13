@@ -1,4 +1,5 @@
 using MediaTranscodeEngine.Runtime.Inspection;
+using MediaTranscodeEngine.Runtime.Failures;
 
 namespace MediaTranscodeEngine.Runtime.Videos;
 
@@ -35,12 +36,12 @@ public sealed class VideoInspector
         var snapshot = _videoProbe.Probe(normalizedPath);
         if (snapshot is null)
         {
-            throw new InvalidOperationException("Video probe returned no data.");
+            throw RuntimeFailures.ProbeNoData();
         }
 
         if (snapshot.streams.Count == 0)
         {
-            throw new InvalidOperationException("Video probe did not return any streams.");
+            throw RuntimeFailures.ProbeNoStreams();
         }
 
         var videoStream = snapshot.streams.FirstOrDefault(stream =>
@@ -48,22 +49,22 @@ public sealed class VideoInspector
 
         if (videoStream is null)
         {
-            throw new InvalidOperationException("Video probe did not return a video stream.");
+            throw RuntimeFailures.NoVideoStream();
         }
 
         if (!videoStream.width.HasValue)
         {
-            throw new InvalidOperationException("Video probe did not return a valid video width.");
+            throw RuntimeFailures.InvalidVideoWidth();
         }
 
         if (!videoStream.height.HasValue)
         {
-            throw new InvalidOperationException("Video probe did not return a valid video height.");
+            throw RuntimeFailures.InvalidVideoHeight();
         }
 
         if (!videoStream.framesPerSecond.HasValue || videoStream.framesPerSecond.Value <= 0)
         {
-            throw new InvalidOperationException("Video probe did not return a valid frame rate.");
+            throw RuntimeFailures.InvalidFrameRate();
         }
 
         var container = string.IsNullOrWhiteSpace(snapshot.container)

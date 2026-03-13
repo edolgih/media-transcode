@@ -1,4 +1,5 @@
 using MediaTranscodeEngine.Runtime.Plans;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Videos;
 
 namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
@@ -92,22 +93,16 @@ public sealed class ToMkvGpuInfoFormatter
 
     private static string ResolveFailureMarker(Exception exception)
     {
-        var message = exception.Message;
-        if (message.Contains("valid video width", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("valid video height", StringComparison.OrdinalIgnoreCase))
+        if (exception is RuntimeFailureException runtimeFailure)
         {
-            return "unknown dimensions";
-        }
-
-        if (message.Contains("video stream", StringComparison.OrdinalIgnoreCase))
-        {
-            return "no video stream";
-        }
-
-        if (message.Contains("source bucket missing", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains("source bucket invalid", StringComparison.OrdinalIgnoreCase))
-        {
-            return message;
+            return runtimeFailure.Code switch
+            {
+                var code when code.IsUnknownDimensions() => "unknown dimensions",
+                RuntimeFailureCode.NoVideoStream => "no video stream",
+                RuntimeFailureCode.DownscaleSourceBucketIssue => runtimeFailure.Message,
+                var code when code.IsProbeFailure() => "ffprobe failed",
+                _ => "ffprobe failed"
+            };
         }
 
         return "ffprobe failed";

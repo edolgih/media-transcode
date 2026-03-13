@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Inspection;
 using MediaTranscodeEngine.Runtime.Videos;
 
@@ -17,14 +18,15 @@ public sealed class VideoInspectorTests
     }
 
     [Fact]
-    public void Load_WhenProbeReturnsNull_ThrowsInvalidOperationException()
+    public void Load_WhenProbeReturnsNull_ThrowsRuntimeFailureException()
     {
         var sut = CreateSut(_ => null!);
 
         Action action = () => sut.Load(@"C:\video\input.mkv");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*no data*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeNoData);
     }
 
     [Fact]
@@ -43,7 +45,7 @@ public sealed class VideoInspectorTests
     }
 
     [Fact]
-    public void Load_WhenProbeReturnsNoStreams_ThrowsInvalidOperationException()
+    public void Load_WhenProbeReturnsNoStreams_ThrowsRuntimeFailureException()
     {
         var sut = CreateSut(_ => new VideoProbeSnapshot(
             container: "mp4",
@@ -52,12 +54,13 @@ public sealed class VideoInspectorTests
 
         Action action = () => sut.Load(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*any streams*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.ProbeNoStreams);
     }
 
     [Fact]
-    public void Load_WhenProbeReturnsNoVideoStream_ThrowsInvalidOperationException()
+    public void Load_WhenProbeReturnsNoVideoStream_ThrowsRuntimeFailureException()
     {
         var sut = CreateSut(_ => new VideoProbeSnapshot(
             container: "mp4",
@@ -69,8 +72,9 @@ public sealed class VideoInspectorTests
 
         Action action = () => sut.Load(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*video stream*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.NoVideoStream);
     }
 
     [Fact]
@@ -105,8 +109,9 @@ public sealed class VideoInspectorTests
 
         Action action = () => sut.Load(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*valid video width*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.InvalidVideoWidth);
     }
 
     [Fact]
@@ -123,8 +128,9 @@ public sealed class VideoInspectorTests
 
         Action action = () => sut.Load(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*valid video height*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.InvalidVideoHeight);
     }
 
     [Fact]
@@ -141,8 +147,9 @@ public sealed class VideoInspectorTests
 
         Action action = () => sut.Load(@"C:\video\input.mp4");
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*valid frame rate*");
+        var exception = action.Should().Throw<RuntimeFailureException>().Which;
+
+        exception.Code.Should().Be(RuntimeFailureCode.InvalidFrameRate);
     }
 
     [Fact]

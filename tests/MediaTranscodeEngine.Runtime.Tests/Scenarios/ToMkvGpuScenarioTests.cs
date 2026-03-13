@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.VideoSettings;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
@@ -156,7 +157,7 @@ public sealed class ToMkvGpuScenarioTests
         Action action = static () => _ = new ToMkvGpuRequest(maxFramesPerSecond: 55);
 
         action.Should().Throw<ArgumentOutOfRangeException>()
-            .WithMessage("*50, 40, 30, 24*");
+            .Which.ParamName.Should().Be("maxFramesPerSecond");
     }
 
     [Fact]
@@ -232,9 +233,8 @@ public sealed class ToMkvGpuScenarioTests
 
         var action = () => sut.BuildPlan(video);
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*576 source bucket missing*")
-            .WithMessage("*height 0*");
+        action.Should().Throw<RuntimeFailureException>()
+            .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]
@@ -245,9 +245,8 @@ public sealed class ToMkvGpuScenarioTests
 
         var action = () => sut.BuildPlan(video);
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*480 source bucket missing*")
-            .WithMessage("*height 0*");
+        action.Should().Throw<RuntimeFailureException>()
+            .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]
@@ -308,9 +307,8 @@ public sealed class ToMkvGpuScenarioTests
 
         var action = () => sut.BuildPlan(video);
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*576 source bucket missing*")
-            .WithMessage("*add SourceBuckets*");
+        action.Should().Throw<RuntimeFailureException>()
+            .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]
@@ -338,9 +336,8 @@ public sealed class ToMkvGpuScenarioTests
 
         var action = () => sut.BuildPlan(video);
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("*576 source bucket invalid*")
-            .WithMessage("*mult/low*");
+        action.Should().Throw<RuntimeFailureException>()
+            .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     private static ToMkvGpuScenario CreateSut(

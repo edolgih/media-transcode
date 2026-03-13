@@ -1,7 +1,9 @@
 using FluentAssertions;
+using System.Text.Json;
 using MediaTranscodeEngine.Cli.Processing;
 using MediaTranscodeEngine.Cli.Scenarios;
 using MediaTranscodeEngine.Cli.Tests.Logging;
+using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Inspection;
 using MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
@@ -87,7 +89,7 @@ public sealed class PrimaryTranscodeProcessorTests
     public void Process_WhenProbeReturnsNoVideoStream_ReturnsLegacyRemLine()
     {
         var sut = new PrimaryTranscodeProcessor(
-            CreateThrowingInspector(new InvalidOperationException("Video probe did not return a video stream.")),
+            CreateThrowingInspector(RuntimeFailures.NoVideoStream()),
             [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
@@ -101,7 +103,21 @@ public sealed class PrimaryTranscodeProcessorTests
     public void Process_WhenProbeFails_ReturnsLegacyFfprobeRemLine()
     {
         var sut = new PrimaryTranscodeProcessor(
-            CreateThrowingInspector(new InvalidOperationException("ffprobe returned invalid JSON output.")),
+            CreateThrowingInspector(RuntimeFailures.ProbeInvalidJson(new JsonException())),
+            [new StubTool()],
+            CreateScenarioRegistry(),
+            CreateLogger<PrimaryTranscodeProcessor>());
+
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4"));
+
+        actual.Should().Be("REM ffprobe failed: a.mp4");
+    }
+
+    [Fact]
+    public void Process_WhenProbeJsonIsMissingRequiredField_ReturnsLegacyFfprobeRemLine()
+    {
+        var sut = new PrimaryTranscodeProcessor(
+            CreateThrowingInspector(RuntimeFailures.ProbeMissingRequiredField("codec_name", "stream")),
             [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
@@ -115,7 +131,7 @@ public sealed class PrimaryTranscodeProcessorTests
     public void Process_WhenOverlayHasUnknownDimensions_ReturnsLegacyUnknownDimensionsRemLine()
     {
         var sut = new PrimaryTranscodeProcessor(
-            CreateThrowingInspector(new InvalidOperationException("Video probe did not return a valid video width.")),
+            CreateThrowingInspector(RuntimeFailures.InvalidVideoWidth()),
             [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
@@ -168,7 +184,7 @@ public sealed class PrimaryTranscodeProcessorTests
     public void Process_WhenDownscale576SourceBucketIsMissing_ReturnsLegacyBucketRemLine()
     {
         var sut = new PrimaryTranscodeProcessor(
-            CreateThrowingInspector(new InvalidOperationException("576 source bucket missing: height 900; add SourceBuckets")),
+            CreateThrowingInspector(RuntimeFailures.DownscaleSourceBucketIssue("576 source bucket missing: height 900; add SourceBuckets")),
             [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
@@ -182,7 +198,7 @@ public sealed class PrimaryTranscodeProcessorTests
     public void Process_WhenDownscale576SourceBucketMatrixIsIncomplete_ReturnsLegacyBucketRemLine()
     {
         var sut = new PrimaryTranscodeProcessor(
-            CreateThrowingInspector(new InvalidOperationException("576 source bucket invalid: missing corridor 'mult/low'")),
+            CreateThrowingInspector(RuntimeFailures.DownscaleSourceBucketIssue("576 source bucket invalid: missing corridor 'mult/low'")),
             [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
@@ -238,7 +254,7 @@ public sealed class PrimaryTranscodeProcessorTests
     public void Process_WhenInfoModeProbeFails_ReturnsInfoMarker()
     {
         var sut = new PrimaryTranscodeProcessor(
-            CreateThrowingInspector(new InvalidOperationException("ffprobe returned invalid JSON output.")),
+            CreateThrowingInspector(RuntimeFailures.ProbeInvalidJson(new JsonException())),
             [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
@@ -323,7 +339,7 @@ public sealed class PrimaryTranscodeProcessorTests
         using var provider = new ListLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
-            CreateThrowingInspector(new InvalidOperationException("Video probe did not return a video stream.")),
+            CreateThrowingInspector(RuntimeFailures.NoVideoStream()),
             [new StubTool()],
             CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
@@ -334,7 +350,7 @@ public sealed class PrimaryTranscodeProcessorTests
         var warningEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Warning &&
                                                             entry.Message.Contains("Processing returned failure marker.", StringComparison.Ordinal) &&
                                                             Equals(entry.Properties["FailureKind"], "no_video_stream"));
-        warningEntry.Exception.Should().BeOfType<InvalidOperationException>();
+        warningEntry.Exception.Should().BeOfType<RuntimeFailureException>();
     }
 
     private static ILogger<T> CreateLogger<T>()

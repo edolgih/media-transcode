@@ -1,5 +1,6 @@
 using System.Globalization;
 using MediaTranscodeEngine.Runtime.VideoSettings;
+using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 
 namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 
@@ -40,11 +41,17 @@ public sealed class ToH264GpuRequest
         bool synchronizeAudio = false,
         bool outputMkv = false)
     {
+        var normalizedNvencPreset = NormalizeName(nvencPreset);
+        if (normalizedNvencPreset is not null && !NvencPresetOptions.IsSupportedPreset(normalizedNvencPreset))
+        {
+            throw new ArgumentOutOfRangeException(nameof(nvencPreset), nvencPreset, $"Supported values: {NvencPresetOptions.SupportedPresetsDisplay}.");
+        }
+
         KeepSource = keepSource;
         Downscale = downscale;
         KeepFramesPerSecond = keepFramesPerSecond;
         VideoSettings = videoSettings?.HasValue == true ? videoSettings : null;
-        NvencPreset = NormalizeName(nvencPreset);
+        NvencPreset = normalizedNvencPreset;
         Denoise = denoise;
         SynchronizeAudio = synchronizeAudio;
         OutputMkv = outputMkv;
@@ -230,12 +237,6 @@ public sealed class ToH264GpuRequest
                         return false;
                     }
 
-                    if (NormalizeName(nvencPreset) is not ("p1" or "p2" or "p3" or "p4" or "p5" or "p6" or "p7"))
-                    {
-                        errorText = "--nvenc-preset must be one of: p1, p2, p3, p4, p5, p6, p7.";
-                        return false;
-                    }
-
                     break;
 
                 case DenoiseOptionName:
@@ -296,6 +297,10 @@ public sealed class ToH264GpuRequest
                 "cq" => "--cq must be greater than zero.",
                 "maxrate" => "--maxrate must be greater than zero.",
                 "bufsize" => "--bufsize must be greater than zero.",
+                "contentProfile" => $"--content-profile must be one of: {VideoSettingsRequest.SupportedContentProfilesDisplay}.",
+                "qualityProfile" => $"--quality-profile must be one of: {VideoSettingsRequest.SupportedQualityProfilesDisplay}.",
+                "autoSampleMode" => $"--autosample-mode must be one of: {VideoSettingsRequest.SupportedAutoSampleModesDisplay}.",
+                "nvencPreset" => $"--nvenc-preset must be one of: {NvencPresetOptions.SupportedPresetsDisplay}.",
                 _ => exception.Message
             };
 
