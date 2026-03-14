@@ -3,9 +3,10 @@ namespace MediaTranscodeEngine.Runtime.VideoSettings;
 /*
 Это явное намерение downscale.
 Отдельный тип нужен, чтобы факт изменения высоты не угадывался по полям общего VideoSettingsRequest.
+Если owner сценария уже выбрал effective algorithm, этот же value object может нести и его.
 */
 /// <summary>
-/// Captures explicit downscale intent and scaling-specific overrides.
+/// Captures downscale intent together with an optional scaling algorithm.
 /// </summary>
 public sealed class DownscaleRequest
 {
@@ -27,7 +28,7 @@ public sealed class DownscaleRequest
     /// Initializes explicit downscale directives.
     /// </summary>
     /// <param name="targetHeight">Requested target height.</param>
-    /// <param name="algorithm">Explicit scaling algorithm override.</param>
+    /// <param name="algorithm">Scaling algorithm when already resolved by the owner, or an explicit override.</param>
     public DownscaleRequest(int targetHeight, string? algorithm = null)
     {
         if (targetHeight <= 0)
@@ -62,9 +63,28 @@ public sealed class DownscaleRequest
     public int TargetHeight { get; }
 
     /// <summary>
-    /// Gets the explicit scaling algorithm override.
+    /// Gets the scaling algorithm carried by this request.
+    /// Null means the owner kept only resize intent and has not resolved a default algorithm yet.
     /// </summary>
     public string? Algorithm { get; }
+
+    /// <summary>
+    /// Returns a request with the supplied default algorithm when no algorithm has been chosen yet.
+    /// </summary>
+    /// <param name="algorithm">Default scaling algorithm selected by the owner.</param>
+    /// <returns>The current request when the algorithm is already present; otherwise a normalized copy.</returns>
+    public DownscaleRequest WithDefaultAlgorithm(string algorithm)
+    {
+        var normalizedAlgorithm = NormalizeName(algorithm);
+        if (normalizedAlgorithm is null)
+        {
+            throw new ArgumentException("Algorithm is required.", nameof(algorithm));
+        }
+
+        return Algorithm is not null
+            ? this
+            : new DownscaleRequest(TargetHeight, normalizedAlgorithm);
+    }
 
     /// <summary>
     /// Determines whether the supplied target height is supported by configured downscale profiles.

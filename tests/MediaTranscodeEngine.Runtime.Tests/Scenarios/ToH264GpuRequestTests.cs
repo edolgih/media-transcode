@@ -68,6 +68,15 @@ public sealed class ToH264GpuRequestTests
     }
 
     [Fact]
+    public void Constructor_WhenDownscaleAlgorithmIsOmitted_UsesBicubic()
+    {
+        var request = new ToH264GpuRequest(downscale: new DownscaleRequest(576));
+
+        request.Downscale.Should().NotBeNull();
+        request.Downscale!.Algorithm.Should().Be("bicubic");
+    }
+
+    [Fact]
     public void Constructor_WhenCqIsAboveH264Limit_Throws()
     {
         Action action = static () => _ = new ToH264GpuRequest(
