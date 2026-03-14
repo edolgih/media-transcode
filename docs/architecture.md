@@ -57,6 +57,8 @@ In practice:
 ## Runtime Modeling Rules
 
 - `null` is used only for real semantics such as `unknown`, `not applicable`, or a true override that was not provided.
+- `null` must not stand in for an empty collection, a default object, or API convenience at runtime.
+- Nullable override fields are acceptable only while the model still represents unresolved request intent; after resolution, downstream runtime contracts should be non-null.
 - One semantic fact should be stored in one place.
 - Defaults should be resolved at the boundary of the layer that owns them.
 - Mutually exclusive modes should be expressed by types where practical, rather than by combinations of flags and nullable fields.
