@@ -2,16 +2,16 @@
 
 English version: [architecture.md](architecture.md)
 
-Этот документ описывает текущее реализованное состояние архитектуры и runtime flow.
+Этот документ описывает текущее реализованное состояние архитектуры и core/scenario flow.
 Если отдельный refactoring document фиксирует целевое упрощение, это не считается противоречием: `architecture*.md` остается описанием current state, пока код не изменен.
 
 ## Core Flow
 
-Текущий runtime pipeline:
+Текущий core/scenario pipeline:
 
 `argv -> CliArgumentParser -> CliParseResult(normalized ScenarioInput) -> CliTranscodeRequest(per input) -> VideoInspector -> SourceVideo -> TranscodeScenario -> ScenarioExecution`
 
-Ключевые runtime-типы:
+Ключевые core-типы:
 
 - `src/Transcode.Cli.Core/Parsing/CliContracts.cs` - общий результат CLI parse, который несет нормализованный `ScenarioInput`.
 - `src/Transcode.Cli.Core/CliTranscodeRequest.cs` - per-input CLI request, построенный из общего parse result.
@@ -44,13 +44,13 @@ CLI wiring:
 Высокоуровневый CLI flow:
 
 - общий CLI-слой парсит shared-аргументы, такие как обязательный scenario name, input paths и `--info`;
-- выбранный scenario handler парсит scenario-specific argv ровно один раз в CLI-слое и возвращает нормализованный runtime request как `ScenarioInput`;
+- выбранный scenario handler парсит scenario-specific argv ровно один раз в CLI-слое и возвращает нормализованный scenario request как `ScenarioInput`;
 - общий CLI-слой сохраняет этот нормализованный scenario input в `CliParseResult`, а затем строит по одному `CliTranscodeRequest` на каждый input file без повторного parse scenario argv;
 - затем обработка загружает source facts, просит handler создать сценарий из уже готового parsed input и вызывает `scenario.FormatInfo(...)` или `scenario.BuildExecution(...)`;
-- concrete ffmpeg command rendering теперь живет внутри scenario projects; shared runtime больше не резолвит tools и больше не проводит выполнение через общую `plan/spec/tool`-цепочку;
-- на практике добавление нового application scenario должно в основном означать добавление нового CLI scenario handler плюс runtime request/scenario-local rendering types, которыми он пользуется;
+- concrete ffmpeg command rendering теперь живет внутри scenario projects; shared core layer больше не резолвит tools и больше не проводит выполнение через общую `plan/spec/tool`-цепочку;
+- на практике добавление нового application scenario должно в основном означать добавление нового CLI scenario handler плюс scenario request/scenario-local rendering types, которыми он пользуется;
 - ordinary encode и downscale теперь разделяют одну profile-driven video-settings ось: output-height buckets, content/quality profiles, bucket bounds и autosample/bitrate-hint adjustment приходят из shared video-settings profile catalog, а не из scenario-local hardcoded fallback-ов;
-- runtime request/value types больше не знают raw spellings вида `--option`; CLI-слой выступает transport adapter-ом, а runtime остаётся domain source of truth.
+- core request/value types больше не знают raw spellings вида `--option`; CLI-слой выступает transport adapter-ом, а `Core` остаётся domain source of truth.
 
 ## Core-CLI Boundary
 
@@ -67,17 +67,17 @@ CLI wiring:
 
 Практически это означает:
 
-- scenario-local CLI parsers переводят argv в runtime request objects ровно один раз;
+- scenario-local CLI parsers переводят argv в scenario request objects ровно один раз;
 - `CliArgumentParser` сохраняет этот parsed scenario object в `CliParseResult`;
 - per-input CLI processing переносит этот же объект через `CliTranscodeRequest`;
-- runtime request/value types валидируют canonical domain values;
-- CLI help должен форматировать supported values из runtime-owned catalogs, а не дублировать эти списки.
+- core request/value types валидируют canonical domain values;
+- CLI help должен форматировать supported values из core-owned catalogs, а не дублировать эти списки.
 
 ## Правила Core-Модели
 
 - `null` используется только для реальной семантики, такой как `unknown`, `not applicable` или настоящий неуказанный override.
-- `null` не должен подменять пустую коллекцию, default object или API convenience в runtime-модели.
-- Nullable override-поля допустимы только пока модель выражает ещё неразрешённое request intent; после resolution downstream runtime contract должен становиться non-null.
+- `null` не должен подменять пустую коллекцию, default object или API convenience в resolved/core-модели.
+- Nullable override-поля допустимы только пока модель выражает ещё неразрешённое request intent; после resolution downstream resolved contract должен становиться non-null.
 - Один семантический факт должен храниться в одном месте.
 - Defaults должны разрешаться на границе слоя, который ими владеет.
 - Взаимоисключающие режимы по возможности должны выражаться типами, а не комбинациями флагов и nullable-полей.

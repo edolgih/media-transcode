@@ -1,7 +1,7 @@
 namespace Transcode.Core.MediaIntent;
 
 /// <summary>
-/// Represents a normalized audio intent for a transcode plan.
+/// Represents a normalized audio intent for a scenario decision.
 /// </summary>
 public abstract record AudioIntent;
 

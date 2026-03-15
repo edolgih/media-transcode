@@ -1,10 +1,10 @@
 namespace Transcode.Cli.Core;
 
 /*
-Этот тип хранит пути к внешним утилитам runtime, которые нужны CLI для работы.
+Этот тип хранит пути к внешним утилитам, которые нужны CLI для работы.
 */
 /// <summary>
-/// Holds configured runtime executable paths used by the CLI host.
+/// Holds configured external tool executable paths used by the CLI host.
 /// </summary>
 public sealed class RuntimeValues
 {

@@ -5,7 +5,7 @@ namespace Transcode.Cli.Core.Scenarios;
 
 /*
 Это CLI-контракт одного прикладного сценария:
-его имя, help, scenario-local parsing, создание runtime-сценария и обработка ошибок.
+его имя, help, scenario-local parsing, создание сценария и обработка ошибок.
 */
 /// <summary>
 /// Defines the CLI-facing contract for one registered application scenario.
@@ -44,10 +44,10 @@ public interface ICliScenarioHandler
     bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText);
 
     /// <summary>
-    /// Creates the runtime scenario instance for the supplied CLI request.
+    /// Creates the scenario instance for the supplied CLI request.
     /// </summary>
     /// <param name="request">Per-input CLI request.</param>
-    /// <returns>Scenario instance used to build the transcode plan.</returns>
+    /// <returns>Scenario instance used to build info output or command execution.</returns>
     TranscodeScenario CreateScenario(CliTranscodeRequest request);
 
     /// <summary>

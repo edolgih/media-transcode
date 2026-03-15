@@ -3,17 +3,17 @@ using Transcode.Cli.Core.Scenarios;
 namespace Transcode.Cli.Core.Parsing;
 
 /*
-Этот helper собирает help-текст CLI из общей части, зарегистрированных сценариев и текущей runtime-конфигурации.
+Этот helper собирает help-текст CLI из общей части, зарегистрированных сценариев и текущей конфигурации внешних утилит.
 */
 /// <summary>
-/// Builds CLI help text from shared options, registered scenarios, and runtime configuration.
+/// Builds CLI help text from shared options, registered scenarios, and external tool configuration.
 /// </summary>
 internal static class CliHelpBuilder
 {
     /// <summary>
     /// Builds help text using the supplied scenario registry.
     /// </summary>
-    /// <param name="runtimeValues">Configured runtime executable paths.</param>
+    /// <param name="runtimeValues">Configured external tool executable paths.</param>
     /// <param name="registry">Registered CLI scenarios.</param>
     /// <returns>Rendered help text.</returns>
     public static string BuildHelpText(RuntimeValues runtimeValues, CliScenarioRegistry registry)

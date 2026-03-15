@@ -62,7 +62,7 @@ public static class Program
 				.Validate(
 					options => !string.IsNullOrWhiteSpace(options.FfprobePath) &&
 					           !string.IsNullOrWhiteSpace(options.FfmpegPath),
-					"Invalid Runtime options in configuration.")
+					"Invalid external tool options in configuration.")
 				.ValidateOnStart();
 
 			builder.Services.AddSingleton<IVideoProbe>(static services =>
@@ -170,7 +170,7 @@ public static class Program
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
 	/// <param name="services">Application services.</param>
-	/// <param name="runtimeValues">Runtime executable paths.</param>
+	/// <param name="runtimeValues">Configured ffmpeg/ffprobe executable paths.</param>
 	/// <returns>Process exit code.</returns>
 	internal static int RunCli(
 		string[] args,
@@ -193,7 +193,7 @@ public static class Program
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
 	/// <param name="services">Application services.</param>
-	/// <param name="runtimeValues">Runtime executable paths.</param>
+	/// <param name="runtimeValues">Configured ffmpeg/ffprobe executable paths.</param>
 	/// <param name="readRedirectedStdIn">Whether redirected standard input should be treated as additional input paths.</param>
 	/// <returns>Process exit code.</returns>
 	internal static int RunCli(
@@ -218,7 +218,7 @@ public static class Program
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
 	/// <param name="services">Application services.</param>
-	/// <param name="runtimeValues">Runtime executable paths.</param>
+	/// <param name="runtimeValues">Configured ffmpeg/ffprobe executable paths.</param>
 	/// <param name="scenarioRegistry">Registered CLI scenarios.</param>
 	/// <param name="readRedirectedStdIn">Whether redirected standard input should be treated as additional input paths.</param>
 	/// <returns>Process exit code.</returns>

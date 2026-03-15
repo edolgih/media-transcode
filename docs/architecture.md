@@ -2,16 +2,16 @@
 
 Russian version: [architecture.ru.md](architecture.ru.md)
 
-This document describes the current implemented architecture and runtime flow.
+This document describes the current implemented architecture and core/scenario flow.
 If a separate refactoring document captures a simpler target shape, that is not a contradiction: `architecture*.md` remains the current-state description until the code changes.
 
 ## Core Flow
 
-Current runtime pipeline:
+Current core/scenario pipeline:
 
 `argv -> CliArgumentParser -> CliParseResult(normalized ScenarioInput) -> CliTranscodeRequest(per input) -> VideoInspector -> SourceVideo -> TranscodeScenario -> ScenarioExecution`
 
-Core runtime types:
+Key core types:
 
 - `src/Transcode.Cli.Core/Parsing/CliContracts.cs` - shared CLI parse result that carries normalized `ScenarioInput`.
 - `src/Transcode.Cli.Core/CliTranscodeRequest.cs` - per-input CLI request built from the common parse result.
@@ -44,13 +44,13 @@ CLI wiring:
 CLI flow at a high level:
 
 - the common CLI layer parses shared arguments such as the required scenario name, input paths, and `--info`;
-- the selected scenario handler parses scenario-specific argv exactly once in the CLI layer and returns a normalized runtime request as `ScenarioInput`;
+- the selected scenario handler parses scenario-specific argv exactly once in the CLI layer and returns a normalized scenario request as `ScenarioInput`;
 - the common CLI layer stores that normalized scenario input in `CliParseResult`, then builds one `CliTranscodeRequest` per input file without reparsing scenario argv;
 - processing loads source facts, asks the handler to create the scenario from the already parsed input, and then calls `scenario.FormatInfo(...)` or `scenario.BuildExecution(...)`;
-- concrete ffmpeg command rendering now stays inside scenario projects; the shared runtime no longer resolves tools and no longer routes execution through a shared `plan/spec/tool` pipeline;
-- in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the runtime request/scenario-local rendering types it uses.
+- concrete ffmpeg command rendering now stays inside scenario projects; the shared core layer no longer resolves tools and no longer routes execution through a shared `plan/spec/tool` pipeline;
+- in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the scenario request/scenario-local rendering types it uses.
 - ordinary encode and downscale now share the same profile-driven video-settings axis: output-height buckets, content/quality profiles, bucket bounds, and autosample/bitrate-hint adjustment all come from the shared video-settings profile catalog rather than scenario-local hardcoded fallbacks.
-- runtime request/value types no longer know raw `--option` spellings; the CLI layer is the transport adapter and runtime stays the domain source of truth.
+- core request/value types no longer know raw `--option` spellings; the CLI layer is the transport adapter and `Core` stays the domain source of truth.
 
 ## Core-CLI Boundary
 
@@ -67,17 +67,17 @@ Current boundary rules:
 
 In practice:
 
-- scenario-local CLI parsers translate argv into runtime request objects exactly once;
+- scenario-local CLI parsers translate argv into scenario request objects exactly once;
 - `CliArgumentParser` stores the parsed scenario object in `CliParseResult`;
 - per-input CLI processing carries that same object through `CliTranscodeRequest`;
-- runtime request/value types validate canonical domain values;
-- CLI help should format supported values from runtime-owned catalogs instead of duplicating those lists.
+- core request/value types validate canonical domain values;
+- CLI help should format supported values from core-owned catalogs instead of duplicating those lists.
 
 ## Core Modeling Rules
 
 - `null` is used only for real semantics such as `unknown`, `not applicable`, or a true override that was not provided.
 - `null` must not stand in for an empty collection, a default object, or API convenience at runtime.
-- Nullable override fields are acceptable only while the model still represents unresolved request intent; after resolution, downstream runtime contracts should be non-null.
+- Nullable override fields are acceptable only while the model still represents unresolved request intent; after resolution, downstream resolved contracts should be non-null.
 - One semantic fact should be stored in one place.
 - Defaults should be resolved at the boundary of the layer that owns them.
 - Mutually exclusive modes should be expressed by types where practical, rather than by combinations of flags and nullable fields.

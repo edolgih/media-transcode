@@ -17,17 +17,17 @@ public sealed class VideoSettingsRequest
     private static readonly string[] SupportedAutoSampleModesValues = ["accurate", "fast", "hybrid"];
 
     /// <summary>
-    /// Gets content-profile values supported by the runtime profile catalog.
+    /// Gets content-profile values supported by the core profile catalog.
     /// </summary>
     public static IReadOnlyList<string> SupportedContentProfiles => SupportedContentProfilesValues;
 
     /// <summary>
-    /// Gets quality-profile values supported by the runtime profile catalog.
+    /// Gets quality-profile values supported by the core profile catalog.
     /// </summary>
     public static IReadOnlyList<string> SupportedQualityProfiles => SupportedQualityProfilesValues;
 
     /// <summary>
-    /// Gets autosample mode values supported by Runtime.
+    /// Gets autosample mode values supported by the core profile catalog.
     /// </summary>
     public static IReadOnlyList<string> SupportedAutoSampleModes => SupportedAutoSampleModesValues;
 

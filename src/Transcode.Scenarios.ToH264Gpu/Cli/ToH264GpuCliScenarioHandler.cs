@@ -13,7 +13,7 @@ namespace Transcode.Scenarios.ToH264Gpu.Cli;
 
 /*
 Это CLI-адаптер для сценария toh264gpu.
-Он использует scenario-local parser для raw argv, строит runtime-request и переводит ошибки в короткие legacy-style маркеры.
+Он использует scenario-local parser для raw argv, строит scenario request и переводит ошибки в короткие legacy-style маркеры.
 */
 /// <summary>
 /// Implements the CLI contract for the legacy <c>toh264gpu</c> application scenario.

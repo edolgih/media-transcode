@@ -5,11 +5,11 @@ using Transcode.Core.VideoSettings.Profiles;
 namespace Transcode.Runtime.Tests.VideoSettings;
 
 /*
-Это тесты runtime-каталога video settings профилей.
+Это тесты core-каталога video settings профилей.
 Они проверяют bucket mapping и доступность типизированных profile data.
 */
 /// <summary>
-/// Verifies profile catalog mapping and typed profile data exposed by Runtime.
+/// Verifies profile catalog mapping and typed profile data exposed by Core.
 /// </summary>
 public sealed class VideoSettingsProfilesTests
 {

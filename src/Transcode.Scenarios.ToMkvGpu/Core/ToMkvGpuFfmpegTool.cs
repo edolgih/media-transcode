@@ -10,10 +10,10 @@ namespace Transcode.Scenarios.ToMkvGpu.Core;
 
 /*
 Это ffmpeg-адаптер сценария tomkvgpu.
-Он рендерит mkv-ориентированный план в конкретные команды ffmpeg и post-steps для файлов.
+Он рендерит mkv-ориентированное решение сценария в конкретные команды ffmpeg и post-steps для файлов.
 */
 /// <summary>
-/// Renders mkv-oriented transcode plans into ffmpeg execution recipes.
+/// Renders mkv-oriented scenario decisions into ffmpeg execution recipes.
 /// </summary>
 public sealed class ToMkvGpuFfmpegTool
 {
@@ -168,7 +168,7 @@ public sealed class ToMkvGpuFfmpegTool
                 : "-map 0:v:0 -c:v copy";
         }
 
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         var videoResolution = GetRequiredVideoResolution(decision);
         var encoder = ResolveVideoEncoder(decision);
         var settings = videoResolution.Settings;
@@ -215,7 +215,7 @@ public sealed class ToMkvGpuFfmpegTool
             SynchronizeAudioIntent => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"",
             RepairAudioIntent => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"",
             EncodeAudioIntent => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k",
-            _ => throw new InvalidOperationException("Unsupported audio plan type.")
+            _ => throw new InvalidOperationException("Unsupported audio intent type.")
         };
     }
 
@@ -227,7 +227,7 @@ public sealed class ToMkvGpuFfmpegTool
 
     private static string ResolveVideoEncoder(ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         return encodeVideo.TargetVideoCodec switch
         {
             "h264" => "h264_nvenc",
@@ -238,7 +238,7 @@ public sealed class ToMkvGpuFfmpegTool
 
     private static string ResolveFrameRateToken(SourceVideo video, ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         if (encodeVideo.TargetFramesPerSecond.HasValue)
         {
             return encodeVideo.TargetFramesPerSecond.Value.ToString("0.###", CultureInfo.InvariantCulture);
@@ -249,14 +249,14 @@ public sealed class ToMkvGpuFfmpegTool
 
     private static int ResolveGop(SourceVideo video, ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         return (int)Math.Max(12, Math.Round(fps * 2.0));
     }
 
     private static string ResolveVideoCompatibilityPart(SourceVideo video, ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         var (width, height) = ToMkvGpuVideoGeometry.ResolveOutputDimensions(video, decision.Video, decision.ApplyOverlayBackground);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         var compatibilityPart = VideoCodecCompatibility.ResolveArguments(
@@ -270,10 +270,10 @@ public sealed class ToMkvGpuFfmpegTool
             : $"{compatibilityPart} ";
     }
 
-    private static EncodeVideoIntent GetRequiredEncodeVideoPlan(ToMkvGpuDecision decision)
+    private static EncodeVideoIntent GetRequiredEncodeVideoIntent(ToMkvGpuDecision decision)
     {
         return decision.Video as EncodeVideoIntent
-            ?? throw new InvalidOperationException("Video encode plan is required for this operation.");
+            ?? throw new InvalidOperationException("Video encode intent is required for this operation.");
     }
 
     private static ProfileDrivenVideoSettingsResolution GetRequiredVideoResolution(ToMkvGpuDecision decision)

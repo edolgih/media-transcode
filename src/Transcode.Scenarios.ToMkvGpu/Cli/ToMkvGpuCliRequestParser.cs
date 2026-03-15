@@ -7,10 +7,10 @@ namespace Transcode.Scenarios.ToMkvGpu.Cli;
 
 /*
 Это scenario-local parser для tomkvgpu.
-Он знает raw CLI option names и переводит их в runtime-request без переноса argv-логики в Runtime.
+Он знает raw CLI option names и переводит их в scenario request без переноса argv-логики в Core.
 */
 /// <summary>
-/// Parses ToMkvGpu CLI tokens into a runtime request while keeping raw option names in the CLI layer.
+/// Parses ToMkvGpu CLI tokens into a scenario request while keeping raw option names in the CLI layer.
 /// </summary>
 internal static class ToMkvGpuCliRequestParser
 {

@@ -4,7 +4,7 @@ using Transcode.Core.VideoSettings;
 namespace Transcode.Scenarios.ToH264Gpu.Core;
 
 /*
-Это runtime-request для сценария toh264gpu.
+Это scenario request для сценария toh264gpu.
 Он хранит только scenario-specific domain-опции и не знает про raw CLI-аргументы.
 */
 /// <summary>

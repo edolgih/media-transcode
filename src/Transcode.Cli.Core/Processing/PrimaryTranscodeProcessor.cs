@@ -6,11 +6,11 @@ namespace Transcode.Cli.Core.Processing;
 
 /*
 Это основная orchestration-реализация CLI:
-инспекция файла, построение сценария, получение общего плана и optional execution spec,
-а затем выбор tool для генерации итоговой команды или маркера.
+инспекция файла, построение сценария и получение итогового info output
+или command execution string из scenario-centric flow.
 */
 /// <summary>
-/// Orchestrates the CLI flow from inspected source facts through scenario planning to tool execution output.
+/// Orchestrates the CLI flow from inspected source facts through scenario execution output.
 /// </summary>
 internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
 {
@@ -115,7 +115,7 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             return scenarioHandler;
         }
 
-        throw new NotSupportedException($"Scenario '{scenarioName}' is not supported by Runtime CLI.");
+        throw new NotSupportedException($"Scenario '{scenarioName}' is not supported by the CLI host.");
     }
 
     private void LogFailure(CliTranscodeRequest request, Exception exception, CliScenarioFailure failure)

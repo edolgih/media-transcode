@@ -13,7 +13,7 @@ namespace Transcode.Scenarios.ToMkvGpu.Cli;
 
 /*
 Это CLI-адаптер для сценария tomkvgpu.
-Он использует scenario-local parser для raw argv, строит runtime-request и переводит ошибки в legacy-compatible вывод.
+Он использует scenario-local parser для raw argv, строит scenario request и переводит ошибки в legacy-compatible вывод.
 */
 /// <summary>
 /// Implements the CLI contract for the legacy <c>tomkvgpu</c> application scenario.
@@ -129,10 +129,10 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     }
 
     /// <summary>
-    /// Creates the runtime <see cref="ToMkvGpuScenario"/> instance for the supplied CLI request.
+    /// Creates the <see cref="ToMkvGpuScenario"/> instance for the supplied CLI request.
     /// </summary>
     /// <param name="request">Per-input CLI request.</param>
-    /// <returns>Runtime scenario instance.</returns>
+    /// <returns>Scenario instance.</returns>
     public TranscodeScenario CreateScenario(CliTranscodeRequest request)
     {
         var runtimeRequest = GetRuntimeRequest(request);

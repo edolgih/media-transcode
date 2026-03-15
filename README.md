@@ -22,7 +22,7 @@ The CLI requires an explicit `--scenario <name>` argument. The current public sc
 - `src/Transcode.Cli` - console host and dependency wiring
 - `src/Transcode.Scenarios.ToH264Gpu` - `toh264gpu` scenario runtime logic and CLI adapter
 - `src/Transcode.Scenarios.ToMkvGpu` - `tomkvgpu` scenario runtime logic and CLI adapter
-- `tests/Transcode.Runtime.Tests` - shared core/runtime unit tests
+- `tests/Transcode.Runtime.Tests` - shared core behavior unit tests
 - `tests/Transcode.Cli.Tests` - CLI contract tests
 - `Transcode.sln` - solution
 

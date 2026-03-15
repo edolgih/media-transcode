@@ -5,7 +5,7 @@ namespace Transcode.Core.Tools.Ffmpeg;
 Он нужен, чтобы request parsing и CLI help брали один и тот же набор значений.
 */
 /// <summary>
-/// Provides supported NVENC preset values shared by Runtime and CLI help.
+/// Provides supported NVENC preset values shared by Core and CLI help.
 /// </summary>
 public static class NvencPresetOptions
 {
@@ -20,12 +20,12 @@ public static class NvencPresetOptions
     private static readonly string[] SupportedPresetsValues = [P1, P2, P3, P4, P5, P6, P7];
 
     /// <summary>
-    /// Gets the canonical NVENC preset values supported by Runtime.
+    /// Gets the canonical NVENC preset values supported by Core.
     /// </summary>
     public static IReadOnlyList<string> SupportedPresets => SupportedPresetsValues;
 
     /// <summary>
-    /// Gets the default NVENC preset used by Runtime when the caller did not override it.
+    /// Gets the default NVENC preset used by Core when the caller did not override it.
     /// </summary>
     public static string DefaultPreset => P6;
 

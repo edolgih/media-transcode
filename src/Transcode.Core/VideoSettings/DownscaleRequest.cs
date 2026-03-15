@@ -21,7 +21,7 @@ public sealed class DownscaleRequest
     public static IReadOnlyList<int> SupportedTargetHeights => SupportedTargetHeightsValues;
 
     /// <summary>
-    /// Gets the canonical scaling algorithm values supported by Runtime.
+    /// Gets the canonical scaling algorithm values supported by Core.
     /// </summary>
     public static IReadOnlyList<string> SupportedAlgorithms => FfmpegScaleAlgorithms.SupportedAlgorithms;
 

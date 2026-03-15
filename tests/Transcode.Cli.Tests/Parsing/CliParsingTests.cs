@@ -11,7 +11,7 @@ namespace Transcode.Cli.Tests.Parsing;
 
 /*
 Это тесты разбора CLI-аргументов.
-Они проверяют, что transport-слой сохраняет сценарные токены и правильно маппит их в runtime-request.
+Они проверяют, что transport-слой сохраняет сценарные токены и правильно маппит их в scenario request.
 */
 /// <summary>
 /// Verifies CLI argument parsing and scenario-specific request binding behavior.

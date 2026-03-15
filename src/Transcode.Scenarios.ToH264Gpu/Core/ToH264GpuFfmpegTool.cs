@@ -9,10 +9,10 @@ namespace Transcode.Scenarios.ToH264Gpu.Core;
 
 /*
 Это ffmpeg-адаптер сценария toh264gpu.
-Он рендерит web/stream/local-ориентированный план в ffmpeg-команду с remux или H.264 NVENC encode path.
+Он рендерит web/stream/local-ориентированное решение сценария в ffmpeg-команду с remux или H.264 NVENC encode path.
 */
 /// <summary>
-/// Renders web/stream-oriented toh264gpu plans into ffmpeg execution recipes.
+/// Renders web/stream-oriented toh264gpu decisions into ffmpeg execution recipes.
 /// </summary>
 public sealed class ToH264GpuFfmpegTool
 {
@@ -176,7 +176,7 @@ public sealed class ToH264GpuFfmpegTool
                 : "-map 0:v:0 -c:v copy";
         }
 
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         var execution = GetRequiredVideoExecution(decision);
         var frameRatePart = encodeVideo.TargetFramesPerSecond.HasValue
             ? $"-fps_mode:v cfr -r {ResolveFrameRateToken(video, decision)} "
@@ -221,7 +221,7 @@ public sealed class ToH264GpuFfmpegTool
             SynchronizeAudioIntent => BuildAudioEncodePart(mapPart, GetRequiredAudioExecution(decision)),
             RepairAudioIntent => BuildAudioEncodePart(mapPart, GetRequiredAudioExecution(decision)),
             EncodeAudioIntent => BuildAudioEncodePart(mapPart, GetRequiredAudioExecution(decision)),
-            _ => throw new InvalidOperationException("Unsupported audio plan type.")
+            _ => throw new InvalidOperationException("Unsupported audio intent type.")
         };
     }
 
@@ -302,20 +302,20 @@ public sealed class ToH264GpuFfmpegTool
 
     private static string ResolveFrameRateToken(SourceVideo video, ToH264GpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         return (encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond).ToString("0.###", CultureInfo.InvariantCulture);
     }
 
     private static int ResolveGop(SourceVideo video, ToH264GpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         return (int)Math.Max(12, Math.Round(fps * 2.0));
     }
 
     private static string ResolveVideoCompatibilityPart(SourceVideo video, ToH264GpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         var (width, height) = ResolveOutputDimensions(video, decision);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         var compatibilityPart = VideoCodecCompatibility.ResolveArguments(
@@ -360,22 +360,22 @@ public sealed class ToH264GpuFfmpegTool
             : value + 1;
     }
 
-    private static EncodeVideoIntent GetRequiredEncodeVideoPlan(ToH264GpuDecision decision)
+    private static EncodeVideoIntent GetRequiredEncodeVideoIntent(ToH264GpuDecision decision)
     {
         return decision.Video as EncodeVideoIntent
-            ?? throw new InvalidOperationException("Video encode plan is required for this operation.");
+            ?? throw new InvalidOperationException("Video encode intent is required for this operation.");
     }
 
     private static ToH264GpuDecision.VideoExecution GetRequiredVideoExecution(ToH264GpuDecision decision)
     {
         return decision.VideoExecutionDetails
-            ?? throw new InvalidOperationException("Video execution spec is required for this operation.");
+            ?? throw new InvalidOperationException("Video execution details are required for this operation.");
     }
 
     private static ToH264GpuDecision.AudioExecution GetRequiredAudioExecution(ToH264GpuDecision decision)
     {
         return decision.AudioExecutionDetails
-            ?? throw new InvalidOperationException("Audio execution spec is required for this operation.");
+            ?? throw new InvalidOperationException("Audio execution details are required for this operation.");
     }
 
 }

@@ -22,7 +22,7 @@
 - `src/Transcode.Cli` - консольный host и dependency wiring
 - `src/Transcode.Scenarios.ToH264Gpu` - runtime-логика и CLI adapter сценария `toh264gpu`
 - `src/Transcode.Scenarios.ToMkvGpu` - runtime-логика и CLI adapter сценария `tomkvgpu`
-- `tests/Transcode.Runtime.Tests` - unit-тесты общего core/runtime-поведения
+- `tests/Transcode.Runtime.Tests` - unit-тесты общего core-поведения
 - `tests/Transcode.Cli.Tests` - контрактные тесты CLI
 - `Transcode.sln` - solution
 

@@ -3,11 +3,11 @@ using Transcode.Core.VideoSettings.Profiles;
 namespace Transcode.Core.VideoSettings;
 
 /*
-Это реестр типизированных video-settings профилей runtime.
+Это реестр типизированных video-settings профилей shared core-слоя.
 Он хранит profile data по целевой высоте и выступает единым source of truth для ordinary encode и downscale.
 */
 /// <summary>
-/// Provides typed video-settings profiles used by Runtime.
+/// Provides typed video-settings profiles used by Core.
 /// </summary>
 internal sealed class VideoSettingsProfiles
 {

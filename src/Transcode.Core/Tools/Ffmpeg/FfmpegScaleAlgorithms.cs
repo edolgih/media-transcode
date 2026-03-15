@@ -5,7 +5,7 @@ namespace Transcode.Core.Tools.Ffmpeg;
 Он нужен, чтобы request validation, profile defaults и CLI help не дублировали одни и те же строки.
 */
 /// <summary>
-/// Provides supported ffmpeg scale algorithm values shared by Runtime and CLI help.
+/// Provides supported ffmpeg scale algorithm values shared by Core and CLI help.
 /// </summary>
 public static class FfmpegScaleAlgorithms
 {
@@ -16,7 +16,7 @@ public static class FfmpegScaleAlgorithms
     private static readonly string[] SupportedAlgorithmsValues = [Bilinear, Bicubic, Lanczos];
 
     /// <summary>
-    /// Gets the canonical scale algorithm values supported by Runtime.
+    /// Gets the canonical scale algorithm values supported by Core.
     /// </summary>
     public static IReadOnlyList<string> SupportedAlgorithms => SupportedAlgorithmsValues;
 

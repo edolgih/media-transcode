@@ -7,10 +7,10 @@ namespace Transcode.Scenarios.ToH264Gpu.Cli;
 
 /*
 Это scenario-local parser для toh264gpu.
-Он знает raw CLI option names и переводит их в runtime-request без argv-знания в Runtime.
+Он знает raw CLI option names и переводит их в scenario request без argv-знания в Core.
 */
 /// <summary>
-/// Parses ToH264Gpu CLI tokens into a runtime request while keeping raw option names in the CLI layer.
+/// Parses ToH264Gpu CLI tokens into a scenario request while keeping raw option names in the CLI layer.
 /// </summary>
 internal static class ToH264GpuCliRequestParser
 {
