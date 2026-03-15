@@ -7,7 +7,7 @@ namespace MediaTranscodeEngine.Cli.Parsing;
 /// <summary>
 /// Formats runtime-owned value catalogs for CLI help and transport-level error messages.
 /// </summary>
-internal static class CliValueFormatter
+public static class CliValueFormatter
 {
     public static string FormatAlternatives<T>(IEnumerable<T> values)
     {

@@ -33,6 +33,7 @@ public sealed class CliParsingTests
                 "--bufsize", "6.8",
                 "--nvenc-preset", "P5"
             ],
+            CreateRegistry(),
             out var parsed,
             out var errorText);
 
@@ -75,6 +76,7 @@ public sealed class CliParsingTests
                 "--bufsize", "7.4",
                 "--nvenc-preset", "P6"
             ],
+            CreateRegistry(),
             out var parsed,
             out var errorText);
 
@@ -129,6 +131,7 @@ public sealed class CliParsingTests
                 "--sync-audio",
                 "--mkv"
             ],
+            CreateRegistry(),
             out var parsed,
             out var errorText);
 
@@ -172,6 +175,7 @@ public sealed class CliParsingTests
                 "--sync-audio",
                 "--mkv"
             ],
+            CreateRegistry(),
             out var parsed,
             out var errorText);
 
@@ -213,6 +217,7 @@ public sealed class CliParsingTests
                 "--input", @"C:\video\a.mkv",
                 "--downscale", "720"
             ],
+            CreateRegistry(),
             out var parsed,
             out var errorText);
 
@@ -243,6 +248,7 @@ public sealed class CliParsingTests
                 "--input", @"C:\video\a.mkv",
                 "--downscale", targetHeight.ToString()
             ],
+            CreateRegistry(),
             out var parseResult,
             out var errorText);
 
@@ -271,6 +277,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             [token],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -285,6 +292,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             [optionName],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -297,6 +305,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "--info"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -311,6 +320,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "tomkvgpu", optionName],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -331,6 +341,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "tomkvgpu", optionName, value],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -350,6 +361,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "tomkvgpu", optionName, value],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -362,6 +374,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--max-fps", "55"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -374,6 +387,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale", "360"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -386,6 +400,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale", "576", "--downscale-algo", "nearest"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -398,6 +413,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--downscale", "576", "--downscale-algo", "nearest"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -410,6 +426,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--cq", "52"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -422,6 +439,7 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--input", @"C:\video\a.mp4"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
@@ -434,10 +452,19 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "other", "--input", @"C:\video\a.mp4"],
+            CreateRegistry(),
             out _,
             out var errorText);
 
         actual.Should().BeFalse();
         errorText.Should().Be("Unsupported scenario: other. Available scenarios: toh264gpu, tomkvgpu.");
+    }
+    private static CliScenarioRegistry CreateRegistry()
+    {
+        return new CliScenarioRegistry(
+            [
+                new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
+                new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
+            ]);
     }
 }

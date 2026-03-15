@@ -1,6 +1,4 @@
 using MediaTranscodeEngine.Cli.Parsing;
-using MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
-using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 
 namespace MediaTranscodeEngine.Cli.Scenarios;
 
@@ -35,15 +33,6 @@ internal sealed class CliScenarioRegistry
             StringComparer.OrdinalIgnoreCase);
         _legacyScenarioNamesByToken = BuildLegacyScenarioNames(handlerList);
     }
-
-    /// <summary>
-    /// Gets the default registry used by tests and simple entry points.
-    /// </summary>
-    public static CliScenarioRegistry Default { get; } = new(
-        [
-            new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
-            new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
-        ]);
 
     /// <summary>
     /// Tries to resolve a registered scenario by name.

@@ -12,21 +12,6 @@ Scenario-specific аргументы он не интерпретирует, а 
 internal static class CliArgumentParser
 {
     /// <summary>
-    /// Parses CLI arguments using the default scenario registry.
-    /// </summary>
-    /// <param name="args">Raw command-line arguments.</param>
-    /// <param name="parsed">Common parse result on success.</param>
-    /// <param name="errorText">Error message on failure.</param>
-    /// <returns><see langword="true"/> when parsing succeeds; otherwise <see langword="false"/>.</returns>
-    public static bool TryParse(
-        string[] args,
-        out CliParseResult parsed,
-        out string? errorText)
-    {
-        return TryParse(args, CliScenarioRegistry.Default, out parsed, out errorText);
-    }
-
-    /// <summary>
     /// Parses CLI arguments using the supplied scenario registry.
     /// </summary>
     /// <param name="args">Raw command-line arguments.</param>

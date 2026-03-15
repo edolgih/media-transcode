@@ -20,7 +20,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\\..\\src\\MediaTranscodeEngine.Cli.Core\\MediaTranscodeEngine.Cli.Core.csproj" />
     <ProjectReference Include="..\\..\\src\\MediaTranscodeEngine.Cli\\MediaTranscodeEngine.Cli.csproj" />
+    <ProjectReference Include="..\\..\\src\\MediaTranscodeEngine.Scenarios.ToH264Gpu\\MediaTranscodeEngine.Scenarios.ToH264Gpu.csproj" />
+    <ProjectReference Include="..\\..\\src\\MediaTranscodeEngine.Scenarios.ToMkvGpu\\MediaTranscodeEngine.Scenarios.ToMkvGpu.csproj" />
   </ItemGroup>
 
 </Project>

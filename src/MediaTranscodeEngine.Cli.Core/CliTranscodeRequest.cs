@@ -7,7 +7,7 @@ namespace MediaTranscodeEngine.Cli;
 /// <summary>
 /// Carries one CLI input together with the selected scenario name and raw scenario-specific arguments.
 /// </summary>
-internal sealed class CliTranscodeRequest
+public sealed class CliTranscodeRequest
 {
     /// <summary>
     /// Initializes a per-input CLI transcode request.

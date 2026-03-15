@@ -1,7 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\MediaTranscodeEngine.Runtime\MediaTranscodeEngine.Runtime.csproj" />
+    <ProjectReference Include="..\MediaTranscodeEngine.Cli.Core\MediaTranscodeEngine.Cli.Core.csproj" />
+    <ProjectReference Include="..\MediaTranscodeEngine.Scenarios.ToH264Gpu\MediaTranscodeEngine.Scenarios.ToH264Gpu.csproj" />
+    <ProjectReference Include="..\MediaTranscodeEngine.Scenarios.ToMkvGpu\MediaTranscodeEngine.Scenarios.ToMkvGpu.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +31,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>MediaTranscodeEngine.Cli</AssemblyName>
   </PropertyGroup>
 
 </Project>

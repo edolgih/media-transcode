@@ -17,7 +17,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 /// <summary>
 /// Implements the CLI contract for the legacy <c>tomkvgpu</c> application scenario.
 /// </summary>
-internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
+public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
 {
     private readonly ToMkvGpuInfoFormatter _infoFormatter;
     private readonly FfmpegSampleMeasurer? _sampleMeasurer;
@@ -36,7 +36,7 @@ internal sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     /// </summary>
     /// <param name="infoFormatter">Formatter used for info-mode output.</param>
     /// <param name="sampleMeasurer">Explicit sample measurer used for accurate autosample paths.</param>
-    internal ToMkvGpuCliScenarioHandler(
+    public ToMkvGpuCliScenarioHandler(
         ToMkvGpuInfoFormatter infoFormatter,
         FfmpegSampleMeasurer? sampleMeasurer)
     {

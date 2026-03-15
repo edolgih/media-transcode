@@ -9,7 +9,7 @@ namespace MediaTranscodeEngine.Cli.Parsing;
 /// <summary>
 /// Reads typed option values from scenario-local CLI tokens without introducing domain validation.
 /// </summary>
-internal static class CliOptionReader
+public static class CliOptionReader
 {
     public static bool TryReadRequiredValue(
         IReadOnlyList<string> args,

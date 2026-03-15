@@ -8,7 +8,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 /// <summary>
 /// Describes scenario-specific failure handling for logging and final CLI output.
 /// </summary>
-internal sealed record CliScenarioFailure(
+public sealed record CliScenarioFailure(
     LogLevel Level,
     string LogToken,
     string NonInfoOutput,

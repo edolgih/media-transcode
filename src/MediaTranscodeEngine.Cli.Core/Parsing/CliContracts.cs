@@ -6,7 +6,7 @@ namespace MediaTranscodeEngine.Cli.Parsing;
 /// <summary>
 /// Represents the common CLI parse result before scenario-specific arguments are interpreted.
 /// </summary>
-internal sealed class CliParseResult
+public sealed class CliParseResult
 {
     /// <summary>
     /// Initializes the common CLI parse result.
@@ -56,7 +56,7 @@ internal sealed class CliParseResult
 /// <summary>
 /// Describes one help row shown in CLI usage output.
 /// </summary>
-internal sealed class CliHelpOption
+public sealed class CliHelpOption
 {
     /// <summary>
     /// Initializes a CLI help row.
@@ -90,7 +90,7 @@ internal sealed class CliHelpOption
 /// <summary>
 /// Defines shared CLI option names and shared help rows.
 /// </summary>
-internal static class CliCommonOptions
+public static class CliCommonOptions
 {
     public const string HelpOptionName = "--help";
     public const string ShortHelpOptionName = "-h";

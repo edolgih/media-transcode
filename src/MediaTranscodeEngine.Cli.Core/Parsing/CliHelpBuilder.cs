@@ -11,16 +11,6 @@ namespace MediaTranscodeEngine.Cli.Parsing;
 internal static class CliHelpBuilder
 {
     /// <summary>
-    /// Builds help text using the default scenario registry.
-    /// </summary>
-    /// <param name="runtimeValues">Configured runtime executable paths.</param>
-    /// <returns>Rendered help text.</returns>
-    public static string BuildHelpText(RuntimeValues runtimeValues)
-    {
-        return BuildHelpText(runtimeValues, CliScenarioRegistry.Default);
-    }
-
-    /// <summary>
     /// Builds help text using the supplied scenario registry.
     /// </summary>
     /// <param name="runtimeValues">Configured runtime executable paths.</param>

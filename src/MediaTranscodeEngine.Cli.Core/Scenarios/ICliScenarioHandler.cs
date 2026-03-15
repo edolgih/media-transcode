@@ -12,7 +12,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 /// <summary>
 /// Defines the CLI-facing contract for one registered application scenario.
 /// </summary>
-internal interface ICliScenarioHandler
+public interface ICliScenarioHandler
 {
     /// <summary>
     /// Gets the stable scenario name used by the CLI.

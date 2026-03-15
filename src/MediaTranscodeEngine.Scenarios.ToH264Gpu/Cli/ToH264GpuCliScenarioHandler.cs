@@ -17,7 +17,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 /// <summary>
 /// Implements the CLI contract for the legacy <c>toh264gpu</c> application scenario.
 /// </summary>
-internal sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
+public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
 {
     private readonly ToH264GpuInfoFormatter _infoFormatter;
 

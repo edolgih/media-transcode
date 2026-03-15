@@ -173,7 +173,7 @@ public static class Program
             logger,
             services,
             runtimeValues,
-            services.GetService<CliScenarioRegistry>() ?? CliScenarioRegistry.Default,
+            services.GetService<CliScenarioRegistry>() ?? CreateDefaultScenarioRegistry(),
             readRedirectedStdIn: true);
     }
 
@@ -198,7 +198,7 @@ public static class Program
             logger,
             services,
             runtimeValues,
-            services.GetService<CliScenarioRegistry>() ?? CliScenarioRegistry.Default,
+            services.GetService<CliScenarioRegistry>() ?? CreateDefaultScenarioRegistry(),
             readRedirectedStdIn);
     }
 
@@ -351,5 +351,14 @@ public static class Program
     {
         return string.Equals(token, "--help", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(token, "-h", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static CliScenarioRegistry CreateDefaultScenarioRegistry()
+    {
+        return new CliScenarioRegistry(
+            [
+                new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
+                new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
+            ]);
     }
 }
