@@ -9,12 +9,25 @@ namespace Transcode.Runtime.Tools.Ffmpeg;
 /// </summary>
 public static class NvencPresetOptions
 {
-    private static readonly string[] SupportedPresetsValues = ["p1", "p2", "p3", "p4", "p5", "p6", "p7"];
+    public const string P1 = "p1";
+    public const string P2 = "p2";
+    public const string P3 = "p3";
+    public const string P4 = "p4";
+    public const string P5 = "p5";
+    public const string P6 = "p6";
+    public const string P7 = "p7";
+
+    private static readonly string[] SupportedPresetsValues = [P1, P2, P3, P4, P5, P6, P7];
 
     /// <summary>
     /// Gets the canonical NVENC preset values supported by Runtime.
     /// </summary>
     public static IReadOnlyList<string> SupportedPresets => SupportedPresetsValues;
+
+    /// <summary>
+    /// Gets the default NVENC preset used by Runtime when the caller did not override it.
+    /// </summary>
+    public static string DefaultPreset => P6;
 
     /// <summary>
     /// Determines whether the supplied NVENC preset value is supported.

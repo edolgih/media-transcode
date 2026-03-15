@@ -130,7 +130,7 @@ public sealed class FfmpegSampleMeasurer
             "-fps_mode:v", "cfr",
             "-vf", $"scale_cuda=-2:{targetHeight}:interp_algo={settings.Algorithm}:format=nv12",
             "-c:v", "h264_nvenc",
-            "-preset", "p6",
+            "-preset", NvencPresetOptions.DefaultPreset,
             "-rc", "vbr_hq",
             "-cq", settings.Cq.ToString(CultureInfo.InvariantCulture),
             "-b:v", "0",

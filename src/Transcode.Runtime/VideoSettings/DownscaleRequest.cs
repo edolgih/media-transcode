@@ -1,3 +1,5 @@
+using Transcode.Runtime.Tools.Ffmpeg;
+
 namespace Transcode.Runtime.VideoSettings;
 
 /*
@@ -12,7 +14,6 @@ public sealed class DownscaleRequest
 {
     private static readonly int[] SupportedTargetHeightsValues =
         [.. VideoSettingsProfiles.Default.GetSupportedDownscaleTargetHeights()];
-    private static readonly string[] SupportedAlgorithmsValues = ["bilinear", "bicubic", "lanczos"];
 
     /// <summary>
     /// Gets target heights that are supported by configured downscale profiles.
@@ -22,7 +23,7 @@ public sealed class DownscaleRequest
     /// <summary>
     /// Gets the canonical scaling algorithm values supported by Runtime.
     /// </summary>
-    public static IReadOnlyList<string> SupportedAlgorithms => SupportedAlgorithmsValues;
+    public static IReadOnlyList<string> SupportedAlgorithms => FfmpegScaleAlgorithms.SupportedAlgorithms;
 
     /// <summary>
     /// Initializes explicit downscale directives.
@@ -99,12 +100,7 @@ public sealed class DownscaleRequest
     /// </summary>
     public static bool IsSupportedAlgorithm(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        return SupportedAlgorithmsValues.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+        return FfmpegScaleAlgorithms.IsSupported(value);
     }
 
     private static string GetSupportedTargetHeightsDisplay()
@@ -114,7 +110,7 @@ public sealed class DownscaleRequest
 
     private static string GetSupportedAlgorithmsDisplay()
     {
-        return string.Join(", ", SupportedAlgorithmsValues);
+        return string.Join(", ", FfmpegScaleAlgorithms.SupportedAlgorithms);
     }
 
     private static string? NormalizeName(string? value)

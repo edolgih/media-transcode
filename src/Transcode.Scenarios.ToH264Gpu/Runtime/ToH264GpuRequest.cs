@@ -12,8 +12,6 @@ namespace Transcode.Scenarios.ToH264Gpu.Runtime;
 /// </summary>
 public sealed class ToH264GpuRequest
 {
-    private const string DefaultDownscaleAlgorithm = "bicubic";
-
     /// <summary>
     /// Initializes scenario-specific directives for the ToH264Gpu workflow.
     /// </summary>
@@ -42,10 +40,10 @@ public sealed class ToH264GpuRequest
         }
 
         KeepSource = keepSource;
-        Downscale = downscale?.WithDefaultAlgorithm(DefaultDownscaleAlgorithm);
+        Downscale = downscale?.WithDefaultAlgorithm(FfmpegScaleAlgorithms.Bicubic);
         KeepFramesPerSecond = keepFramesPerSecond;
         VideoSettings = videoSettings;
-        NvencPreset = normalizedNvencPreset ?? "p6";
+        NvencPreset = normalizedNvencPreset ?? NvencPresetOptions.DefaultPreset;
         Denoise = denoise;
         SynchronizeAudio = synchronizeAudio;
         OutputMkv = outputMkv;

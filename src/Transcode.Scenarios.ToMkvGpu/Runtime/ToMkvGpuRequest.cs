@@ -60,7 +60,7 @@ public sealed class ToMkvGpuRequest
         KeepSource = keepSource;
         VideoSettings = videoSettings;
         Downscale = downscale;
-        NvencPreset = normalizedNvencPreset ?? "p6";
+        NvencPreset = normalizedNvencPreset ?? NvencPresetOptions.DefaultPreset;
         MaxFramesPerSecond = maxFramesPerSecond;
     }
 

@@ -1,3 +1,4 @@
+using Transcode.Runtime.Tools.Ffmpeg;
 using Transcode.Runtime.VideoSettings;
 
 namespace Transcode.Runtime.VideoSettings.Profiles;
@@ -77,15 +78,15 @@ internal static class VideoSettings576Profile
             ],
             defaults:
             [
-                new VideoSettingsDefaults("anime", "high", Cq: 22, Maxrate: 3.3m, Bufsize: 6.5m, Algorithm: "bilinear", CqMin: 19, CqMax: 24, MaxrateMin: 2.4m, MaxrateMax: 4.2m),
-                new VideoSettingsDefaults("anime", "default", Cq: 23, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: "bilinear", CqMin: 20, CqMax: 26, MaxrateMin: 2.0m, MaxrateMax: 3.0m),
-                new VideoSettingsDefaults("anime", "low", Cq: 29, Maxrate: 2.1m, Bufsize: 4.1m, Algorithm: "bilinear", CqMin: 24, CqMax: 35, MaxrateMin: 1.0m, MaxrateMax: 3.2m),
-                new VideoSettingsDefaults("mult", "high", Cq: 24, Maxrate: 2.7m, Bufsize: 5.3m, Algorithm: "bilinear", CqMin: 21, CqMax: 26, MaxrateMin: 2.4m, MaxrateMax: 3.2m),
-                new VideoSettingsDefaults("mult", "default", Cq: 26, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: "bilinear", CqMin: 23, CqMax: 29, MaxrateMin: 2.0m, MaxrateMax: 2.8m),
-                new VideoSettingsDefaults("mult", "low", Cq: 29, Maxrate: 1.7m, Bufsize: 3.5m, Algorithm: "bilinear", CqMin: 26, CqMax: 31, MaxrateMin: 1.6m, MaxrateMax: 2.0m),
-                new VideoSettingsDefaults("film", "high", Cq: 24, Maxrate: 3.7m, Bufsize: 7.4m, Algorithm: "bilinear", CqMin: 16, CqMax: 33, MaxrateMin: 2.0m, MaxrateMax: 8.0m),
-                new VideoSettingsDefaults("film", "default", Cq: 26, Maxrate: 3.4m, Bufsize: 6.9m, Algorithm: "bilinear", CqMin: 18, CqMax: 35, MaxrateMin: 1.6m, MaxrateMax: 8.0m),
-                new VideoSettingsDefaults("film", "low", Cq: 30, Maxrate: 2.2m, Bufsize: 4.5m, Algorithm: "bilinear", CqMin: 20, CqMax: 38, MaxrateMin: 1.2m, MaxrateMax: 4.0m)
+                new VideoSettingsDefaults("anime", "high", Cq: 22, Maxrate: 3.3m, Bufsize: 6.5m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 19, CqMax: 24, MaxrateMin: 2.4m, MaxrateMax: 4.2m),
+                new VideoSettingsDefaults("anime", "default", Cq: 23, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 20, CqMax: 26, MaxrateMin: 2.0m, MaxrateMax: 3.0m),
+                new VideoSettingsDefaults("anime", "low", Cq: 29, Maxrate: 2.1m, Bufsize: 4.1m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 24, CqMax: 35, MaxrateMin: 1.0m, MaxrateMax: 3.2m),
+                new VideoSettingsDefaults("mult", "high", Cq: 24, Maxrate: 2.7m, Bufsize: 5.3m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 21, CqMax: 26, MaxrateMin: 2.4m, MaxrateMax: 3.2m),
+                new VideoSettingsDefaults("mult", "default", Cq: 26, Maxrate: 2.4m, Bufsize: 4.8m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 23, CqMax: 29, MaxrateMin: 2.0m, MaxrateMax: 2.8m),
+                new VideoSettingsDefaults("mult", "low", Cq: 29, Maxrate: 1.7m, Bufsize: 3.5m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 26, CqMax: 31, MaxrateMin: 1.6m, MaxrateMax: 2.0m),
+                new VideoSettingsDefaults("film", "high", Cq: 24, Maxrate: 3.7m, Bufsize: 7.4m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 16, CqMax: 33, MaxrateMin: 2.0m, MaxrateMax: 8.0m),
+                new VideoSettingsDefaults("film", "default", Cq: 26, Maxrate: 3.4m, Bufsize: 6.9m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 18, CqMax: 35, MaxrateMin: 1.6m, MaxrateMax: 8.0m),
+                new VideoSettingsDefaults("film", "low", Cq: 30, Maxrate: 2.2m, Bufsize: 4.5m, Algorithm: FfmpegScaleAlgorithms.Bilinear, CqMin: 20, CqMax: 38, MaxrateMin: 1.2m, MaxrateMax: 4.0m)
             ],
             globalQualityRanges:
                 VideoSettingsGlobalRanges.CreateStandardQualityRanges(),
