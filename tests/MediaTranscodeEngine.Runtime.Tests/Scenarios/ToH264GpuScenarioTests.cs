@@ -11,12 +11,12 @@ namespace MediaTranscodeEngine.Runtime.Tests.Scenarios;
 Они проверяют выбор между remux и NVENC-перекодированием и влияние scenario-specific опций.
 */
 /// <summary>
-/// Verifies planning behavior of the ToH264Gpu scenario.
+/// Verifies decision behavior of the ToH264Gpu scenario.
 /// </summary>
 public sealed class ToH264GpuScenarioTests
 {
     [Fact]
-    public void BuildPlan_WhenInputIsCopyCompatibleM4v_CreatesRemuxOnlyMp4Plan()
+    public void BuildDecision_WhenInputIsCopyCompatibleM4v_CreatesRemuxOnlyMp4Plan()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -26,8 +26,8 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "h264",
             audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         actual.TargetContainer.Should().Be("mp4");
         actual.CopyVideo.Should().BeTrue();
@@ -41,7 +41,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenFrameRateLooksVariable_CreatesEncodePlan()
+    public void BuildDecision_WhenFrameRateLooksVariable_CreatesEncodePlan()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -53,7 +53,7 @@ public sealed class ToH264GpuScenarioTests
             rawFramesPerSecond: 60,
             averageFramesPerSecond: 30);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeFalse();
         GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be("h264");
@@ -61,7 +61,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenSynchronizeAudioIsRequested_KeepsCopyCompatibleVideoAndDisablesAudioCopy()
+    public void BuildDecision_WhenSynchronizeAudioIsRequested_KeepsCopyCompatibleVideoAndDisablesAudioCopy()
     {
         var sut = CreateSut(new ToH264GpuRequest(synchronizeAudio: true));
         var video = CreateVideo(
@@ -71,7 +71,7 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "h264",
             audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.FixTimestamps.Should().BeTrue();
         actual.SynchronizeAudio.Should().BeTrue();
@@ -80,7 +80,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenSynchronizeAudioIsRequested_PopulatesRepairAudioExecutionPayload()
+    public void BuildDecision_WhenSynchronizeAudioIsRequested_PopulatesRepairAudioExecutionPayload()
     {
         var sut = CreateSut(new ToH264GpuRequest(synchronizeAudio: true));
         var video = CreateVideo(
@@ -90,8 +90,8 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "h264",
             audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeFalse();
@@ -106,7 +106,7 @@ public sealed class ToH264GpuScenarioTests
     [Theory]
     [InlineData(@"C:\video\input.wmv")]
     [InlineData(@"C:\video\input.asf")]
-    public void BuildPlan_WhenInputExtensionRequiresTimestampRepair_EnablesTimestampRepair(string filePath)
+    public void BuildDecision_WhenInputExtensionRequiresTimestampRepair_EnablesTimestampRepair(string filePath)
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -116,7 +116,7 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "wmv3",
             audioCodecs: ["wma"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.FixTimestamps.Should().BeTrue();
         actual.SynchronizeAudio.Should().BeTrue();
@@ -124,7 +124,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenFormatNameContainsAsf_EnablesTimestampRepair()
+    public void BuildDecision_WhenFormatNameContainsAsf_EnablesTimestampRepair()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -134,7 +134,7 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "wmv3",
             audioCodecs: ["wma"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.FixTimestamps.Should().BeTrue();
         actual.SynchronizeAudio.Should().BeTrue();
@@ -144,7 +144,7 @@ public sealed class ToH264GpuScenarioTests
     [Theory]
     [InlineData("aac")]
     [InlineData("mp3")]
-    public void BuildPlan_WhenPrimaryAudioCodecIsCopyCompatible_EnablesAudioCopy(string codec)
+    public void BuildDecision_WhenPrimaryAudioCodecIsCopyCompatible_EnablesAudioCopy(string codec)
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -154,14 +154,14 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "h264",
             audioCodecs: [codec]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
     }
 
     [Fact]
-    public void BuildPlan_WhenPrimaryAudioCodecIsAc3_DisablesAudioCopy()
+    public void BuildDecision_WhenPrimaryAudioCodecIsAc3_DisablesAudioCopy()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -172,8 +172,8 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             primaryAudioBitrate: 192_000);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
@@ -183,7 +183,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenPrimaryAudioBitrateIsMissing_UsesDefaultAudioBitrate()
+    public void BuildDecision_WhenPrimaryAudioBitrateIsMissing_UsesDefaultAudioBitrate()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -194,14 +194,14 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             primaryAudioBitrate: null);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         spec.AudioBitrateKbps.Should().Be(192);
     }
 
     [Fact]
-    public void BuildPlan_WhenOrdinaryEncodeHasNoBitrateHint_UsesProfileDefaults()
+    public void BuildDecision_WhenOrdinaryEncodeHasNoBitrateHint_UsesProfileDefaults()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -213,8 +213,8 @@ public sealed class ToH264GpuScenarioTests
             duration: TimeSpan.Zero,
             bitrate: null);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
         spec.VideoCq.Should().Be(21);
@@ -223,7 +223,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenCqIsSpecified_UsesCqOverride()
+    public void BuildDecision_WhenCqIsSpecified_UsesCqOverride()
     {
         var sut = CreateSut(new ToH264GpuRequest(
             videoSettings: new VideoSettingsRequest(cq: 19)));
@@ -234,8 +234,8 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "av1",
             audioCodecs: ["ac3"]);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         spec.VideoCq.Should().Be(19);
         spec.VideoMaxrateKbps.Should().Be(6000);
@@ -243,7 +243,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenOrdinaryEncodeUsesProfileOnlyRequest_UsesFastAutosampleDefaults()
+    public void BuildDecision_WhenOrdinaryEncodeUsesProfileOnlyRequest_UsesFastAutosampleDefaults()
     {
         var sut = CreateSut(new ToH264GpuRequest(
             videoSettings: new VideoSettingsRequest(
@@ -256,8 +256,8 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "av1",
             audioCodecs: ["ac3"]);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         spec.VideoCq.Should().Be(23);
         spec.VideoMaxrateKbps.Should().Be(2600);
@@ -265,7 +265,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenKeepSourceIsRequestedAndTargetPathMatchesSource_ReturnsDistinctOutputPath()
+    public void BuildDecision_WhenKeepSourceIsRequestedAndTargetPathMatchesSource_ReturnsDistinctOutputPath()
     {
         var sut = CreateSut(new ToH264GpuRequest(keepSource: true));
         var video = CreateVideo(
@@ -275,14 +275,14 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "h264",
             audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.KeepSource.Should().BeTrue();
         actual.OutputPath.Should().Be(@"C:\video\input_out.mp4");
     }
 
     [Fact]
-    public void BuildPlan_WhenEncodePresetIsNotSpecified_UsesP6Preset()
+    public void BuildDecision_WhenEncodePresetIsNotSpecified_UsesP6Preset()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -292,13 +292,13 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "av1",
             audioCodecs: ["ac3"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         GetRequiredEncodeVideo(actual).EncoderPreset.Should().Be("p6");
     }
 
     [Fact]
-    public void BuildPlan_WhenVideoIsEncoded_EnablesDefaultAdaptiveQuantization()
+    public void BuildDecision_WhenVideoIsEncoded_EnablesDefaultAdaptiveQuantization()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -308,15 +308,15 @@ public sealed class ToH264GpuScenarioTests
             videoCodec: "av1",
             audioCodecs: ["ac3"]);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         spec.EnableAdaptiveQuantization.Should().BeTrue();
         spec.AqStrength.Should().BeNull();
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscaleIsRequestedAndSourceIsAlreadySmall_KeepsSourceDimensions()
+    public void BuildDecision_WhenDownscaleIsRequestedAndSourceIsAlreadySmall_KeepsSourceDimensions()
     {
         var sut = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576)));
         var video = CreateVideo(
@@ -327,14 +327,14 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["aac"],
             height: 480);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.Video.Should().BeOfType<CopyVideoPlan>();
         actual.CopyVideo.Should().BeTrue();
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscaleIsRequestedAndCopyIsStillSafe_CreatesRemuxOnlyPlan()
+    public void BuildDecision_WhenDownscaleIsRequestedAndCopyIsStillSafe_CreatesRemuxOnlyPlan()
     {
         var sut = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576)));
         var video = CreateVideo(
@@ -345,7 +345,7 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["aac"],
             height: 480);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
@@ -353,7 +353,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscaleIsRequestedForLargeSource_CapsFrameRateTo30000Over1001()
+    public void BuildDecision_WhenDownscaleIsRequestedForLargeSource_CapsFrameRateTo30000Over1001()
     {
         var sut = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576)));
         var video = CreateVideo(
@@ -365,7 +365,7 @@ public sealed class ToH264GpuScenarioTests
             height: 1080,
             framesPerSecond: 59.94);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
         var encodeVideo = GetRequiredEncodeVideo(actual);
 
         encodeVideo.Downscale!.TargetHeight.Should().Be(576);
@@ -375,7 +375,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscaleUsesProfileOnlyRequest_UsesProfileDefaults()
+    public void BuildDecision_WhenDownscaleUsesProfileOnlyRequest_UsesProfileDefaults()
     {
         var sut = CreateSut(new ToH264GpuRequest(
             downscale: new DownscaleRequest(576),
@@ -390,8 +390,8 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             height: 1080);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(576);
         spec.VideoCq.Should().Be(23);
@@ -400,7 +400,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale480UsesProfileOnlyRequest_UsesProfileDefaults()
+    public void BuildDecision_WhenDownscale480UsesProfileOnlyRequest_UsesProfileDefaults()
     {
         var sut = CreateSut(new ToH264GpuRequest(
             downscale: new DownscaleRequest(480),
@@ -415,8 +415,8 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             height: 1080);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(480);
         spec.VideoCq.Should().Be(27);
@@ -425,7 +425,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale424UsesProfileOnlyRequest_UsesFastAutosampleDefaults()
+    public void BuildDecision_WhenDownscale424UsesProfileOnlyRequest_UsesFastAutosampleDefaults()
     {
         var sut = CreateSut(new ToH264GpuRequest(
             downscale: new DownscaleRequest(424),
@@ -440,8 +440,8 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             height: 1080);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
         spec.VideoCq.Should().Be(26);
@@ -450,7 +450,7 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenSourceAudioBitrateIsInsideCorridor_UsesSourceAudioBitrate()
+    public void BuildDecision_WhenSourceAudioBitrateIsInsideCorridor_UsesSourceAudioBitrate()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -461,14 +461,14 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             primaryAudioBitrate: 192_000);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         spec.AudioBitrateKbps.Should().Be(192);
     }
 
     [Fact]
-    public void BuildPlan_WhenSourceAudioBitrateIsAboveCorridor_ClampsAudioBitrate()
+    public void BuildDecision_WhenSourceAudioBitrateIsAboveCorridor_ClampsAudioBitrate()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -479,14 +479,14 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             primaryAudioBitrate: 384_000);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         spec.AudioBitrateKbps.Should().Be(320);
     }
 
     [Fact]
-    public void BuildPlan_WhenSourceAudioBitrateIsBelowCorridor_RaisesAudioBitrateToMinimum()
+    public void BuildDecision_WhenSourceAudioBitrateIsBelowCorridor_RaisesAudioBitrateToMinimum()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -497,14 +497,14 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["ac3"],
             primaryAudioBitrate: 32_000);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         spec.AudioBitrateKbps.Should().Be(48);
     }
 
     [Fact]
-    public void BuildPlan_WhenPrimaryAudioCodecIsAmrNb_UsesMonoResampleAudioOptions()
+    public void BuildDecision_WhenPrimaryAudioCodecIsAmrNb_UsesMonoResampleAudioOptions()
     {
         var sut = CreateSut();
         var video = CreateVideo(
@@ -515,8 +515,8 @@ public sealed class ToH264GpuScenarioTests
             audioCodecs: ["amr_nb"],
             primaryAudioBitrate: 12_000);
 
-        var actual = sut.BuildPlan(video);
-        var spec = BuildExecutionSpec(sut, video, actual);
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
 
         actual.CopyAudio.Should().BeFalse();
         spec.AudioSampleRate.Should().Be(48000);
@@ -531,14 +531,9 @@ public sealed class ToH264GpuScenarioTests
             : new ToH264GpuScenario(request);
     }
 
-    private static ToH264GpuDecision BuildExecutionSpec(ToH264GpuScenario sut, SourceVideo video, ToH264GpuDecision plan)
+    private static EncodeVideoPlan GetRequiredEncodeVideo(ToH264GpuDecision decision)
     {
-        return sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToH264GpuDecision>().Subject;
-    }
-
-    private static EncodeVideoPlan GetRequiredEncodeVideo(ToH264GpuDecision plan)
-    {
-        return plan.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
+        return decision.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
     }
 
     private static SourceVideo CreateVideo(

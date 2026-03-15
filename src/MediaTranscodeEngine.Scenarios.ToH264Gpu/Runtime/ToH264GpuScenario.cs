@@ -122,17 +122,6 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             audioExecution: audioExecution);
     }
 
-    internal ToH264GpuDecision BuildPlan(SourceVideo video)
-    {
-        return BuildDecision(video);
-    }
-
-    internal ToH264GpuDecision BuildExecutionSpec(SourceVideo video, ToH264GpuDecision decision)
-    {
-        ArgumentNullException.ThrowIfNull(video);
-        return decision ?? throw new ArgumentNullException(nameof(decision));
-    }
-
     /// <inheritdoc />
     protected override string FormatInfoCore(SourceVideo video)
     {

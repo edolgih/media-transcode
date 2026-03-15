@@ -65,11 +65,6 @@ public sealed class ToMkvGpuFfmpegTool
                 encodeVideo.TargetVideoCodec.Equals("h265", StringComparison.OrdinalIgnoreCase));
     }
 
-    internal bool CanHandle(ToMkvGpuDecision planDecision, ToMkvGpuDecision? executionDecision)
-    {
-        return CanHandle(Merge(planDecision, executionDecision));
-    }
-
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and decision.
     /// </summary>
@@ -105,11 +100,6 @@ public sealed class ToMkvGpuFfmpegTool
         FfmpegExecutionLayout.AppendPostOperations(commands, video.FilePath, decision.KeepSource, workingOutputPath, finalOutputPath);
 
         return new ScenarioExecution(commands);
-    }
-
-    internal ScenarioExecution BuildExecution(SourceVideo video, ToMkvGpuDecision planDecision, ToMkvGpuDecision? executionDecision)
-    {
-        return BuildExecution(video, Merge(planDecision, executionDecision));
     }
 
     private static bool IsNoOp(SourceVideo video, ToMkvGpuDecision decision)
@@ -289,21 +279,6 @@ public sealed class ToMkvGpuFfmpegTool
     {
         return decision.VideoResolution
             ?? throw new InvalidOperationException("ToMkvGpu video resolution details are required for this operation.");
-    }
-
-    private static ToMkvGpuDecision Merge(ToMkvGpuDecision planDecision, ToMkvGpuDecision? executionDecision)
-    {
-        ArgumentNullException.ThrowIfNull(planDecision);
-
-        return new ToMkvGpuDecision(
-            targetContainer: planDecision.TargetContainer,
-            video: planDecision.Video,
-            audio: planDecision.Audio,
-            keepSource: planDecision.KeepSource,
-            outputPath: planDecision.OutputPath,
-            applyOverlayBackground: planDecision.ApplyOverlayBackground,
-            videoResolution: executionDecision?.VideoResolution,
-            sourceBitrate: executionDecision?.SourceBitrate);
     }
 
     private static string FormatRate(decimal value)

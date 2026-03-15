@@ -208,17 +208,6 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             sourceBitrate: sourceBitrate);
     }
 
-    internal ToMkvGpuDecision BuildPlan(SourceVideo video)
-    {
-        return BuildDecision(video);
-    }
-
-    internal ToMkvGpuDecision BuildExecutionSpec(SourceVideo video, ToMkvGpuDecision decision)
-    {
-        ArgumentNullException.ThrowIfNull(video);
-        return decision ?? throw new ArgumentNullException(nameof(decision));
-    }
-
     /// <inheritdoc />
     protected override string FormatInfoCore(SourceVideo video)
     {

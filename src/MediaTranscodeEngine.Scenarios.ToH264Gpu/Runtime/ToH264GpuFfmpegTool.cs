@@ -75,11 +75,6 @@ public sealed class ToH264GpuFfmpegTool
                encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase);
     }
 
-    internal bool CanHandle(ToH264GpuDecision planDecision, ToH264GpuDecision executionDecision)
-    {
-        return CanHandle(Merge(planDecision, executionDecision));
-    }
-
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and decision.
     /// </summary>
@@ -106,11 +101,6 @@ public sealed class ToH264GpuFfmpegTool
         FfmpegExecutionLayout.AppendPostOperations(commands, video.FilePath, decision.KeepSource, workingOutputPath, finalOutputPath);
 
         return new ScenarioExecution(commands);
-    }
-
-    internal ScenarioExecution BuildExecution(SourceVideo video, ToH264GpuDecision planDecision, ToH264GpuDecision executionDecision)
-    {
-        return BuildExecution(video, Merge(planDecision, executionDecision));
     }
 
     private static bool IsNoOp(SourceVideo video, ToH264GpuDecision decision)
@@ -387,19 +377,4 @@ public sealed class ToH264GpuFfmpegTool
             ?? throw new InvalidOperationException("Audio execution spec is required for this operation.");
     }
 
-    private static ToH264GpuDecision Merge(ToH264GpuDecision planDecision, ToH264GpuDecision executionDecision)
-    {
-        ArgumentNullException.ThrowIfNull(planDecision);
-        ArgumentNullException.ThrowIfNull(executionDecision);
-
-        return new ToH264GpuDecision(
-            targetContainer: planDecision.TargetContainer,
-            videoPlan: planDecision.Video,
-            audioPlan: planDecision.Audio,
-            keepSource: planDecision.KeepSource,
-            outputPath: planDecision.OutputPath,
-            mux: executionDecision.Mux,
-            videoExecution: executionDecision.VideoExecutionDetails,
-            audioExecution: executionDecision.AudioExecutionDetails);
-    }
 }

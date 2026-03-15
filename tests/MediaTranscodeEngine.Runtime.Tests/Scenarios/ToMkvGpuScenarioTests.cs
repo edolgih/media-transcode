@@ -13,19 +13,19 @@ namespace MediaTranscodeEngine.Runtime.Tests.Scenarios;
 Они покрывают принятие решений между remux, encode и explicit downscale путями.
 */
 /// <summary>
-/// Verifies planning behavior of the ToMkvGpu scenario.
+/// Verifies decision behavior of the ToMkvGpu scenario.
 /// </summary>
 public sealed class ToMkvGpuScenarioTests
 {
     [Theory]
     [InlineData("h264")]
     [InlineData("mpeg4")]
-    public void BuildPlan_WhenVideoCodecIsCopyCompatibleAndNoOverrides_CopiesVideo(string videoCodec)
+    public void BuildDecision_WhenVideoCodecIsCopyCompatibleAndNoOverrides_CopiesVideo(string videoCodec)
     {
         var sut = CreateSut();
         var video = CreateVideo(videoCodec: videoCodec, audioCodecs: ["aac"], container: "mkv");
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeTrue();
         actual.Video.Should().BeOfType<CopyVideoPlan>();
@@ -34,24 +34,24 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenSourceContainerIsNotMkv_ReturnsMkvOutputPath()
+    public void BuildDecision_WhenSourceContainerIsNotMkv_ReturnsMkvOutputPath()
     {
         var sut = CreateSut();
         var video = CreateVideo(container: "mp4");
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.TargetContainer.Should().Be("mkv");
         actual.OutputPath.Should().Be(@"C:\video\input.mkv");
     }
 
     [Fact]
-    public void BuildPlan_WhenKeepSourceAndMkvInputRequiresEncode_ReturnsDistinctOutputPath()
+    public void BuildDecision_WhenKeepSourceAndMkvInputRequiresEncode_ReturnsDistinctOutputPath()
     {
         var sut = CreateSut(keepSource: true);
         var video = CreateVideo(container: "mkv", videoCodec: "av1", filePath: @"C:\video\input.mkv");
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.KeepSource.Should().BeTrue();
         actual.CopyVideo.Should().BeFalse();
@@ -61,12 +61,12 @@ public sealed class ToMkvGpuScenarioTests
     [Theory]
     [InlineData(@"C:\video\input.wmv")]
     [InlineData(@"C:\video\input.asf")]
-    public void BuildPlan_WhenInputIsAsfFamily_ForcesEncodeAndTimestampFix(string filePath)
+    public void BuildDecision_WhenInputIsAsfFamily_ForcesEncodeAndTimestampFix(string filePath)
     {
         var sut = CreateSut();
         var video = CreateVideo(container: Path.GetExtension(filePath).TrimStart('.'), videoCodec: "h264", audioCodecs: ["aac"], filePath: filePath);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
@@ -75,12 +75,12 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenVideoCodecIsNotCopyCompatible_UsesH264GpuEncodePlan()
+    public void BuildDecision_WhenVideoCodecIsNotCopyCompatible_UsesH264GpuEncodePlan()
     {
         var sut = CreateSut();
         var video = CreateVideo(videoCodec: "av1", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
         var encodeVideo = GetRequiredEncodeVideo(actual);
 
         actual.CopyVideo.Should().BeFalse();
@@ -93,12 +93,12 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenOverlayBackgroundIsRequested_ForcesVideoEncode()
+    public void BuildDecision_WhenOverlayBackgroundIsRequested_ForcesVideoEncode()
     {
         var sut = CreateSut(overlayBackground: true);
         var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeFalse();
         actual.ApplyOverlayBackground.Should().BeTrue();
@@ -106,12 +106,12 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenAudioContainsNonAac_ForcesAudioEncodeWhileKeepingVideoCopy()
+    public void BuildDecision_WhenAudioContainsNonAac_ForcesAudioEncodeWhileKeepingVideoCopy()
     {
         var sut = CreateSut();
         var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac", "ac3"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeFalse();
@@ -119,12 +119,12 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenSynchronizeAudioIsRequested_ForcesAudioEncode()
+    public void BuildDecision_WhenSynchronizeAudioIsRequested_ForcesAudioEncode()
     {
         var sut = CreateSut(synchronizeAudio: true);
         var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeFalse();
@@ -133,12 +133,12 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenMaxFpsIsLowerThanSourceFrameRate_ForcesVideoEncodeWithTargetFrameRate()
+    public void BuildDecision_WhenMaxFpsIsLowerThanSourceFrameRate_ForcesVideoEncodeWithTargetFrameRate()
     {
         var sut = CreateSut(maxFramesPerSecond: 50);
         var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"], framesPerSecond: 59.94);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
@@ -147,12 +147,12 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenMaxFpsIsNotLowerThanSourceFrameRate_DoesNotForceVideoEncode()
+    public void BuildDecision_WhenMaxFpsIsNotLowerThanSourceFrameRate_DoesNotForceVideoEncode()
     {
         var sut = CreateSut(maxFramesPerSecond: 30);
         var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"], framesPerSecond: 23.976);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
@@ -169,24 +169,24 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenVideoIsEncoded_AlwaysEncodesAudio()
+    public void BuildDecision_WhenVideoIsEncoded_AlwaysEncodesAudio()
     {
         var sut = CreateSut();
         var video = CreateVideo(videoCodec: "hevc", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale576RequestedForLargerSource_AppliesDownscaleAndForcesEncode()
+    public void BuildDecision_WhenDownscale576RequestedForLargerSource_AppliesDownscaleAndForcesEncode()
     {
         var sut = CreateSut(downscaleTarget: 576);
         var video = CreateVideo(height: 1080, videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
         var encodeVideo = GetRequiredEncodeVideo(actual);
 
         encodeVideo.VideoSettings.Should().BeNull();
@@ -198,74 +198,74 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale576RequestedForSmallerSource_DoesNotApplyDownscale()
+    public void BuildDecision_WhenDownscale576RequestedForSmallerSource_DoesNotApplyDownscale()
     {
         var sut = CreateSut(downscaleTarget: 576);
         var video = CreateVideo(height: 480, videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.Video.Should().BeOfType<CopyVideoPlan>();
         actual.CopyVideo.Should().BeTrue();
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale480RequestedForLargerSource_AppliesDownscale()
+    public void BuildDecision_WhenDownscale480RequestedForLargerSource_AppliesDownscale()
     {
         var sut = CreateSut(downscaleTarget: 480);
         var video = CreateVideo(height: 692, videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(480);
         actual.CopyVideo.Should().BeFalse();
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale424RequestedForLargerSource_AppliesDownscale()
+    public void BuildDecision_WhenDownscale424RequestedForLargerSource_AppliesDownscale()
     {
         var sut = CreateSut(downscaleTarget: 424);
         var video = CreateVideo(height: 576, videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
         actual.CopyVideo.Should().BeFalse();
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale576RequestedForZeroHeight_ThrowsBucketHint()
+    public void BuildDecision_WhenDownscale576RequestedForZeroHeight_ThrowsBucketHint()
     {
         var sut = CreateSut(downscaleTarget: 576);
         var video = CreateVideo(height: 0, videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var action = () => sut.BuildPlan(video);
+        var action = () => sut.BuildDecision(video);
 
         action.Should().Throw<RuntimeFailureException>()
             .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale480RequestedForZeroHeight_ThrowsBucketHint()
+    public void BuildDecision_WhenDownscale480RequestedForZeroHeight_ThrowsBucketHint()
     {
         var sut = CreateSut(downscaleTarget: 480);
         var video = CreateVideo(height: 0, videoCodec: "h264", audioCodecs: ["aac"]);
 
-        var action = () => sut.BuildPlan(video);
+        var action = () => sut.BuildDecision(video);
 
         action.Should().Throw<RuntimeFailureException>()
             .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]
-    public void BuildPlan_WhenEncodeOverridesAreRequestedWithoutResize_PreservesOverridesForToolRendering()
+    public void BuildDecision_WhenEncodeOverridesAreRequestedWithoutResize_PreservesOverridesForToolRendering()
     {
         var sut = new ToMkvGpuScenario(new ToMkvGpuRequest(
             videoSettings: new VideoSettingsRequest(cq: 23),
             nvencPreset: "p5"));
         var video = CreateVideo(container: "mp4", videoCodec: "av1", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeFalse();
         var encodeVideo = GetRequiredEncodeVideo(actual);
@@ -275,12 +275,12 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale720RequestedForLargerSource_AppliesDownscaleAndForcesEncode()
+    public void BuildDecision_WhenDownscale720RequestedForLargerSource_AppliesDownscaleAndForcesEncode()
     {
         var sut = CreateSut(downscaleTarget: 720);
         var video = CreateVideo();
 
-        var actual = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
         var encodeVideo = GetRequiredEncodeVideo(actual);
 
         encodeVideo.VideoSettings.Should().BeNull();
@@ -292,7 +292,7 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale576SourceBucketIsMissing_ThrowsInformativeError()
+    public void BuildDecision_WhenDownscale576SourceBucketIsMissing_ThrowsInformativeError()
     {
         var profile = new VideoSettingsProfile(
             targetHeight: 576,
@@ -316,14 +316,14 @@ public sealed class ToMkvGpuScenarioTests
             VideoSettingsProfiles.Create(profile));
         var video = CreateVideo(container: "mp4", height: 900, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
 
-        var action = () => sut.BuildPlan(video);
+        var action = () => sut.BuildDecision(video);
 
         action.Should().Throw<RuntimeFailureException>()
             .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]
-    public void BuildPlan_WhenDownscale576BucketRangesAreIncomplete_ThrowsInformativeError()
+    public void BuildDecision_WhenDownscale576BucketRangesAreIncomplete_ThrowsInformativeError()
     {
         var profile = new VideoSettingsProfile(
             targetHeight: 576,
@@ -347,36 +347,32 @@ public sealed class ToMkvGpuScenarioTests
             VideoSettingsProfiles.Create(profile));
         var video = CreateVideo(container: "mp4", height: 1080, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
 
-        var action = () => sut.BuildPlan(video);
+        var action = () => sut.BuildDecision(video);
 
         action.Should().Throw<RuntimeFailureException>()
             .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]
-    public void BuildExecutionSpec_WhenPlanCopiesVideo_ReturnsDecisionWithoutEncodePayload()
+    public void BuildDecision_WhenPlanCopiesVideo_ReturnsDecisionWithoutEncodePayload()
     {
         var sut = CreateSut();
         var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"], container: "mkv");
-        var plan = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video);
 
-        var actual = sut.BuildExecutionSpec(video, plan);
-
-        actual.Should().BeSameAs(plan);
         actual.VideoResolution.Should().BeNull();
     }
 
     [Fact]
-    public void BuildExecutionSpec_WhenEncodeIsRequired_ReturnsResolvedTomkvgpuPayload()
+    public void BuildDecision_WhenEncodeIsRequired_ReturnsResolvedTomkvgpuPayload()
     {
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")),
             VideoSettingsProfiles.Default,
             (_, _, _, _) => 42m);
         var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", bitrate: 10_000_000);
-        var plan = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
 
-        var actual = sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToMkvGpuDecision>().Subject;
         actual.VideoResolution.Should().NotBeNull();
         actual.SourceBitrate.Should().NotBeNull();
         var videoResolution = actual.VideoResolution!;
@@ -388,16 +384,15 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildExecutionSpec_WhenAccurateAutosampleIsRequested_UsesSampleBackedResolution()
+    public void BuildDecision_WhenAccurateAutosampleIsRequested_UsesSampleBackedResolution()
     {
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default", autoSampleMode: "accurate")),
             VideoSettingsProfiles.Default,
             (_, _, _, _) => 42m);
         var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", bitrate: 10_000_000);
-        var plan = sut.BuildPlan(video);
+        var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
 
-        var actual = sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToMkvGpuDecision>().Subject;
         actual.VideoResolution.Should().NotBeNull();
         var videoResolution = actual.VideoResolution!;
 
@@ -420,9 +415,9 @@ public sealed class ToMkvGpuScenarioTests
             maxFramesPerSecond: maxFramesPerSecond));
     }
 
-    private static EncodeVideoPlan GetRequiredEncodeVideo(ToMkvGpuDecision plan)
+    private static EncodeVideoPlan GetRequiredEncodeVideo(ToMkvGpuDecision decision)
     {
-        return plan.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
+        return decision.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
     }
 
     private static SourceVideo CreateVideo(
