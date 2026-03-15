@@ -36,8 +36,8 @@ public sealed class ToH264GpuScenarioTests
         actual.OutputPath.Should().Be(@"C:\video\input.mp4");
         spec.OptimizeForFastStart.Should().BeTrue();
         spec.MapPrimaryAudioOnly.Should().BeTrue();
-        spec.Video.Should().BeNull();
-        spec.Audio.Should().BeNull();
+        spec.VideoExecutionDetails.Should().BeNull();
+        spec.AudioExecutionDetails.Should().BeNull();
     }
 
     [Fact]
@@ -95,8 +95,8 @@ public sealed class ToH264GpuScenarioTests
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeFalse();
-        spec.Video.Should().BeNull();
-        spec.Audio.Should().NotBeNull();
+        spec.VideoExecutionDetails.Should().BeNull();
+        spec.AudioExecutionDetails.Should().NotBeNull();
         spec.AudioBitrateKbps.Should().Be(128);
         spec.AudioSampleRate.Should().Be(48000);
         spec.AudioChannels.Should().Be(2);
@@ -177,8 +177,8 @@ public sealed class ToH264GpuScenarioTests
 
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
-        spec.Video.Should().NotBeNull();
-        spec.Audio.Should().NotBeNull();
+        spec.VideoExecutionDetails.Should().NotBeNull();
+        spec.AudioExecutionDetails.Should().NotBeNull();
         spec.AudioBitrateKbps.Should().Be(192);
     }
 
@@ -531,12 +531,12 @@ public sealed class ToH264GpuScenarioTests
             : new ToH264GpuScenario(request);
     }
 
-    private static ToH264GpuExecutionSpec BuildExecutionSpec(ToH264GpuScenario sut, SourceVideo video, TranscodePlan plan)
+    private static ToH264GpuDecision BuildExecutionSpec(ToH264GpuScenario sut, SourceVideo video, ToH264GpuDecision plan)
     {
-        return sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToH264GpuExecutionSpec>().Subject;
+        return sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToH264GpuDecision>().Subject;
     }
 
-    private static EncodeVideoPlan GetRequiredEncodeVideo(TranscodePlan plan)
+    private static EncodeVideoPlan GetRequiredEncodeVideo(ToH264GpuDecision plan)
     {
         return plan.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
     }

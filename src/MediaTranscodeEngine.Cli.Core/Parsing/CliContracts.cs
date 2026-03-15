@@ -4,7 +4,7 @@ namespace MediaTranscodeEngine.Cli.Parsing;
 Это результат общего разбора CLI-аргументов до того, как сценарий интерпретирует свои собственные опции.
 */
 /// <summary>
-/// Represents the common CLI parse result before scenario-specific arguments are interpreted.
+/// Represents the common CLI parse result with an already normalized scenario-specific input object.
 /// </summary>
 public sealed class CliParseResult
 {
@@ -14,19 +14,24 @@ public sealed class CliParseResult
     /// <param name="inputs">Parsed input paths.</param>
     /// <param name="scenario">Selected scenario name.</param>
     /// <param name="info">Whether info mode is enabled.</param>
-    /// <param name="scenarioArgs">Raw scenario-specific arguments.</param>
+    /// <param name="scenarioInput">Normalized scenario-specific input object.</param>
+    /// <param name="scenarioArgCount">Count of raw scenario-specific CLI tokens.</param>
     public CliParseResult(
         IReadOnlyList<string> inputs,
         string scenario,
         bool info,
-        IReadOnlyList<string> scenarioArgs)
+        object scenarioInput,
+        int scenarioArgCount)
     {
         Inputs = inputs ?? throw new ArgumentNullException(nameof(inputs));
         Scenario = string.IsNullOrWhiteSpace(scenario)
             ? throw new ArgumentException("Scenario name is required.", nameof(scenario))
             : scenario;
         Info = info;
-        ScenarioArgs = scenarioArgs ?? throw new ArgumentNullException(nameof(scenarioArgs));
+        ScenarioInput = scenarioInput ?? throw new ArgumentNullException(nameof(scenarioInput));
+        ScenarioArgCount = scenarioArgCount >= 0
+            ? scenarioArgCount
+            : throw new ArgumentOutOfRangeException(nameof(scenarioArgCount), scenarioArgCount, "Scenario arg count must be non-negative.");
     }
 
     /// <summary>
@@ -45,9 +50,14 @@ public sealed class CliParseResult
     public bool Info { get; }
 
     /// <summary>
-    /// Gets the raw scenario-specific arguments.
+    /// Gets the normalized scenario-specific input object.
     /// </summary>
-    public IReadOnlyList<string> ScenarioArgs { get; }
+    public object ScenarioInput { get; }
+
+    /// <summary>
+    /// Gets the count of raw scenario-specific CLI tokens.
+    /// </summary>
+    public int ScenarioArgCount { get; }
 }
 
 /*

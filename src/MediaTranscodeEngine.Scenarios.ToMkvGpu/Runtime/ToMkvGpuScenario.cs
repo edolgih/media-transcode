@@ -3,6 +3,7 @@ using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 using MediaTranscodeEngine.Runtime.Videos;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 
@@ -30,12 +31,14 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     private readonly VideoSettingsProfiles _videoSettingsProfiles;
     private readonly VideoSettingsResolver _videoSettingsResolver;
     private readonly Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?> _sampleReductionProvider;
+    private readonly ToMkvGpuFfmpegTool _ffmpegTool;
+    private static readonly ToMkvGpuInfoFormatter InfoFormatter = new();
 
     /// <summary>
     /// Initializes a ToMkvGpu scenario with scenario-specific directives.
     /// </summary>
     public ToMkvGpuScenario()
-        : this(new ToMkvGpuRequest(), VideoSettingsProfiles.Default, sampleReductionProvider: null)
+        : this(new ToMkvGpuRequest(), VideoSettingsProfiles.Default, sampleReductionProvider: null, CreateDefaultTool())
     {
     }
 
@@ -44,7 +47,17 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// </summary>
     /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
     public ToMkvGpuScenario(ToMkvGpuRequest request)
-        : this(request, VideoSettingsProfiles.Default, sampleReductionProvider: null)
+        : this(request, VideoSettingsProfiles.Default, sampleReductionProvider: null, CreateDefaultTool())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a ToMkvGpu scenario with scenario-specific directives and a concrete ffmpeg renderer.
+    /// </summary>
+    /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
+    /// <param name="ffmpegTool">Concrete ffmpeg renderer used by this scenario.</param>
+    public ToMkvGpuScenario(ToMkvGpuRequest request, ToMkvGpuFfmpegTool ffmpegTool)
+        : this(request, VideoSettingsProfiles.Default, sampleReductionProvider: null, ffmpegTool)
     {
     }
 
@@ -57,12 +70,31 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         : this(
             request,
             VideoSettingsProfiles.Default,
-            (sampleMeasurer ?? throw new ArgumentNullException(nameof(sampleMeasurer))).MeasureAverageReduction)
+            (sampleMeasurer ?? throw new ArgumentNullException(nameof(sampleMeasurer))).MeasureAverageReduction,
+            CreateDefaultTool())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a ToMkvGpu scenario with an explicit sample measurer and a concrete ffmpeg renderer.
+    /// </summary>
+    /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
+    /// <param name="sampleMeasurer">Measurer used for sample-backed autosample resolution.</param>
+    /// <param name="ffmpegTool">Concrete ffmpeg renderer used by this scenario.</param>
+    public ToMkvGpuScenario(
+        ToMkvGpuRequest request,
+        FfmpegSampleMeasurer sampleMeasurer,
+        ToMkvGpuFfmpegTool ffmpegTool)
+        : this(
+            request,
+            VideoSettingsProfiles.Default,
+            (sampleMeasurer ?? throw new ArgumentNullException(nameof(sampleMeasurer))).MeasureAverageReduction,
+            ffmpegTool)
     {
     }
 
     internal ToMkvGpuScenario(ToMkvGpuRequest request, VideoSettingsProfiles videoSettingsProfiles)
-        : this(request, videoSettingsProfiles, sampleReductionProvider: null)
+        : this(request, videoSettingsProfiles, sampleReductionProvider: null, CreateDefaultTool())
     {
     }
 
@@ -70,12 +102,22 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         ToMkvGpuRequest request,
         VideoSettingsProfiles videoSettingsProfiles,
         Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider)
+        : this(request, videoSettingsProfiles, sampleReductionProvider, CreateDefaultTool())
+    {
+    }
+
+    internal ToMkvGpuScenario(
+        ToMkvGpuRequest request,
+        VideoSettingsProfiles videoSettingsProfiles,
+        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider,
+        ToMkvGpuFfmpegTool ffmpegTool)
         : base("tomkvgpu")
     {
         Request = request ?? throw new ArgumentNullException(nameof(request));
         _videoSettingsProfiles = videoSettingsProfiles ?? throw new ArgumentNullException(nameof(videoSettingsProfiles));
         _videoSettingsResolver = new VideoSettingsResolver(_videoSettingsProfiles);
         _sampleReductionProvider = sampleReductionProvider ?? NoSampleReduction;
+        _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
     /// <summary>
@@ -84,12 +126,13 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     public ToMkvGpuRequest Request { get; }
 
     /// <summary>
-    /// Builds a ToMkvGpu plan from the supplied source video.
+    /// Builds the resolved tomkvgpu decision from the supplied source video.
     /// </summary>
     /// <param name="video">Source video facts used by the scenario.</param>
-    /// <returns>A tool-agnostic plan describing the required MKV conversion work.</returns>
-    protected override TranscodePlan BuildPlanCore(SourceVideo video)
+    internal ToMkvGpuDecision BuildDecision(SourceVideo video)
     {
+        ArgumentNullException.ThrowIfNull(video);
+
         var applyDownscale = Request.Downscale is not null &&
                              video.Height > Request.Downscale.TargetHeight;
         ValidateDownscale(video, applyDownscale);
@@ -124,51 +167,68 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
                 Downscale: applyDownscale ? Request.Downscale : null,
                 EncoderPreset: Request.NvencPreset);
 
-        return new TranscodePlan(
+        ProfileDrivenVideoSettingsResolution? videoResolution = null;
+        ToMkvGpuResolvedSourceBitrate? sourceBitrate = null;
+        if (videoPlan is EncodeVideoPlan encodeVideo)
+        {
+            var outputHeight = ResolveOutputHeight(video, videoPlan, Request.OverlayBackground, encodeVideo.Downscale);
+            var actualSampleHeight = encodeVideo.Downscale?.TargetHeight ?? outputHeight;
+            sourceBitrate = ResolveSourceBitrate(video);
+            Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider = actualSampleHeight > 0
+                ? (settings, windows) => _sampleReductionProvider(video.FilePath, actualSampleHeight, settings, windows)
+                : null;
+            videoResolution = encodeVideo.Downscale is not null
+                ? _videoSettingsResolver.ResolveForDownscale(
+                    request: encodeVideo.Downscale,
+                    videoSettings: encodeVideo.VideoSettings,
+                    sourceHeight: video.Height,
+                    duration: video.Duration,
+                    sourceBitrate: sourceBitrate.Bitrate,
+                    hasAudio: video.HasAudio,
+                    defaultAutoSampleMode: "hybrid",
+                    accurateReductionProvider: accurateReductionProvider)
+                : _videoSettingsResolver.ResolveForEncode(
+                    request: encodeVideo.VideoSettings,
+                    outputHeight: outputHeight,
+                    duration: video.Duration,
+                    sourceBitrate: sourceBitrate.Bitrate,
+                    hasAudio: video.HasAudio,
+                    defaultAutoSampleMode: "fast",
+                    accurateReductionProvider: accurateReductionProvider);
+        }
+
+        return new ToMkvGpuDecision(
             targetContainer: "mkv",
             video: videoPlan,
             audio: audioPlan,
             keepSource: Request.KeepSource,
             outputPath: ResolveOutputPath(video, copyVideo, copyAudio),
-            applyOverlayBackground: Request.OverlayBackground);
+            applyOverlayBackground: Request.OverlayBackground,
+            videoResolution: videoResolution,
+            sourceBitrate: sourceBitrate);
+    }
+
+    internal ToMkvGpuDecision BuildPlan(SourceVideo video)
+    {
+        return BuildDecision(video);
+    }
+
+    internal ToMkvGpuDecision BuildExecutionSpec(SourceVideo video, ToMkvGpuDecision decision)
+    {
+        ArgumentNullException.ThrowIfNull(video);
+        return decision ?? throw new ArgumentNullException(nameof(decision));
     }
 
     /// <inheritdoc />
-    protected override TranscodeExecutionSpec? BuildExecutionSpecCore(SourceVideo video, TranscodePlan plan)
+    protected override string FormatInfoCore(SourceVideo video)
     {
-        if (plan.Video is not EncodeVideoPlan encodeVideo)
-        {
-            return null;
-        }
+        return InfoFormatter.Format(video, BuildDecision(video));
+    }
 
-        var outputHeight = ResolveOutputHeight(video, plan, encodeVideo.Downscale);
-        var actualSampleHeight = encodeVideo.Downscale?.TargetHeight ?? outputHeight;
-        var sourceBitrate = ResolveSourceBitrate(video);
-        Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider = actualSampleHeight > 0
-            ? (settings, windows) => _sampleReductionProvider(video.FilePath, actualSampleHeight, settings, windows)
-            : null;
-        var resolution = encodeVideo.Downscale is not null
-            ? _videoSettingsResolver.ResolveForDownscale(
-                request: encodeVideo.Downscale,
-                videoSettings: encodeVideo.VideoSettings,
-                sourceHeight: video.Height,
-                duration: video.Duration,
-                sourceBitrate: sourceBitrate.Bitrate,
-                hasAudio: video.HasAudio,
-                defaultAutoSampleMode: "hybrid",
-                accurateReductionProvider: accurateReductionProvider)
-            : _videoSettingsResolver.ResolveForEncode(
-                request: encodeVideo.VideoSettings,
-                outputHeight: outputHeight,
-                duration: video.Duration,
-                sourceBitrate: sourceBitrate.Bitrate,
-                hasAudio: video.HasAudio,
-                defaultAutoSampleMode: "fast",
-                accurateReductionProvider: accurateReductionProvider);
-
-        return new ToMkvGpuExecutionSpec(
-            videoResolution: resolution,
-            sourceBitrate: sourceBitrate);
+    /// <inheritdoc />
+    protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
+    {
+        return _ffmpegTool.BuildExecution(video, BuildDecision(video));
     }
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)
@@ -225,9 +285,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.mkv");
     }
 
-    private static int ResolveOutputHeight(SourceVideo video, TranscodePlan plan, DownscaleRequest? downscale)
+    private static int ResolveOutputHeight(SourceVideo video, VideoPlan videoPlan, bool applyOverlayBackground, DownscaleRequest? downscale)
     {
-        var (_, height) = ToMkvGpuVideoGeometry.ResolveOutputDimensions(video, plan);
+        var (_, height) = ToMkvGpuVideoGeometry.ResolveOutputDimensions(video, videoPlan, applyOverlayBackground);
         if (height > 0)
         {
             return height;
@@ -275,5 +335,10 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         IReadOnlyList<VideoSettingsSampleWindow> windows)
     {
         return null;
+    }
+
+    private static ToMkvGpuFfmpegTool CreateDefaultTool()
+    {
+        return new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance);
     }
 }

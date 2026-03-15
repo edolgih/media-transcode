@@ -1,6 +1,7 @@
 using MediaTranscodeEngine.Runtime.VideoSettings;
 using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Videos;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 
@@ -20,12 +21,14 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     private const int MinAudioBitrateKbps = 48;
     private const int MaxAudioBitrateKbps = 320;
     private static readonly VideoSettingsResolver VideoSettingsResolver = new(VideoSettingsProfiles.Default);
+    private static readonly ToH264GpuInfoFormatter InfoFormatter = new();
+    private readonly ToH264GpuFfmpegTool _ffmpegTool;
 
     /// <summary>
     /// Initializes a ToH264Gpu scenario with scenario-specific directives.
     /// </summary>
     public ToH264GpuScenario()
-        : this(new ToH264GpuRequest())
+        : this(new ToH264GpuRequest(), CreateDefaultTool())
     {
     }
 
@@ -33,9 +36,20 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// Initializes a ToH264Gpu scenario with scenario-specific directives.
     /// </summary>
     public ToH264GpuScenario(ToH264GpuRequest request)
+        : this(request, CreateDefaultTool())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a ToH264Gpu scenario with scenario-specific directives and a concrete ffmpeg renderer.
+    /// </summary>
+    /// <param name="request">Scenario-specific directives for the ToH264Gpu workflow.</param>
+    /// <param name="ffmpegTool">Concrete ffmpeg renderer used by this scenario.</param>
+    public ToH264GpuScenario(ToH264GpuRequest request, ToH264GpuFfmpegTool ffmpegTool)
         : base("toh264gpu")
     {
         Request = request ?? throw new ArgumentNullException(nameof(request));
+        _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
     /// <summary>
@@ -43,9 +57,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// </summary>
     public ToH264GpuRequest Request { get; }
 
-    /// <inheritdoc />
-    protected override TranscodePlan BuildPlanCore(SourceVideo video)
+    /// <summary>
+    /// Builds the resolved toh264gpu decision for the supplied source video.
+    /// </summary>
+    internal ToH264GpuDecision BuildDecision(SourceVideo video)
     {
+        ArgumentNullException.ThrowIfNull(video);
+
         var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
         var downscaleRequest = Request.Downscale;
         var useDownscale = downscaleRequest is not null && video.Height > downscaleRequest.TargetHeight;
@@ -80,18 +98,51 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 Downscale: resolvedDownscale,
                 EncoderPreset: Request.NvencPreset);
 
-        return new TranscodePlan(
+        var videoSettings = copyVideo
+            ? null
+            : ResolveVideoSettings(video, useDownscale, resolvedDownscale, videoSettingsRequest);
+        var mux = new ToH264GpuDecision.MuxExecution(
+            optimizeForFastStart: targetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
+            mapPrimaryAudioOnly: true);
+        var videoExecution = copyVideo || videoSettings is null
+            ? null
+            : BuildVideoExecution(videoSettings, useDownscale);
+        var audioExecution = copyAudio
+            ? null
+            : BuildAudioExecution(video, audioPlan);
+
+        return new ToH264GpuDecision(
             targetContainer: targetContainer,
-            video: videoPlan,
-            audio: audioPlan,
+            videoPlan: videoPlan,
+            audioPlan: audioPlan,
             keepSource: Request.KeepSource,
-            outputPath: ResolveOutputPath(video, targetContainer));
+            outputPath: ResolveOutputPath(video, targetContainer),
+            mux: mux,
+            videoExecution: videoExecution,
+            audioExecution: audioExecution);
+    }
+
+    internal ToH264GpuDecision BuildPlan(SourceVideo video)
+    {
+        return BuildDecision(video);
+    }
+
+    internal ToH264GpuDecision BuildExecutionSpec(SourceVideo video, ToH264GpuDecision decision)
+    {
+        ArgumentNullException.ThrowIfNull(video);
+        return decision ?? throw new ArgumentNullException(nameof(decision));
     }
 
     /// <inheritdoc />
-    protected override TranscodeExecutionSpec? BuildExecutionSpecCore(SourceVideo video, TranscodePlan plan)
+    protected override string FormatInfoCore(SourceVideo video)
     {
-        return BuildToH264GpuExecutionSpec(video, plan);
+        return InfoFormatter.Format(video, BuildDecision(video));
+    }
+
+    /// <inheritdoc />
+    protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
+    {
+        return _ffmpegTool.BuildExecution(video, BuildDecision(video));
     }
 
     private bool CanCopyVideo(SourceVideo video, string targetContainer, bool useDownscale)
@@ -155,55 +206,27 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return video.FramesPerSecond;
     }
 
-    private ToH264GpuExecutionSpec BuildToH264GpuExecutionSpec(SourceVideo video, TranscodePlan plan)
+    private ToH264GpuDecision.VideoExecution BuildVideoExecution(VideoSettingsDefaults videoSettings, bool useDownscale)
     {
-        var encodeVideo = plan.Video as EncodeVideoPlan;
-        var copyVideo = encodeVideo is null;
-        var copyAudio = plan.CopyAudio;
-        var useDownscale = encodeVideo?.Downscale is not null;
-        var targetContainer = plan.TargetContainer;
-        var downscaleRequest = encodeVideo?.Downscale;
-        var videoSettingsRequest = encodeVideo?.VideoSettings;
-        var videoSettings = copyVideo
-            ? null
-            : ResolveVideoSettings(video, useDownscale, downscaleRequest, videoSettingsRequest);
-        var mux = new ToH264GpuExecutionSpec.MuxExecution(
-            optimizeForFastStart: targetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
-            mapPrimaryAudioOnly: true);
-        var videoExecution = copyVideo || videoSettings is null
-            ? null
-            : BuildVideoExecution(videoSettings, useDownscale);
-        var audioExecution = copyAudio
-            ? null
-            : BuildAudioExecution(video, plan.Audio);
-
-        return new ToH264GpuExecutionSpec(
-            mux: mux,
-            video: videoExecution,
-            audio: audioExecution);
-    }
-
-    private ToH264GpuExecutionSpec.VideoExecution BuildVideoExecution(VideoSettingsDefaults videoSettings, bool useDownscale)
-    {
-        return new ToH264GpuExecutionSpec.VideoExecution(
+        return new ToH264GpuDecision.VideoExecution(
             useHardwareDecode: useDownscale,
-            rateControl: new ToH264GpuExecutionSpec.ConstantQualityVideoRateControlExecution(
+            rateControl: new ToH264GpuDecision.ConstantQualityVideoRateControlExecution(
                 cq: videoSettings.Cq,
                 maxrateKbps: ToKbps(videoSettings.Maxrate),
                 bufferSizeKbps: ToKbps(videoSettings.Bufsize)),
-            adaptiveQuantization: new ToH264GpuExecutionSpec.AdaptiveQuantizationExecution(rcLookahead: 32),
+            adaptiveQuantization: new ToH264GpuDecision.AdaptiveQuantizationExecution(rcLookahead: 32),
             filter: useDownscale || !Request.Denoise
                 ? null
                 : "hqdn3d=1.2:1.2:6:6",
             pixelFormat: useDownscale ? null : "yuv420p");
     }
 
-    private static ToH264GpuExecutionSpec.AudioExecution BuildAudioExecution(SourceVideo video, AudioPlan audioPlan)
+    private static ToH264GpuDecision.AudioExecution BuildAudioExecution(SourceVideo video, AudioPlan audioPlan)
     {
         var usesAmrAudio = IsAmrNb(video.PrimaryAudioCodec);
         var requiresRepair = audioPlan is SynchronizeAudioPlan or RepairAudioPlan;
 
-        return new ToH264GpuExecutionSpec.AudioExecution(
+        return new ToH264GpuDecision.AudioExecution(
             bitrateKbps: ResolveAudioBitrateKbps(video),
             sampleRate: usesAmrAudio || requiresRepair ? 48000 : null,
             channels: usesAmrAudio ? 1 : requiresRepair ? 2 : null,
@@ -349,4 +372,8 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.{targetContainer}");
     }
 
+    private static ToH264GpuFfmpegTool CreateDefaultTool()
+    {
+        return new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance);
+    }
 }

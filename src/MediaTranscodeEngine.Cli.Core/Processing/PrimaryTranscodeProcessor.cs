@@ -1,7 +1,5 @@
 using MediaTranscodeEngine.Cli.Scenarios;
-using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios;
-using MediaTranscodeEngine.Runtime.Tools;
 using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +16,6 @@ namespace MediaTranscodeEngine.Cli.Processing;
 internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
 {
     private readonly VideoInspector _videoInspector;
-    private readonly IReadOnlyList<ITranscodeTool> _transcodeTools;
     private readonly CliScenarioRegistry _scenarioRegistry;
     private readonly ILogger<PrimaryTranscodeProcessor> _logger;
 
@@ -26,22 +23,18 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
     /// Initializes the primary CLI transcode processor.
     /// </summary>
     /// <param name="videoInspector">Source video inspector.</param>
-    /// <param name="transcodeTools">Registered transcode tools.</param>
     /// <param name="scenarioRegistry">Registered CLI scenarios.</param>
     /// <param name="logger">Processor logger.</param>
     public PrimaryTranscodeProcessor(
         VideoInspector videoInspector,
-        IEnumerable<ITranscodeTool> transcodeTools,
         CliScenarioRegistry scenarioRegistry,
         ILogger<PrimaryTranscodeProcessor> logger)
     {
         ArgumentNullException.ThrowIfNull(videoInspector);
-        ArgumentNullException.ThrowIfNull(transcodeTools);
         ArgumentNullException.ThrowIfNull(scenarioRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
         _videoInspector = videoInspector;
-        _transcodeTools = transcodeTools.ToArray();
         _scenarioRegistry = scenarioRegistry;
         _logger = logger;
     }
@@ -63,22 +56,18 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             var scenario = scenarioHandler.CreateScenario(request);
             var video = _videoInspector.Load(request.InputPath);
             LogVideoInspected(video);
-            var plan = scenario.BuildPlan(video);
-            LogPlanBuilt(request, plan);
 
             if (request.Info)
             {
                 _logger.LogInformation("Info output generated. InputPath={InputPath}", request.InputPath);
-                return scenarioHandler.FormatInfo(request, video, plan);
+                return scenario.FormatInfo(video);
             }
 
-            var executionSpec = scenario.BuildExecutionSpec(video, plan);
-            var tool = ResolveTool(plan, executionSpec);
-            var execution = tool.BuildExecution(video, plan, executionSpec);
+            var execution = scenario.BuildExecution(video);
             _logger.LogInformation(
-                "Tool execution built. InputPath={InputPath} ToolName={ToolName} CommandCount={CommandCount} IsEmpty={IsEmpty}",
+                "Scenario execution built. InputPath={InputPath} Scenario={Scenario} CommandCount={CommandCount} IsEmpty={IsEmpty}",
                 request.InputPath,
-                execution.ToolName,
+                scenario.Name,
                 execution.Commands.Count,
                 execution.IsEmpty);
             return execution.IsEmpty
@@ -102,7 +91,7 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             request.InputPath,
             request.ScenarioName,
             request.Info,
-            request.ScenarioArgs.Count);
+            request.ScenarioArgCount);
     }
 
     private void LogVideoInspected(SourceVideo video)
@@ -120,29 +109,6 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
             video.Bitrate);
     }
 
-    private void LogPlanBuilt(CliTranscodeRequest request, TranscodePlan plan)
-    {
-        var encodeVideo = plan.Video as EncodeVideoPlan;
-        var targetHeight = encodeVideo?.Downscale?.TargetHeight;
-        var targetFramesPerSecond = encodeVideo?.TargetFramesPerSecond;
-        var targetVideoCodec = encodeVideo?.TargetVideoCodec;
-
-        _logger.LogInformation(
-            "Transcode plan built. InputPath={InputPath} Scenario={Scenario} TargetContainer={TargetContainer} TargetVideoCodec={TargetVideoCodec} CopyVideo={CopyVideo} CopyAudio={CopyAudio} TargetHeight={TargetHeight} TargetFramesPerSecond={TargetFramesPerSecond} RequiresVideoEncode={RequiresVideoEncode} RequiresAudioEncode={RequiresAudioEncode} ApplyOverlayBackground={ApplyOverlayBackground} SynchronizeAudio={SynchronizeAudio}",
-            request.InputPath,
-            request.ScenarioName,
-            plan.TargetContainer,
-            targetVideoCodec,
-            plan.CopyVideo,
-            plan.CopyAudio,
-            targetHeight,
-            targetFramesPerSecond,
-            plan.RequiresVideoEncode,
-            plan.RequiresAudioEncode,
-            plan.ApplyOverlayBackground,
-            plan.SynchronizeAudio);
-    }
-
     private ICliScenarioHandler ResolveScenarioHandler(string scenarioName)
     {
         if (_scenarioRegistry.TryGetScenario(scenarioName, out var scenarioHandler))
@@ -151,18 +117,6 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         }
 
         throw new NotSupportedException($"Scenario '{scenarioName}' is not supported by Runtime CLI.");
-    }
-
-    private ITranscodeTool ResolveTool(TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
-    {
-        var tool = _transcodeTools.FirstOrDefault(candidate => candidate.CanHandle(plan, executionSpec));
-        if (tool is not null)
-        {
-            return tool;
-        }
-
-        throw new NotSupportedException(
-            $"No registered transcode tool can handle the plan for container '{plan.TargetContainer}'.");
     }
 
     private void LogFailure(CliTranscodeRequest request, Exception exception, CliScenarioFailure failure)

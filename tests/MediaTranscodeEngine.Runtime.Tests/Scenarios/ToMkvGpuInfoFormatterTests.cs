@@ -21,7 +21,7 @@ public sealed class ToMkvGpuInfoFormatterTests
     {
         var sut = CreateSut();
         var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
-        var plan = CreatePlan(copyVideo: true, copyAudio: true, outputPath: video.FilePath);
+        var plan = CreateDecision(copyVideo: true, copyAudio: true, outputPath: video.FilePath);
 
         var actual = sut.Format(video, plan);
 
@@ -33,7 +33,7 @@ public sealed class ToMkvGpuInfoFormatterTests
     {
         var sut = CreateSut();
         var video = CreateVideo(filePath: @"C:\video\input.mp4", container: "mp4", videoCodec: "av1", audioCodecs: ["ac3"]);
-        var plan = CreatePlan(copyVideo: false, copyAudio: false, targetVideoCodec: "h264", preferredBackend: "gpu", outputPath: @"C:\video\input.mkv");
+        var plan = CreateDecision(copyVideo: false, copyAudio: false, targetVideoCodec: "h264", preferredBackend: "gpu", outputPath: @"C:\video\input.mkv");
 
         var actual = sut.Format(video, plan);
 
@@ -45,7 +45,7 @@ public sealed class ToMkvGpuInfoFormatterTests
     {
         var sut = CreateSut();
         var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
-        var plan = CreatePlan(copyVideo: true, copyAudio: false, outputPath: video.FilePath, synchronizeAudio: true);
+        var plan = CreateDecision(copyVideo: true, copyAudio: false, outputPath: video.FilePath, synchronizeAudio: true);
 
         var actual = sut.Format(video, plan);
 
@@ -57,7 +57,7 @@ public sealed class ToMkvGpuInfoFormatterTests
     {
         var sut = CreateSut();
         var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
-        var plan = CreatePlan(
+        var plan = CreateDecision(
             copyVideo: false,
             copyAudio: false,
             outputPath: @"C:\video\input_out.mkv",
@@ -75,7 +75,7 @@ public sealed class ToMkvGpuInfoFormatterTests
     {
         var sut = CreateSut();
         var video = CreateVideo(filePath: @"C:\nested\folder\input.mp4", container: "mp4", videoCodec: "av1", audioCodecs: ["aac"]);
-        var plan = CreatePlan(copyVideo: false, copyAudio: false, targetVideoCodec: "h264", preferredBackend: "gpu", outputPath: @"C:\nested\folder\input.mkv");
+        var plan = CreateDecision(copyVideo: false, copyAudio: false, targetVideoCodec: "h264", preferredBackend: "gpu", outputPath: @"C:\nested\folder\input.mkv");
 
         var actual = sut.Format(video, plan);
 
@@ -175,7 +175,7 @@ public sealed class ToMkvGpuInfoFormatterTests
             duration: TimeSpan.FromMinutes(10));
     }
 
-    private static TranscodePlan CreatePlan(
+    private static ToMkvGpuDecision CreateDecision(
         bool copyVideo,
         bool copyAudio,
         string outputPath,
@@ -199,11 +199,12 @@ public sealed class ToMkvGpuInfoFormatterTests
                 ? new SynchronizeAudioPlan()
                 : new EncodeAudioPlan();
 
-        return new TranscodePlan(
+        return new ToMkvGpuDecision(
             targetContainer: "mkv",
             video: videoPlan,
             audio: audioPlan,
             keepSource: false,
-            outputPath: outputPath);
+            outputPath: outputPath,
+            applyOverlayBackground: false);
     }
 }

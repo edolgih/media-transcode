@@ -9,7 +9,7 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 Он нужен для info-режима и failure-маркеров, близких к старому поведению.
 */
 /// <summary>
-/// Formats a concise ToMkvGpu decision summary from an inspected source video and the scenario plan.
+/// Formats a concise ToMkvGpu decision summary from an inspected source video and the resolved scenario decision.
 /// </summary>
 public sealed class ToMkvGpuInfoFormatter
 {
@@ -44,26 +44,26 @@ public sealed class ToMkvGpuInfoFormatter
     /// Builds a single-line summary of the actions requested by ToMkvGpu for the supplied video and plan.
     /// </summary>
     /// <param name="video">Inspected source video facts.</param>
-    /// <param name="plan">Resolved ToMkvGpu plan.</param>
+    /// <param name="decision">Resolved ToMkvGpu decision.</param>
     /// <returns>A summary line or an empty string when no action is required.</returns>
-    public string Format(SourceVideo video, TranscodePlan plan)
+    internal string Format(SourceVideo video, ToMkvGpuDecision decision)
     {
         ArgumentNullException.ThrowIfNull(video);
-        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(decision);
 
         var parts = new List<string>();
 
-        if (!video.Container.Equals(plan.TargetContainer, StringComparison.OrdinalIgnoreCase))
+        if (!video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase))
         {
-            parts.Add($"container .{video.Container}→{plan.TargetContainer}");
+            parts.Add($"container .{video.Container}→{decision.TargetContainer}");
         }
 
-        if (plan.Video is EncodeVideoPlan)
+        if (decision.Video is EncodeVideoPlan)
         {
             parts.Add($"vcodec {video.VideoCodec}");
         }
 
-        if (plan.Video is EncodeVideoPlan { TargetFramesPerSecond: double targetFramesPerSecond })
+        if (decision.Video is EncodeVideoPlan { TargetFramesPerSecond: double targetFramesPerSecond })
         {
             parts.Add($"fps {targetFramesPerSecond:0.###}");
         }
@@ -73,7 +73,7 @@ public sealed class ToMkvGpuInfoFormatter
             parts.Add("audio non-AAC");
         }
 
-        if (plan.SynchronizeAudio && video.HasAudio)
+        if (decision.SynchronizeAudio && video.HasAudio)
         {
             parts.Add("sync audio");
         }

@@ -2,10 +2,10 @@ namespace MediaTranscodeEngine.Cli;
 
 /*
 Этот объект описывает один входной файл в рамках CLI-запуска:
-какой сценарий выбран, включен ли info-режим и какие scenario-specific аргументы переданы дальше.
+какой сценарий выбран, включен ли info-режим и какой normalized scenario-specific input уже построен на CLI boundary.
 */
 /// <summary>
-/// Carries one CLI input together with the selected scenario name and raw scenario-specific arguments.
+/// Carries one CLI input together with the selected scenario name and normalized scenario-specific input.
 /// </summary>
 public sealed class CliTranscodeRequest
 {
@@ -15,12 +15,14 @@ public sealed class CliTranscodeRequest
     /// <param name="inputPath">Input file path.</param>
     /// <param name="scenarioName">Selected scenario name.</param>
     /// <param name="info">Whether info mode is enabled.</param>
-    /// <param name="scenarioArgs">Raw scenario-specific arguments.</param>
+    /// <param name="scenarioInput">Normalized scenario-specific input object.</param>
+    /// <param name="scenarioArgCount">Count of raw scenario-specific CLI tokens.</param>
     public CliTranscodeRequest(
         string inputPath,
         string scenarioName,
         bool info,
-        IReadOnlyList<string> scenarioArgs)
+        object scenarioInput,
+        int scenarioArgCount)
     {
         InputPath = string.IsNullOrWhiteSpace(inputPath)
             ? throw new ArgumentException("Input path is required.", nameof(inputPath))
@@ -29,8 +31,10 @@ public sealed class CliTranscodeRequest
             ? throw new ArgumentException("Scenario name is required.", nameof(scenarioName))
             : scenarioName;
         Info = info;
-        ScenarioArgs = scenarioArgs?.ToArray()
-            ?? throw new ArgumentNullException(nameof(scenarioArgs));
+        ScenarioInput = scenarioInput ?? throw new ArgumentNullException(nameof(scenarioInput));
+        ScenarioArgCount = scenarioArgCount >= 0
+            ? scenarioArgCount
+            : throw new ArgumentOutOfRangeException(nameof(scenarioArgCount), scenarioArgCount, "Scenario arg count must be non-negative.");
     }
 
     /// <summary>
@@ -49,7 +53,12 @@ public sealed class CliTranscodeRequest
     public bool Info { get; }
 
     /// <summary>
-    /// Gets the raw scenario-specific arguments.
+    /// Gets the normalized scenario-specific input object.
     /// </summary>
-    public IReadOnlyList<string> ScenarioArgs { get; }
+    public object ScenarioInput { get; }
+
+    /// <summary>
+    /// Gets the count of raw scenario-specific CLI tokens.
+    /// </summary>
+    public int ScenarioArgCount { get; }
 }

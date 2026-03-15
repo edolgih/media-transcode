@@ -1,7 +1,5 @@
 using System.Globalization;
 using MediaTranscodeEngine.Runtime.Plans;
-using MediaTranscodeEngine.Runtime.Scenarios;
-using MediaTranscodeEngine.Runtime.Tools;
 using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 using MediaTranscodeEngine.Runtime.VideoSettings;
 using MediaTranscodeEngine.Runtime.Videos;
@@ -16,7 +14,7 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 /// <summary>
 /// Renders mkv-oriented transcode plans into ffmpeg execution recipes.
 /// </summary>
-public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
+public sealed class ToMkvGpuFfmpegTool
 {
     private readonly string _ffmpegPath;
     private readonly ILogger<ToMkvGpuFfmpegTool> _logger;
@@ -39,87 +37,91 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
     public string Name => "ffmpeg";
 
     /// <summary>
-    /// Determines whether the mkv-oriented ffmpeg tool can execute the supplied plan.
+    /// Determines whether the mkv-oriented ffmpeg tool can execute the supplied decision.
     /// </summary>
-    public bool CanHandle(TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
+    internal bool CanHandle(ToMkvGpuDecision decision)
     {
-        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(decision);
 
-        if (executionSpec is not null && executionSpec is not ToMkvGpuExecutionSpec)
+        if (decision.Video is EncodeVideoPlan { UseFrameInterpolation: true })
         {
             return false;
         }
 
-        if (plan.Video is EncodeVideoPlan { UseFrameInterpolation: true })
+        if (!decision.TargetContainer.Equals("mkv", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        if (!plan.TargetContainer.Equals("mkv", StringComparison.OrdinalIgnoreCase))
+        if (decision.Video is CopyVideoPlan)
         {
-            return false;
+            return decision.VideoResolution is null;
         }
 
-        if (plan.Video is CopyVideoPlan)
-        {
-            return executionSpec is null;
-        }
-
-        return plan.Video is EncodeVideoPlan encodeVideo &&
-               executionSpec is ToMkvGpuExecutionSpec &&
+        return decision.Video is EncodeVideoPlan encodeVideo &&
+               decision.VideoResolution is not null &&
                encodeVideo.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
                (encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase) ||
                 encodeVideo.TargetVideoCodec.Equals("h265", StringComparison.OrdinalIgnoreCase));
     }
 
+    internal bool CanHandle(ToMkvGpuDecision planDecision, ToMkvGpuDecision? executionDecision)
+    {
+        return CanHandle(Merge(planDecision, executionDecision));
+    }
+
     /// <summary>
-    /// Builds an ffmpeg execution recipe for the supplied source video and plan.
+    /// Builds an ffmpeg execution recipe for the supplied source video and decision.
     /// </summary>
-    public ToolExecution BuildExecution(SourceVideo video, TranscodePlan plan, TranscodeExecutionSpec? executionSpec)
+    internal ScenarioExecution BuildExecution(SourceVideo video, ToMkvGpuDecision decision)
     {
         ArgumentNullException.ThrowIfNull(video);
-        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(decision);
 
-        if (!CanHandle(plan, executionSpec))
+        if (!CanHandle(decision))
         {
-            throw new NotSupportedException("The supplied transcode plan is not supported by ToMkvGpu ffmpeg tool.");
+            throw new NotSupportedException("The supplied transcode decision is not supported by ToMkvGpu ffmpeg tool.");
         }
 
-        var mkvExecutionSpec = executionSpec as ToMkvGpuExecutionSpec;
-        if (IsNoOp(video, plan))
+        if (IsNoOp(video, decision))
         {
-            return new ToolExecution(Name, Array.Empty<string>());
+            return new ScenarioExecution(Array.Empty<string>());
         }
 
-        if (mkvExecutionSpec is not null)
+        if (decision.VideoResolution is not null && decision.SourceBitrate is not null)
         {
             LogAutoSampleResolution(
                 video.FilePath,
-                mkvExecutionSpec.VideoResolution.BaseSettings,
-                mkvExecutionSpec.VideoResolution.AutoSample,
-                mkvExecutionSpec.SourceBitrate);
+                decision.VideoResolution.BaseSettings,
+                decision.VideoResolution.AutoSample,
+                decision.SourceBitrate);
         }
 
-        var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(video, plan);
-        var workingOutputPath = FfmpegExecutionLayout.ResolveWorkingOutputPath(video, plan, finalOutputPath);
-        var ffmpegCommand = BuildFfmpegCommand(video, plan, mkvExecutionSpec, workingOutputPath);
+        var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(decision.OutputPath);
+        var workingOutputPath = FfmpegExecutionLayout.ResolveWorkingOutputPath(video.FilePath, video.FileNameWithoutExtension, decision.KeepSource, finalOutputPath);
+        var ffmpegCommand = BuildFfmpegCommand(video, decision, workingOutputPath);
         var commands = new List<string> { ffmpegCommand };
 
-        FfmpegExecutionLayout.AppendPostOperations(commands, video, plan, workingOutputPath, finalOutputPath);
+        FfmpegExecutionLayout.AppendPostOperations(commands, video.FilePath, decision.KeepSource, workingOutputPath, finalOutputPath);
 
-        return new ToolExecution(Name, commands);
+        return new ScenarioExecution(commands);
     }
 
-    private static bool IsNoOp(SourceVideo video, TranscodePlan plan)
+    internal ScenarioExecution BuildExecution(SourceVideo video, ToMkvGpuDecision planDecision, ToMkvGpuDecision? executionDecision)
     {
-        var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(video, plan);
-        return plan.CopyVideo &&
-               plan.CopyAudio &&
-               video.Container.Equals(plan.TargetContainer, StringComparison.OrdinalIgnoreCase) &&
+        return BuildExecution(video, Merge(planDecision, executionDecision));
+    }
+
+    private static bool IsNoOp(SourceVideo video, ToMkvGpuDecision decision)
+    {
+        var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(decision.OutputPath);
+        return decision.CopyVideo &&
+               decision.CopyAudio &&
+               video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private string BuildFfmpegCommand(SourceVideo video, TranscodePlan plan, ToMkvGpuExecutionSpec? executionSpec, string outputPath)
+    private string BuildFfmpegCommand(SourceVideo video, ToMkvGpuDecision decision, string outputPath)
     {
         var parts = new List<string>
         {
@@ -127,13 +129,13 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
             "-hide_banner"
         };
 
-        var sanitizePart = BuildSanitizePart(video, plan);
+        var sanitizePart = BuildSanitizePart(video, decision);
         if (!string.IsNullOrWhiteSpace(sanitizePart))
         {
             parts.Add(sanitizePart);
         }
 
-        if (plan.Video is EncodeVideoPlan encodeVideo &&
+        if (decision.Video is EncodeVideoPlan encodeVideo &&
             string.Equals(encodeVideo.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase))
         {
             parts.Add("-hwaccel cuda -hwaccel_output_format cuda");
@@ -141,8 +143,8 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
 
         parts.Add("-i");
         parts.Add(FfmpegExecutionLayout.Quote(video.FilePath));
-        parts.Add(BuildVideoPart(video, plan, executionSpec));
-        parts.Add(BuildAudioPart(plan));
+        parts.Add(BuildVideoPart(video, decision));
+        parts.Add(BuildAudioPart(decision));
         parts.Add("-sn");
         parts.Add("-max_muxing_queue_size 4096");
         parts.Add(FfmpegExecutionLayout.Quote(outputPath));
@@ -150,15 +152,15 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         return string.Join(" ", parts.Where(static part => !string.IsNullOrWhiteSpace(part)));
     }
 
-    private static string BuildSanitizePart(SourceVideo video, TranscodePlan plan)
+    private static string BuildSanitizePart(SourceVideo video, ToMkvGpuDecision decision)
     {
-        if (plan.FixTimestamps || UsesStrongSyncRemux(plan))
+        if (decision.FixTimestamps || UsesStrongSyncRemux(decision))
         {
             return "-fflags +genpts+igndts -avoid_negative_ts make_zero";
         }
 
-        var needsContainerChange = !video.Container.Equals(plan.TargetContainer, StringComparison.OrdinalIgnoreCase);
-        if (plan.RequiresVideoEncode || plan.RequiresAudioEncode || needsContainerChange)
+        var needsContainerChange = !video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase);
+        if (decision.RequiresVideoEncode || decision.RequiresAudioEncode || needsContainerChange)
         {
             return "-avoid_negative_ts make_zero";
         }
@@ -166,22 +168,22 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         return string.Empty;
     }
 
-    private string BuildVideoPart(SourceVideo video, TranscodePlan plan, ToMkvGpuExecutionSpec? executionSpec)
+    private string BuildVideoPart(SourceVideo video, ToMkvGpuDecision decision)
     {
-        if (plan.Video is CopyVideoPlan)
+        if (decision.Video is CopyVideoPlan)
         {
-            return UsesStrongSyncRemux(plan)
+            return UsesStrongSyncRemux(decision)
                 ? "-map 0:v:0 -c:v copy -copytb 1"
                 : "-map 0:v:0 -c:v copy";
         }
 
-        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
-        var mkvExecutionSpec = GetRequiredExecutionSpec(executionSpec);
-        var encoder = ResolveVideoEncoder(plan);
-        var settings = mkvExecutionSpec.VideoResolution.Settings;
-        var fpsToken = ResolveFrameRateToken(video, plan);
-        var gop = ResolveGop(video, plan);
-        var compatibilityPart = ResolveVideoCompatibilityPart(video, plan);
+        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var videoResolution = GetRequiredVideoResolution(decision);
+        var encoder = ResolveVideoEncoder(decision);
+        var settings = videoResolution.Settings;
+        var fpsToken = ResolveFrameRateToken(video, decision);
+        var gop = ResolveGop(video, decision);
+        var compatibilityPart = ResolveVideoCompatibilityPart(video, decision);
         var preset = encodeVideo.EncoderPreset
                      ?? throw new InvalidOperationException("Encoder preset must be resolved before tool rendering.");
         var frameRatePart = encodeVideo.TargetFramesPerSecond.HasValue
@@ -194,7 +196,7 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         var rateControlPart = $"-rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} ";
         var downscale = encodeVideo.Downscale;
 
-        if (plan.ApplyOverlayBackground)
+        if (decision.ApplyOverlayBackground)
         {
             var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm);
             return $"-filter_complex {FfmpegExecutionLayout.Quote(filter)} -map \"[v]\" {frameRatePart}" +
@@ -214,9 +216,9 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
                $"{pixelFormatPart}{compatibilityPart}-g {gop}";
     }
 
-    private static string BuildAudioPart(TranscodePlan plan)
+    private static string BuildAudioPart(ToMkvGpuDecision decision)
     {
-        return plan.Audio switch
+        return decision.Audio switch
         {
             CopyAudioPlan => "-map 0:a? -c:a copy",
             SynchronizeAudioPlan => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"",
@@ -226,15 +228,15 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         };
     }
 
-    private static bool UsesStrongSyncRemux(TranscodePlan plan)
+    private static bool UsesStrongSyncRemux(ToMkvGpuDecision decision)
     {
-        return plan.Video is CopyVideoPlan &&
-               plan.Audio is SynchronizeAudioPlan;
+        return decision.Video is CopyVideoPlan &&
+               decision.Audio is SynchronizeAudioPlan;
     }
 
-    private static string ResolveVideoEncoder(TranscodePlan plan)
+    private static string ResolveVideoEncoder(ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
         return encodeVideo.TargetVideoCodec switch
         {
             "h264" => "h264_nvenc",
@@ -243,9 +245,9 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         };
     }
 
-    private static string ResolveFrameRateToken(SourceVideo video, TranscodePlan plan)
+    private static string ResolveFrameRateToken(SourceVideo video, ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
         if (encodeVideo.TargetFramesPerSecond.HasValue)
         {
             return encodeVideo.TargetFramesPerSecond.Value.ToString("0.###", CultureInfo.InvariantCulture);
@@ -254,17 +256,17 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
         return video.FramesPerSecond.ToString("0.###", CultureInfo.InvariantCulture);
     }
 
-    private static int ResolveGop(SourceVideo video, TranscodePlan plan)
+    private static int ResolveGop(SourceVideo video, ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
+        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         return (int)Math.Max(12, Math.Round(fps * 2.0));
     }
 
-    private static string ResolveVideoCompatibilityPart(SourceVideo video, TranscodePlan plan)
+    private static string ResolveVideoCompatibilityPart(SourceVideo video, ToMkvGpuDecision decision)
     {
-        var encodeVideo = GetRequiredEncodeVideoPlan(plan);
-        var (width, height) = ToMkvGpuVideoGeometry.ResolveOutputDimensions(video, plan);
+        var encodeVideo = GetRequiredEncodeVideoPlan(decision);
+        var (width, height) = ToMkvGpuVideoGeometry.ResolveOutputDimensions(video, decision.Video, decision.ApplyOverlayBackground);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         var compatibilityPart = VideoCodecCompatibility.ResolveArguments(
             encodeVideo.TargetVideoCodec,
@@ -277,17 +279,31 @@ public sealed class ToMkvGpuFfmpegTool : ITranscodeTool
             : $"{compatibilityPart} ";
     }
 
-    private static EncodeVideoPlan GetRequiredEncodeVideoPlan(TranscodePlan plan)
+    private static EncodeVideoPlan GetRequiredEncodeVideoPlan(ToMkvGpuDecision decision)
     {
-        return plan.Video as EncodeVideoPlan
+        return decision.Video as EncodeVideoPlan
             ?? throw new InvalidOperationException("Video encode plan is required for this operation.");
     }
 
-    private static ToMkvGpuExecutionSpec GetRequiredExecutionSpec(ToMkvGpuExecutionSpec? executionSpec)
+    private static ProfileDrivenVideoSettingsResolution GetRequiredVideoResolution(ToMkvGpuDecision decision)
     {
-        return executionSpec is not null
-            ? executionSpec
-            : throw new InvalidOperationException("ToMkvGpu video encode execution spec is required for this operation.");
+        return decision.VideoResolution
+            ?? throw new InvalidOperationException("ToMkvGpu video resolution details are required for this operation.");
+    }
+
+    private static ToMkvGpuDecision Merge(ToMkvGpuDecision planDecision, ToMkvGpuDecision? executionDecision)
+    {
+        ArgumentNullException.ThrowIfNull(planDecision);
+
+        return new ToMkvGpuDecision(
+            targetContainer: planDecision.TargetContainer,
+            video: planDecision.Video,
+            audio: planDecision.Audio,
+            keepSource: planDecision.KeepSource,
+            outputPath: planDecision.OutputPath,
+            applyOverlayBackground: planDecision.ApplyOverlayBackground,
+            videoResolution: executionDecision?.VideoResolution,
+            sourceBitrate: executionDecision?.SourceBitrate);
     }
 
     private static string FormatRate(decimal value)

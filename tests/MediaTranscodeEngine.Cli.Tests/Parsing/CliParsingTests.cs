@@ -16,7 +16,7 @@ namespace MediaTranscodeEngine.Cli.Tests.Parsing;
 public sealed class CliParsingTests
 {
     [Fact]
-    public void TryParse_WhenToMkvGpuProfileOptionsAreProvided_PreservesScenarioArgs()
+    public void TryParse_WhenToMkvGpuProfileOptionsAreProvided_BindsScenarioInputOnce()
     {
         var actual = CliArgumentParser.TryParse(
             [
@@ -42,17 +42,22 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mp4");
         parsed.Scenario.Should().Be("tomkvgpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgs.Should().Equal(
-            "--downscale", "576",
-            "--content-profile", "Anime",
-            "--quality-profile", "High",
-            "--autosample-mode", "Hybrid",
-            "--downscale-algo", "Lanczos",
-            "--max-fps", "50",
-            "--cq", "23",
-            "--maxrate", "3.4",
-            "--bufsize", "6.8",
-            "--nvenc-preset", "P5");
+        parsed.ScenarioArgCount.Should().Be(20);
+        var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToMkvGpuRequest>().Subject;
+        scenarioInput.Downscale.Should().NotBeNull();
+        scenarioInput.VideoSettings.Should().NotBeNull();
+        var downscale = scenarioInput.Downscale!;
+        var videoSettings = scenarioInput.VideoSettings!;
+        downscale.TargetHeight.Should().Be(576);
+        videoSettings.ContentProfile.Should().Be("anime");
+        videoSettings.QualityProfile.Should().Be("high");
+        videoSettings.AutoSampleMode.Should().Be("hybrid");
+        downscale.Algorithm.Should().Be("lanczos");
+        videoSettings.Cq.Should().Be(23);
+        videoSettings.Maxrate.Should().Be(3.4m);
+        videoSettings.Bufsize.Should().Be(6.8m);
+        scenarioInput.MaxFramesPerSecond.Should().Be(50);
+        scenarioInput.NvencPreset.Should().Be("p5");
     }
 
     [Fact]
@@ -83,14 +88,18 @@ public sealed class CliParsingTests
         parsedOk.Should().BeTrue();
         errorText.Should().BeNull();
 
-        var handler = new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter());
         var request = new CliTranscodeRequest(
             inputPath: @"C:\video\a.mp4",
             scenarioName: parsed.Scenario,
             info: parsed.Info,
-            scenarioArgs: parsed.ScenarioArgs);
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
 
-        var actual = handler.CreateScenario(request).Should().BeOfType<ToMkvGpuScenario>().Subject;
+        var actual = new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToMkvGpuScenario>()
+            .Subject;
         var scenarioRequest = actual.Request;
 
         request.InputPath.Should().Be(@"C:\video\a.mp4");
@@ -112,7 +121,7 @@ public sealed class CliParsingTests
     }
 
     [Fact]
-    public void TryParse_WhenToH264GpuOptionsAreProvided_PreservesScenarioArgs()
+    public void TryParse_WhenToH264GpuOptionsAreProvided_BindsScenarioInputOnce()
     {
         var actual = CliArgumentParser.TryParse(
             [
@@ -140,19 +149,21 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mkv");
         parsed.Scenario.Should().Be("toh264gpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgs.Should().Equal(
-            "--keep-source",
-            "--downscale", "576",
-            "--keep-fps",
-            "--content-profile", "film",
-            "--quality-profile", "default",
-            "--autosample-mode", "fast",
-            "--downscale-algo", "lanczos",
-            "--cq", "21",
-            "--nvenc-preset", "p6",
-            "--denoise",
-            "--sync-audio",
-            "--mkv");
+        parsed.ScenarioArgCount.Should().Be(19);
+        var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToH264GpuRequest>().Subject;
+        scenarioInput.KeepSource.Should().BeTrue();
+        scenarioInput.Downscale.Should().NotBeNull();
+        scenarioInput.Downscale!.TargetHeight.Should().Be(576);
+        scenarioInput.KeepFramesPerSecond.Should().BeTrue();
+        scenarioInput.VideoSettings!.ContentProfile.Should().Be("film");
+        scenarioInput.VideoSettings.QualityProfile.Should().Be("default");
+        scenarioInput.VideoSettings.AutoSampleMode.Should().Be("fast");
+        scenarioInput.Downscale.Algorithm.Should().Be("lanczos");
+        scenarioInput.VideoSettings.Cq.Should().Be(21);
+        scenarioInput.NvencPreset.Should().Be("p6");
+        scenarioInput.Denoise.Should().BeTrue();
+        scenarioInput.SynchronizeAudio.Should().BeTrue();
+        scenarioInput.OutputMkv.Should().BeTrue();
     }
 
     [Fact]
@@ -182,14 +193,18 @@ public sealed class CliParsingTests
         parsedOk.Should().BeTrue();
         errorText.Should().BeNull();
 
-        var handler = new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter());
         var request = new CliTranscodeRequest(
             inputPath: @"C:\video\a.mkv",
             scenarioName: parsed.Scenario,
             info: parsed.Info,
-            scenarioArgs: parsed.ScenarioArgs);
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
 
-        var actual = handler.CreateScenario(request).Should().BeOfType<ToH264GpuScenario>().Subject;
+        var actual = new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter())
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToH264GpuScenario>()
+            .Subject;
         var scenarioRequest = actual.Request;
 
         scenarioRequest.KeepSource.Should().BeTrue();
@@ -224,14 +239,18 @@ public sealed class CliParsingTests
         parsedOk.Should().BeTrue();
         errorText.Should().BeNull();
         parsed.Should().NotBeNull();
-        var handler = new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter());
         var request = new CliTranscodeRequest(
             inputPath: @"C:\video\a.mkv",
             scenarioName: parsed!.Scenario,
             info: parsed.Info,
-            scenarioArgs: parsed.ScenarioArgs);
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
 
-        var scenario = handler.CreateScenario(request).Should().BeOfType<ToMkvGpuScenario>().Subject;
+        var scenario = new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToMkvGpuScenario>()
+            .Subject;
 
         scenario.Request.Downscale.Should().NotBeNull();
         scenario.Request.Downscale!.TargetHeight.Should().Be(720);
@@ -256,13 +275,17 @@ public sealed class CliParsingTests
         errorText.Should().BeNull();
         parseResult.Should().NotBeNull();
         var parsed = parseResult!;
-        var handler = new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter());
         var request = new CliTranscodeRequest(
             inputPath: @"C:\video\a.mkv",
             scenarioName: parsed.Scenario,
             info: parsed.Info,
-            scenarioArgs: parsed.ScenarioArgs);
-        var scenario = handler.CreateScenario(request).Should().BeOfType<ToH264GpuScenario>().Subject;
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
+        var scenario = new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter())
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToH264GpuScenario>()
+            .Subject;
 
         scenario.Request.Downscale.Should().NotBeNull();
         scenario.Request.Downscale!.TargetHeight.Should().Be(targetHeight);

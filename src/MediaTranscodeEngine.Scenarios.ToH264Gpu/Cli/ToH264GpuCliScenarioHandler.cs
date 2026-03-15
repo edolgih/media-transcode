@@ -1,12 +1,12 @@
 using MediaTranscodeEngine.Cli.Parsing;
 using MediaTranscodeEngine.Runtime.Failures;
-using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 using MediaTranscodeEngine.Runtime.VideoSettings;
 using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
 using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MediaTranscodeEngine.Cli.Scenarios;
 
@@ -20,10 +20,26 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
 {
     private readonly ToH264GpuInfoFormatter _infoFormatter;
+    private readonly ToH264GpuFfmpegTool _ffmpegTool;
 
+    /// <summary>
+    /// Initializes the CLI handler for the <c>toh264gpu</c> scenario.
+    /// </summary>
+    /// <param name="infoFormatter">Formatter used for failure markers.</param>
     public ToH264GpuCliScenarioHandler(ToH264GpuInfoFormatter infoFormatter)
+        : this(infoFormatter, new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance))
+    {
+    }
+
+    /// <summary>
+    /// Initializes the CLI handler for the <c>toh264gpu</c> scenario.
+    /// </summary>
+    /// <param name="infoFormatter">Formatter used for failure markers.</param>
+    /// <param name="ffmpegTool">Concrete ffmpeg renderer passed into created scenarios.</param>
+    public ToH264GpuCliScenarioHandler(ToH264GpuInfoFormatter infoFormatter, ToH264GpuFfmpegTool ffmpegTool)
     {
         _infoFormatter = infoFormatter ?? throw new ArgumentNullException(nameof(infoFormatter));
+        _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
     public string Name => "toh264gpu";
@@ -60,29 +76,22 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         ];
     }
 
-    public bool TryValidate(IReadOnlyList<string> args, out string? errorText)
+    public bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText)
     {
-        return ToH264GpuCliRequestParser.TryParse(args, out _, out errorText);
+        if (ToH264GpuCliRequestParser.TryParse(args, out var runtimeRequest, out errorText))
+        {
+            scenarioInput = runtimeRequest;
+            return true;
+        }
+
+        scenarioInput = null!;
+        return false;
     }
 
     public TranscodeScenario CreateScenario(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        if (!ToH264GpuCliRequestParser.TryParse(request.ScenarioArgs, out var runtimeRequest, out var errorText))
-        {
-            throw new InvalidOperationException(errorText ?? "Invalid toh264gpu arguments.");
-        }
-
-        return new ToH264GpuScenario(runtimeRequest);
-    }
-
-    public string FormatInfo(CliTranscodeRequest request, SourceVideo video, TranscodePlan plan)
-    {
-        ArgumentNullException.ThrowIfNull(video);
-        ArgumentNullException.ThrowIfNull(plan);
-
-        return _infoFormatter.Format(video, plan);
+        return new ToH264GpuScenario(GetRuntimeRequest(request), _ffmpegTool);
     }
 
     public CliScenarioFailure DescribeFailure(CliTranscodeRequest request, Exception exception)
@@ -125,6 +134,13 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
             "unexpected_failure",
             $"REM Unexpected failure: {fileName}",
             $"{fileName}: [unexpected failure]");
+    }
+
+    private static ToH264GpuRequest GetRuntimeRequest(CliTranscodeRequest request)
+    {
+        return request.ScenarioInput as ToH264GpuRequest
+               ?? throw new InvalidOperationException(
+                   $"CLI request for scenario '{request.ScenarioName}' does not carry a valid toh264gpu input.");
     }
 
 }

@@ -10,7 +10,6 @@ using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
-using MediaTranscodeEngine.Runtime.Tools;
 using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.Logging;
 
@@ -18,10 +17,10 @@ namespace MediaTranscodeEngine.Cli.Tests.Processing;
 
 /*
 Это тесты главного CLI processor-а.
-Они покрывают orchestration между parsing, inspection, scenario selection и tool execution assembly.
+Они покрывают orchestration между parsing, inspection, scenario selection и scenario execution assembly.
 */
 /// <summary>
-/// Verifies the primary CLI processor that orchestrates parsing, inspection, scenarios, and tools.
+/// Verifies the primary CLI processor that orchestrates parsing, inspection, and scenario execution.
 /// </summary>
 public sealed class PrimaryTranscodeProcessorTests
 {
@@ -30,7 +29,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mkv", container: "mkv", videoCodec: "av1")),
-            [new ToMkvGpuFfmpegTool("ffmpeg", CreateLogger<ToMkvGpuFfmpegTool>())],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -66,10 +64,6 @@ public sealed class PrimaryTranscodeProcessorTests
                 duration: TimeSpan.FromMinutes(10),
                 formatBitrate: 4_500_000,
                 formatName: "mov,mp4,m4a,3gp,3g2,mj2")),
-            [
-                new ToH264GpuFfmpegTool("ffmpeg", CreateLogger<ToH264GpuFfmpegTool>()),
-                new ToMkvGpuFfmpegTool("ffmpeg", CreateLogger<ToMkvGpuFfmpegTool>())
-            ],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -82,25 +76,10 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
-    public void Process_WhenFirstToolCannotHandlePlan_UsesNextMatchingTool()
-    {
-        var sut = new PrimaryTranscodeProcessor(
-            CreateInspector(CreateVideo(filePath: @"C:\video\a.mkv", container: "mkv", videoCodec: "av1")),
-            [new RejectingTool(), new StubTool()],
-            CreateScenarioRegistry(),
-            CreateLogger<PrimaryTranscodeProcessor>());
-
-        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv"));
-
-        actual.Should().Be("stub");
-    }
-
-    [Fact]
     public void Process_WhenProbeReturnsNoVideoStream_ReturnsLegacyRemLine()
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.NoVideoStream()),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -114,7 +93,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.ProbeInvalidJson(new JsonException())),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -128,7 +106,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.ProbeMissingRequiredField("codec_name", "stream")),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -142,7 +119,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.InvalidVideoWidth()),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -163,7 +139,6 @@ public sealed class PrimaryTranscodeProcessorTests
                     new VideoProbeStream(streamType: "audio", codec: "aac")
                 ],
                 duration: TimeSpan.FromMinutes(10))),
-            [new ToMkvGpuFfmpegTool("ffmpeg", CreateLogger<ToMkvGpuFfmpegTool>())],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -179,7 +154,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mp4", container: "mp4", videoCodec: "h264")),
-            [new ToMkvGpuFfmpegTool("ffmpeg", CreateLogger<ToMkvGpuFfmpegTool>())],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -195,7 +169,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.DownscaleSourceBucketIssue("576 source bucket missing: height 900; add SourceBuckets")),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -209,7 +182,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.DownscaleSourceBucketIssue("576 source bucket invalid: missing corridor 'mult/low'")),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -230,7 +202,6 @@ public sealed class PrimaryTranscodeProcessorTests
                     new VideoProbeStream(streamType: "audio", codec: "aac")
                 ],
                 duration: TimeSpan.FromMinutes(10))),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -251,7 +222,6 @@ public sealed class PrimaryTranscodeProcessorTests
                     new VideoProbeStream(streamType: "audio", codec: "aac")
                 ],
                 duration: TimeSpan.FromMinutes(10))),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -265,7 +235,6 @@ public sealed class PrimaryTranscodeProcessorTests
     {
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.ProbeInvalidJson(new JsonException())),
-            [new StubTool()],
             CreateScenarioRegistry(),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -275,12 +244,11 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
-    public void Process_WhenInfoModeIsRequested_DoesNotBuildExecutionSpec()
+    public void Process_WhenInfoModeIsRequested_DoesNotBuildExecution()
     {
         var scenarioHandler = new InfoOnlyScenarioHandler();
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mp4", container: "mp4", videoCodec: "h264")),
-            [new StubTool()],
             new CliScenarioRegistry([scenarioHandler]),
             CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -288,21 +256,21 @@ public sealed class PrimaryTranscodeProcessorTests
 
         actual.Should().Be("info-only");
         scenarioHandler.CreatedScenario.Should().NotBeNull();
-        scenarioHandler.CreatedScenario!.BuildExecutionSpecCallCount.Should().Be(0);
+        scenarioHandler.CreatedScenario!.BuildExecutionCallCount.Should().Be(0);
     }
 
     [Fact]
-    public void Process_WhenToolThrowsUnexpectedException_ReturnsLegacyUnexpectedRemLineAndLogsWarning()
+    public void Process_WhenScenarioExecutionThrowsUnexpectedException_ReturnsLegacyUnexpectedRemLineAndLogsWarning()
     {
         using var provider = new ListLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
+        var scenarioHandler = new ThrowingExecutionScenarioHandler(new InvalidOperationException("Unexpected execution failure."));
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mp4", container: "mp4", videoCodec: "h264")),
-            [new ThrowingTool(new InvalidOperationException("Unexpected tool failure."))],
-            CreateScenarioRegistry(),
+            new CliScenarioRegistry([scenarioHandler]),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
-        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4"));
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", "throwing-execution"));
 
         actual.Should().Be("REM Unexpected failure: a.mp4");
         var warningEntry = provider.Entries.Single(entry => entry.Level == LogLevel.Warning &&
@@ -318,7 +286,6 @@ public sealed class PrimaryTranscodeProcessorTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(new IOException("Disk read failed.")),
-            [new StubTool()],
             CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -332,13 +299,12 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
-    public void Process_WhenNonInfoEncodeIsNeeded_LogsInspectionPlanAndExecution()
+    public void Process_WhenNonInfoEncodeIsNeeded_LogsInspectionAndScenarioExecution()
     {
         using var provider = new ListLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
             CreateInspector(CreateVideo(filePath: @"C:\video\a.mkv", container: "mkv", videoCodec: "av1")),
-            [new ToMkvGpuFfmpegTool("ffmpeg", loggerFactory.CreateLogger<ToMkvGpuFfmpegTool>())],
             CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -352,11 +318,8 @@ public sealed class PrimaryTranscodeProcessorTests
                                                   Equals(entry.Properties["Container"], "mkv") &&
                                                   Equals(entry.Properties["VideoCodec"], "av1"));
         provider.Entries.Should().Contain(entry => entry.Level == LogLevel.Information &&
-                                                  entry.Message.Contains("Transcode plan built.", StringComparison.Ordinal) &&
-                                                  Equals(entry.Properties["TargetContainer"], "mkv"));
-        provider.Entries.Should().Contain(entry => entry.Level == LogLevel.Information &&
-                                                  entry.Message.Contains("Tool execution built.", StringComparison.Ordinal) &&
-                                                  Equals(entry.Properties["ToolName"], "ffmpeg") &&
+                                                  entry.Message.Contains("Scenario execution built.", StringComparison.Ordinal) &&
+                                                  Equals(entry.Properties["Scenario"], "tomkvgpu") &&
                                                   Equals(entry.Properties["IsEmpty"], false));
     }
 
@@ -367,7 +330,6 @@ public sealed class PrimaryTranscodeProcessorTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var sut = new PrimaryTranscodeProcessor(
             CreateThrowingInspector(RuntimeFailures.NoVideoStream()),
-            [new StubTool()],
             CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
 
@@ -392,7 +354,14 @@ public sealed class PrimaryTranscodeProcessorTests
 
     private static CliTranscodeRequest CreateRequest(string inputPath, string scenarioName, bool info = false, params string[] scenarioArgs)
     {
-        return new CliTranscodeRequest(inputPath, scenarioName, info, scenarioArgs);
+        var handler = ResolveHandler(scenarioName);
+        var scenarioInput = new object();
+        if (handler is not null)
+        {
+            handler.TryParse(scenarioArgs, out scenarioInput, out var errorText).Should().BeTrue(errorText);
+        }
+
+        return new CliTranscodeRequest(inputPath, scenarioName, info, scenarioInput, scenarioArgs.Length);
     }
 
     private static CliScenarioRegistry CreateScenarioRegistry()
@@ -402,6 +371,16 @@ public sealed class PrimaryTranscodeProcessorTests
                 new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
                 new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
             ]);
+    }
+
+    private static ICliScenarioHandler? ResolveHandler(string scenarioName)
+    {
+        return scenarioName switch
+        {
+            "toh264gpu" => new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
+            "tomkvgpu" => new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter()),
+            _ => null
+        };
     }
 
     private static SourceVideo CreateVideo(
@@ -509,79 +488,6 @@ public sealed class PrimaryTranscodeProcessorTests
         }
     }
 
-    /*
-    Это test tool, который всегда может обработать план и возвращает фиксированное выполнение.
-    Он нужен для happy-path проверок processor-а.
-    */
-    /// <summary>
-    /// Represents a tool double that always handles the plan and returns a fixed execution.
-    /// </summary>
-    private sealed class StubTool : ITranscodeTool
-    {
-        public string Name => "stub";
-
-        public bool CanHandle(Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            return true;
-        }
-
-        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            return ToolExecution.Single("stub", "stub");
-        }
-    }
-
-    /*
-    Это test tool, который имитирует сбой на стадии построения execution.
-    Он используется для проверки обработки исключений от инструмента.
-    */
-    /// <summary>
-    /// Represents a tool double that fails while building the execution.
-    /// </summary>
-    private sealed class ThrowingTool : ITranscodeTool
-    {
-        private readonly Exception _exception;
-
-        public ThrowingTool(Exception exception)
-        {
-            _exception = exception;
-        }
-
-        public string Name => "throwing";
-
-        public bool CanHandle(Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            return true;
-        }
-
-        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            throw _exception;
-        }
-    }
-
-    /*
-    Это test tool, который никогда не принимает план.
-    Он нужен для проверки ветки, где processor не находит подходящий инструмент.
-    */
-    /// <summary>
-    /// Represents a tool double that always rejects the supplied plan.
-    /// </summary>
-    private sealed class RejectingTool : ITranscodeTool
-    {
-        public string Name => "rejecting";
-
-        public bool CanHandle(Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            return false;
-        }
-
-        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            throw new InvalidOperationException("Rejecting tool must not be called.");
-        }
-    }
-
     private sealed class InfoOnlyScenarioHandler : ICliScenarioHandler
     {
         public string Name => "info-only";
@@ -597,8 +503,9 @@ public sealed class PrimaryTranscodeProcessorTests
             return [];
         }
 
-        public bool TryValidate(IReadOnlyList<string> args, out string? errorText)
+        public bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText)
         {
+            scenarioInput = new object();
             errorText = null;
             return true;
         }
@@ -607,11 +514,6 @@ public sealed class PrimaryTranscodeProcessorTests
         {
             CreatedScenario = new InfoOnlyScenario();
             return CreatedScenario;
-        }
-
-        public string FormatInfo(CliTranscodeRequest request, SourceVideo video, TranscodePlan plan)
-        {
-            return "info-only";
         }
 
         public CliScenarioFailure DescribeFailure(CliTranscodeRequest request, Exception exception)
@@ -627,22 +529,75 @@ public sealed class PrimaryTranscodeProcessorTests
         {
         }
 
-        public int BuildExecutionSpecCallCount { get; private set; }
+        public int BuildExecutionCallCount { get; private set; }
 
-        protected override TranscodePlan BuildPlanCore(SourceVideo video)
+        protected override string FormatInfoCore(SourceVideo video)
         {
-            return new TranscodePlan(
-                targetContainer: "mkv",
-                video: new CopyVideoPlan(),
-                audio: new CopyAudioPlan(),
-                keepSource: false,
-                outputPath: video.FilePath);
+            return "info-only";
         }
 
-        protected override TranscodeExecutionSpec? BuildExecutionSpecCore(SourceVideo video, TranscodePlan plan)
+        protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
         {
-            BuildExecutionSpecCallCount++;
-            throw new InvalidOperationException("Info mode must not build execution spec.");
+            BuildExecutionCallCount++;
+            throw new InvalidOperationException("Info mode must not build execution.");
+        }
+    }
+
+    private sealed class ThrowingExecutionScenarioHandler : ICliScenarioHandler
+    {
+        private readonly Exception _exception;
+
+        public ThrowingExecutionScenarioHandler(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public string Name => "throwing-execution";
+
+        public IReadOnlyList<string> LegacyCommandTokens { get; } = [];
+
+        public IReadOnlyList<CliHelpOption> HelpOptions { get; } = [];
+
+        public IReadOnlyList<string> GetHelpExamples(string exeName)
+        {
+            return [];
+        }
+
+        public bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText)
+        {
+            scenarioInput = new object();
+            errorText = null;
+            return true;
+        }
+
+        public TranscodeScenario CreateScenario(CliTranscodeRequest request)
+        {
+            return new ThrowingExecutionScenario(_exception);
+        }
+
+        public CliScenarioFailure DescribeFailure(CliTranscodeRequest request, Exception exception)
+        {
+            return new CliScenarioFailure(
+                LogLevel.Warning,
+                "unexpected_failure",
+                $"REM Unexpected failure: {Path.GetFileName(request.InputPath)}",
+                $"{Path.GetFileName(request.InputPath)}: [unexpected failure]");
+        }
+    }
+
+    private sealed class ThrowingExecutionScenario : TranscodeScenario
+    {
+        private readonly Exception _exception;
+
+        public ThrowingExecutionScenario(Exception exception)
+            : base("throwing-execution")
+        {
+            _exception = exception;
+        }
+
+        protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
+        {
+            throw _exception;
         }
     }
 }

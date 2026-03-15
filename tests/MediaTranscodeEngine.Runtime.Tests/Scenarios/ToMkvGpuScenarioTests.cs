@@ -354,7 +354,7 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildExecutionSpec_WhenPlanCopiesVideo_ReturnsNull()
+    public void BuildExecutionSpec_WhenPlanCopiesVideo_ReturnsDecisionWithoutEncodePayload()
     {
         var sut = CreateSut();
         var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"], container: "mkv");
@@ -362,7 +362,8 @@ public sealed class ToMkvGpuScenarioTests
 
         var actual = sut.BuildExecutionSpec(video, plan);
 
-        actual.Should().BeNull();
+        actual.Should().BeSameAs(plan);
+        actual.VideoResolution.Should().BeNull();
     }
 
     [Fact]
@@ -375,11 +376,15 @@ public sealed class ToMkvGpuScenarioTests
         var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", bitrate: 10_000_000);
         var plan = sut.BuildPlan(video);
 
-        var actual = sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToMkvGpuExecutionSpec>().Subject;
+        var actual = sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToMkvGpuDecision>().Subject;
+        actual.VideoResolution.Should().NotBeNull();
+        actual.SourceBitrate.Should().NotBeNull();
+        var videoResolution = actual.VideoResolution!;
+        var sourceBitrate = actual.SourceBitrate!;
 
-        actual.VideoResolution.Settings.ContentProfile.Should().Be("film");
-        actual.VideoResolution.Settings.QualityProfile.Should().Be("default");
-        actual.SourceBitrate.Origin.Should().Be("probe");
+        videoResolution.Settings.ContentProfile.Should().Be("film");
+        videoResolution.Settings.QualityProfile.Should().Be("default");
+        sourceBitrate.Origin.Should().Be("probe");
     }
 
     [Fact]
@@ -392,10 +397,12 @@ public sealed class ToMkvGpuScenarioTests
         var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", bitrate: 10_000_000);
         var plan = sut.BuildPlan(video);
 
-        var actual = sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToMkvGpuExecutionSpec>().Subject;
+        var actual = sut.BuildExecutionSpec(video, plan).Should().BeOfType<ToMkvGpuDecision>().Subject;
+        actual.VideoResolution.Should().NotBeNull();
+        var videoResolution = actual.VideoResolution!;
 
-        actual.VideoResolution.AutoSample.Mode.Should().Be("accurate");
-        actual.VideoResolution.AutoSample.Path.Should().Be("sample");
+        videoResolution.AutoSample.Mode.Should().Be("accurate");
+        videoResolution.AutoSample.Path.Should().Be("sample");
     }
 
     private static ToMkvGpuScenario CreateSut(
@@ -413,7 +420,7 @@ public sealed class ToMkvGpuScenarioTests
             maxFramesPerSecond: maxFramesPerSecond));
     }
 
-    private static EncodeVideoPlan GetRequiredEncodeVideo(TranscodePlan plan)
+    private static EncodeVideoPlan GetRequiredEncodeVideo(ToMkvGpuDecision plan)
     {
         return plan.Video.Should().BeOfType<EncodeVideoPlan>().Subject;
     }

@@ -5,18 +5,18 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 
 /*
 Это общая геометрия рендера для tomkvgpu.
-Она нужна и builder-у execution spec, и ffmpeg tool, чтобы не дублировать
+Она нужна и scenario decision, и ffmpeg rendering path, чтобы не дублировать
 overlay/downscale output size rules.
 */
 internal static class ToMkvGpuVideoGeometry
 {
-    public static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, TranscodePlan plan)
+    public static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, VideoPlan videoPlan, bool applyOverlayBackground)
     {
-        var downscale = plan.Video is EncodeVideoPlan { Downscale: { } explicitDownscale }
+        var downscale = videoPlan is EncodeVideoPlan { Downscale: { } explicitDownscale }
             ? explicitDownscale
             : null;
 
-        if (plan.ApplyOverlayBackground)
+        if (applyOverlayBackground)
         {
             return ResolveOverlayOutputDimensions(video, downscale?.TargetHeight);
         }

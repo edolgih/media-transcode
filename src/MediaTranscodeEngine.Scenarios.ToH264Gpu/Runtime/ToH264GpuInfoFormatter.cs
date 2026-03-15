@@ -9,7 +9,7 @@ namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 Он дает короткую сводку по решению сценария и единообразные маркеры ошибок для CLI.
 */
 /// <summary>
-/// Formats a concise ToH264Gpu decision summary from an inspected source video and the scenario plan.
+/// Formats a concise ToH264Gpu decision summary from an inspected source video and the resolved scenario decision.
 /// </summary>
 public sealed class ToH264GpuInfoFormatter
 {
@@ -28,15 +28,15 @@ public sealed class ToH264GpuInfoFormatter
     }
 
     /// <summary>
-    /// Builds a single-line summary of the actions requested by ToH264Gpu for the supplied video and plan.
+    /// Builds a single-line summary of the actions requested by ToH264Gpu for the supplied video and decision.
     /// </summary>
-    public string Format(SourceVideo video, TranscodePlan plan)
+    internal string Format(SourceVideo video, ToH264GpuDecision decision)
     {
         ArgumentNullException.ThrowIfNull(video);
-        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(decision);
 
         var parts = new List<string>();
-        if (plan.Video is CopyVideoPlan)
+        if (decision.CopyVideo)
         {
             parts.Add("remux-only");
         }
@@ -45,17 +45,17 @@ public sealed class ToH264GpuInfoFormatter
             parts.Add("encode h264");
         }
 
-        if (!video.Container.Equals(plan.TargetContainer, StringComparison.OrdinalIgnoreCase))
+        if (!video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase))
         {
-            parts.Add($"container .{video.Container}->{plan.TargetContainer}");
+            parts.Add($"container .{video.Container}->{decision.TargetContainer}");
         }
 
-        if (plan.Video is EncodeVideoPlan { Downscale: { } downscale })
+        if (decision.Video is EncodeVideoPlan { Downscale: { } downscale })
         {
             parts.Add($"downscale {downscale.TargetHeight}p");
         }
 
-        if (plan.SynchronizeAudio)
+        if (decision.SynchronizeAudio)
         {
             parts.Add("sync audio");
         }

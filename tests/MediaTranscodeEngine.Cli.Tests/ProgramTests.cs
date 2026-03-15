@@ -4,7 +4,6 @@ using MediaTranscodeEngine.Cli.Scenarios;
 using MediaTranscodeEngine.Cli.Tests.Logging;
 using MediaTranscodeEngine.Runtime.Inspection;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
-using MediaTranscodeEngine.Runtime.Tools;
 using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -314,7 +313,6 @@ public sealed class ProgramTests
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var processor = new PrimaryTranscodeProcessor(
             new VideoInspector(new ThrowingVideoProbe(new IOException("Disk read failed."))),
-            [new StubTool()],
             CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
         var services = new ServiceCollection()
@@ -394,28 +392,6 @@ public sealed class ProgramTests
         public VideoProbeSnapshot Probe(string filePath)
         {
             throw _exception;
-        }
-    }
-
-    /*
-    Это test tool с фиксированным успешным execution.
-    Он нужен, чтобы Program-тесты не зависели от реального ffmpeg-слоя.
-    */
-    /// <summary>
-    /// Returns a fixed execution result for Program tests.
-    /// </summary>
-    private sealed class StubTool : ITranscodeTool
-    {
-        public string Name => "stub";
-
-        public bool CanHandle(Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            return true;
-        }
-
-        public ToolExecution BuildExecution(SourceVideo video, Runtime.Plans.TranscodePlan plan, MediaTranscodeEngine.Runtime.Scenarios.TranscodeExecutionSpec? executionSpec)
-        {
-            return ToolExecution.Single("stub", "stub");
         }
     }
 

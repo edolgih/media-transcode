@@ -1,27 +1,64 @@
+using MediaTranscodeEngine.Runtime.Plans;
+
 namespace MediaTranscodeEngine.Runtime.Scenarios.ToH264Gpu;
 
 /*
-Это локальный execution spec сценария toh264gpu.
-В нем лежат уже нормализованные детали mux/video/audio рендера ffmpeg-команды,
-которые не должны раздувать общий TranscodePlan.
+Это локальная rich model сценария toh264gpu.
+Она держит уже принятые scenario-local решения: container, video/audio path,
+output layout и concrete ffmpeg execution details.
 */
 /// <summary>
-/// Carries toh264gpu-specific ffmpeg rendering details outside the shared transcode plan.
+/// Carries the resolved toh264gpu decision together with concrete ffmpeg execution details.
 /// </summary>
-public sealed class ToH264GpuExecutionSpec : TranscodeExecutionSpec
+internal sealed class ToH264GpuDecision
 {
     /// <summary>
-    /// Initializes toh264gpu-specific rendering details.
+    /// Initializes a fully resolved toh264gpu decision.
     /// </summary>
-    public ToH264GpuExecutionSpec(
+    public ToH264GpuDecision(
+        string targetContainer,
+        VideoPlan videoPlan,
+        AudioPlan audioPlan,
+        bool keepSource,
+        string outputPath,
         MuxExecution mux,
-        VideoExecution? video = null,
-        AudioExecution? audio = null)
+        VideoExecution? videoExecution = null,
+        AudioExecution? audioExecution = null)
     {
+        TargetContainer = NormalizeRequiredToken(targetContainer, nameof(targetContainer));
+        Video = NormalizeVideoPlan(videoPlan);
+        Audio = NormalizeAudioPlan(audioPlan);
+        KeepSource = keepSource;
+        OutputPath = NormalizeOutputPath(outputPath, nameof(outputPath));
         Mux = mux ?? throw new ArgumentNullException(nameof(mux));
-        Video = video;
-        Audio = audio;
+        VideoExecutionDetails = videoExecution;
+        AudioExecutionDetails = audioExecution;
     }
+
+    /// <summary>
+    /// Gets the normalized target container identifier.
+    /// </summary>
+    public string TargetContainer { get; }
+
+    /// <summary>
+    /// Gets the resolved video path.
+    /// </summary>
+    public VideoPlan Video { get; }
+
+    /// <summary>
+    /// Gets the resolved audio path.
+    /// </summary>
+    public AudioPlan Audio { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the source file should be kept.
+    /// </summary>
+    public bool KeepSource { get; }
+
+    /// <summary>
+    /// Gets the final output path chosen by the scenario.
+    /// </summary>
+    public string OutputPath { get; }
 
     /// <summary>
     /// Gets mux-related execution details.
@@ -31,12 +68,42 @@ public sealed class ToH264GpuExecutionSpec : TranscodeExecutionSpec
     /// <summary>
     /// Gets normalized video execution details when video encoding is required.
     /// </summary>
-    public VideoExecution? Video { get; }
+    public VideoExecution? VideoExecutionDetails { get; }
 
     /// <summary>
     /// Gets normalized audio execution details when audio encoding is required.
     /// </summary>
-    public AudioExecution? Audio { get; }
+    public AudioExecution? AudioExecutionDetails { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the video stream should be copied.
+    /// </summary>
+    public bool CopyVideo => Video is CopyVideoPlan;
+
+    /// <summary>
+    /// Gets a value indicating whether the audio path copies compatible source streams.
+    /// </summary>
+    public bool CopyAudio => Audio is CopyAudioPlan;
+
+    /// <summary>
+    /// Gets a value indicating whether the decision uses the sync-safe audio path.
+    /// </summary>
+    public bool SynchronizeAudio => Audio is SynchronizeAudioPlan;
+
+    /// <summary>
+    /// Gets a value indicating whether timestamp normalization is required.
+    /// </summary>
+    public bool FixTimestamps => Audio is RepairAudioPlan;
+
+    /// <summary>
+    /// Gets a value indicating whether the decision requires video encoding.
+    /// </summary>
+    public bool RequiresVideoEncode => !CopyVideo;
+
+    /// <summary>
+    /// Gets a value indicating whether the decision requires audio encoding.
+    /// </summary>
+    public bool RequiresAudioEncode => !CopyAudio;
 
     /// <summary>
     /// Gets a value indicating whether the output container should be optimized for progressive playback.
@@ -51,32 +118,32 @@ public sealed class ToH264GpuExecutionSpec : TranscodeExecutionSpec
     /// <summary>
     /// Gets the hardware-decode preference when video encoding is required.
     /// </summary>
-    public bool? UseHardwareDecode => Video?.UseHardwareDecode;
+    public bool? UseHardwareDecode => VideoExecutionDetails?.UseHardwareDecode;
 
     /// <summary>
     /// Gets a value indicating whether adaptive quantization is enabled.
     /// </summary>
-    public bool? EnableAdaptiveQuantization => Video is null ? null : Video.AdaptiveQuantization is not null;
+    public bool? EnableAdaptiveQuantization => VideoExecutionDetails is null ? null : VideoExecutionDetails.AdaptiveQuantization is not null;
 
     /// <summary>
     /// Gets the AQ strength override.
     /// </summary>
-    public int? AqStrength => Video?.AdaptiveQuantization?.Strength;
+    public int? AqStrength => VideoExecutionDetails?.AdaptiveQuantization?.Strength;
 
     /// <summary>
     /// Gets the lookahead window override.
     /// </summary>
-    public int? RcLookahead => Video?.AdaptiveQuantization?.RcLookahead;
+    public int? RcLookahead => VideoExecutionDetails?.AdaptiveQuantization?.RcLookahead;
 
     /// <summary>
     /// Gets the target video bitrate in kilobits per second when VBR mode is requested.
     /// </summary>
-    public int? VideoBitrateKbps => (Video?.RateControl as VariableBitrateVideoRateControlExecution)?.BitrateKbps;
+    public int? VideoBitrateKbps => (VideoExecutionDetails?.RateControl as VariableBitrateVideoRateControlExecution)?.BitrateKbps;
 
     /// <summary>
     /// Gets the target video maxrate in kilobits per second.
     /// </summary>
-    public int? VideoMaxrateKbps => Video?.RateControl switch
+    public int? VideoMaxrateKbps => VideoExecutionDetails?.RateControl switch
     {
         VariableBitrateVideoRateControlExecution rateControl => rateControl.MaxrateKbps,
         ConstantQualityVideoRateControlExecution rateControl => rateControl.MaxrateKbps,
@@ -86,7 +153,7 @@ public sealed class ToH264GpuExecutionSpec : TranscodeExecutionSpec
     /// <summary>
     /// Gets the target video buffer size in kilobits per second.
     /// </summary>
-    public int? VideoBufferSizeKbps => Video?.RateControl switch
+    public int? VideoBufferSizeKbps => VideoExecutionDetails?.RateControl switch
     {
         VariableBitrateVideoRateControlExecution rateControl => rateControl.BufferSizeKbps,
         ConstantQualityVideoRateControlExecution rateControl => rateControl.BufferSizeKbps,
@@ -96,37 +163,37 @@ public sealed class ToH264GpuExecutionSpec : TranscodeExecutionSpec
     /// <summary>
     /// Gets the explicit CQ value when CQ-driven mode is requested.
     /// </summary>
-    public int? VideoCq => (Video?.RateControl as ConstantQualityVideoRateControlExecution)?.Cq;
+    public int? VideoCq => (VideoExecutionDetails?.RateControl as ConstantQualityVideoRateControlExecution)?.Cq;
 
     /// <summary>
     /// Gets the plain ffmpeg video filter expression when one is required.
     /// </summary>
-    public string? VideoFilter => Video?.Filter;
+    public string? VideoFilter => VideoExecutionDetails?.Filter;
 
     /// <summary>
     /// Gets the explicit pixel format token when one is required.
     /// </summary>
-    public string? PixelFormat => Video?.PixelFormat;
+    public string? PixelFormat => VideoExecutionDetails?.PixelFormat;
 
     /// <summary>
     /// Gets the target audio bitrate in kilobits per second when audio must be encoded.
     /// </summary>
-    public int? AudioBitrateKbps => Audio?.BitrateKbps;
+    public int? AudioBitrateKbps => AudioExecutionDetails?.BitrateKbps;
 
     /// <summary>
     /// Gets the explicit audio sample rate when one is required.
     /// </summary>
-    public int? AudioSampleRate => Audio?.SampleRate;
+    public int? AudioSampleRate => AudioExecutionDetails?.SampleRate;
 
     /// <summary>
     /// Gets the explicit audio channel count when one is required.
     /// </summary>
-    public int? AudioChannels => Audio?.Channels;
+    public int? AudioChannels => AudioExecutionDetails?.Channels;
 
     /// <summary>
     /// Gets the plain ffmpeg audio filter expression when one is required.
     /// </summary>
-    public string? AudioFilter => Audio?.Filter;
+    public string? AudioFilter => AudioExecutionDetails?.Filter;
 
     /// <summary>
     /// Represents normalized mux details.
@@ -376,5 +443,41 @@ public sealed class ToH264GpuExecutionSpec : TranscodeExecutionSpec
         }
 
         return value.Trim();
+    }
+
+    private static string NormalizeRequiredToken(string? value, string paramName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
+        return value.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeOutputPath(string? outputPath, string paramName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath, paramName);
+        return Path.GetFullPath(outputPath.Trim());
+    }
+
+    private static VideoPlan NormalizeVideoPlan(VideoPlan video)
+    {
+        ArgumentNullException.ThrowIfNull(video);
+        return video switch
+        {
+            CopyVideoPlan => video,
+            EncodeVideoPlan => video,
+            _ => throw new ArgumentException($"Unsupported video plan type '{video.GetType().Name}'.", nameof(video))
+        };
+    }
+
+    private static AudioPlan NormalizeAudioPlan(AudioPlan audio)
+    {
+        ArgumentNullException.ThrowIfNull(audio);
+        return audio switch
+        {
+            CopyAudioPlan => audio,
+            SynchronizeAudioPlan => audio,
+            RepairAudioPlan => audio,
+            EncodeAudioPlan => audio,
+            _ => throw new ArgumentException($"Unsupported audio plan type '{audio.GetType().Name}'.", nameof(audio))
+        };
     }
 }

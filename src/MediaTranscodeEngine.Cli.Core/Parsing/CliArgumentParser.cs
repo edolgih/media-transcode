@@ -100,13 +100,18 @@ internal static class CliArgumentParser
             return false;
         }
 
+        if (!handler.TryParse(scenarioArgs, out var scenarioInput, out errorText))
+        {
+            return false;
+        }
+
         parsed = new CliParseResult(
             inputs: inputs.ToArray(),
             scenario: scenarioName,
             info: info,
-            scenarioArgs: scenarioArgs.ToArray());
-
-        return handler.TryValidate(parsed.ScenarioArgs, out errorText);
+            scenarioInput: scenarioInput,
+            scenarioArgCount: scenarioArgs.Count);
+        return true;
     }
 
     private static bool TryReadRequiredValue(

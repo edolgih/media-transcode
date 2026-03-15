@@ -2,11 +2,11 @@ using MediaTranscodeEngine.Cli.Parsing;
 using MediaTranscodeEngine.Runtime.Failures;
 using MediaTranscodeEngine.Runtime.VideoSettings;
 using MediaTranscodeEngine.Runtime.Tools.Ffmpeg;
-using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Scenarios.ToMkvGpu;
 using MediaTranscodeEngine.Runtime.Videos;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MediaTranscodeEngine.Cli.Scenarios;
 
@@ -21,13 +21,17 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
 {
     private readonly ToMkvGpuInfoFormatter _infoFormatter;
     private readonly FfmpegSampleMeasurer? _sampleMeasurer;
+    private readonly ToMkvGpuFfmpegTool _ffmpegTool;
 
     /// <summary>
     /// Initializes the CLI handler for the <c>tomkvgpu</c> scenario.
     /// </summary>
     /// <param name="infoFormatter">Formatter used for info-mode output.</param>
     public ToMkvGpuCliScenarioHandler(ToMkvGpuInfoFormatter infoFormatter)
-        : this(infoFormatter, sampleMeasurer: null)
+        : this(
+            infoFormatter,
+            new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance),
+            sampleMeasurer: null)
     {
     }
 
@@ -39,8 +43,26 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     public ToMkvGpuCliScenarioHandler(
         ToMkvGpuInfoFormatter infoFormatter,
         FfmpegSampleMeasurer? sampleMeasurer)
+        : this(
+            infoFormatter,
+            new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance),
+            sampleMeasurer)
+    {
+    }
+
+    /// <summary>
+    /// Initializes the CLI handler for the <c>tomkvgpu</c> scenario.
+    /// </summary>
+    /// <param name="infoFormatter">Formatter used for failure markers.</param>
+    /// <param name="ffmpegTool">Concrete ffmpeg renderer passed into created scenarios.</param>
+    /// <param name="sampleMeasurer">Explicit sample measurer used for accurate autosample paths.</param>
+    public ToMkvGpuCliScenarioHandler(
+        ToMkvGpuInfoFormatter infoFormatter,
+        ToMkvGpuFfmpegTool ffmpegTool,
+        FfmpegSampleMeasurer? sampleMeasurer)
     {
         _infoFormatter = infoFormatter ?? throw new ArgumentNullException(nameof(infoFormatter));
+        _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
         _sampleMeasurer = sampleMeasurer;
     }
 
@@ -87,14 +109,22 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     }
 
     /// <summary>
-    /// Validates raw scenario-specific arguments for the <c>tomkvgpu</c> scenario.
+    /// Parses raw scenario-specific arguments for the <c>tomkvgpu</c> scenario.
     /// </summary>
     /// <param name="args">Raw scenario-specific arguments.</param>
+    /// <param name="scenarioInput">Normalized scenario-specific input on success.</param>
     /// <param name="errorText">Error message on failure.</param>
-    /// <returns><see langword="true"/> when the arguments are valid; otherwise <see langword="false"/>.</returns>
-    public bool TryValidate(IReadOnlyList<string> args, out string? errorText)
+    /// <returns><see langword="true"/> when parsing succeeds; otherwise <see langword="false"/>.</returns>
+    public bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText)
     {
-        return ToMkvGpuCliRequestParser.TryParse(args, out _, out errorText);
+        if (ToMkvGpuCliRequestParser.TryParse(args, out var runtimeRequest, out errorText))
+        {
+            scenarioInput = runtimeRequest;
+            return true;
+        }
+
+        scenarioInput = null!;
+        return false;
     }
 
     /// <summary>
@@ -106,20 +136,8 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     {
         var runtimeRequest = GetRuntimeRequest(request);
         return _sampleMeasurer is null
-            ? new ToMkvGpuScenario(runtimeRequest)
-            : new ToMkvGpuScenario(runtimeRequest, _sampleMeasurer);
-    }
-
-    /// <summary>
-    /// Formats info-mode output for a successfully built <c>tomkvgpu</c> plan.
-    /// </summary>
-    /// <param name="request">Per-input CLI request.</param>
-    /// <param name="video">Inspected source video facts.</param>
-    /// <param name="plan">Built transcode plan.</param>
-    /// <returns>Info-mode output line.</returns>
-    public string FormatInfo(CliTranscodeRequest request, SourceVideo video, TranscodePlan plan)
-    {
-        return _infoFormatter.Format(video, plan);
+            ? new ToMkvGpuScenario(runtimeRequest, _ffmpegTool)
+            : new ToMkvGpuScenario(runtimeRequest, _sampleMeasurer, _ffmpegTool);
     }
 
     /// <summary>
@@ -156,14 +174,9 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     private static ToMkvGpuRequest GetRuntimeRequest(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        if (ToMkvGpuCliRequestParser.TryParse(request.ScenarioArgs, out var runtimeRequest, out var errorText))
-        {
-            return runtimeRequest;
-        }
-
-        throw new InvalidOperationException(
-            $"CLI request for scenario '{request.ScenarioName}' is invalid: {errorText}");
+        return request.ScenarioInput as ToMkvGpuRequest
+               ?? throw new InvalidOperationException(
+                   $"CLI request for scenario '{request.ScenarioName}' does not carry a valid tomkvgpu input.");
     }
 
     private static HandledFailure ClassifyFailure(ToMkvGpuRequest request, Exception exception)

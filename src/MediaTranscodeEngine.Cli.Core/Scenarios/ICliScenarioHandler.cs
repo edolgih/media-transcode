@@ -1,5 +1,4 @@
 using MediaTranscodeEngine.Cli.Parsing;
-using MediaTranscodeEngine.Runtime.Plans;
 using MediaTranscodeEngine.Runtime.Scenarios;
 using MediaTranscodeEngine.Runtime.Videos;
 
@@ -7,7 +6,7 @@ namespace MediaTranscodeEngine.Cli.Scenarios;
 
 /*
 Это CLI-контракт одного прикладного сценария:
-его имя, help, scenario-local parsing/validation, создание runtime-сценария и обработка ошибок.
+его имя, help, scenario-local parsing, создание runtime-сценария и обработка ошибок.
 */
 /// <summary>
 /// Defines the CLI-facing contract for one registered application scenario.
@@ -37,12 +36,13 @@ public interface ICliScenarioHandler
     IReadOnlyList<string> GetHelpExamples(string exeName);
 
     /// <summary>
-    /// Validates raw scenario-specific CLI arguments.
+    /// Parses raw scenario-specific CLI arguments into a normalized scenario input object.
     /// </summary>
     /// <param name="args">Raw scenario-specific arguments.</param>
+    /// <param name="scenarioInput">Normalized scenario-specific input object on success.</param>
     /// <param name="errorText">Error message on failure.</param>
-    /// <returns><see langword="true"/> when the arguments are valid; otherwise <see langword="false"/>.</returns>
-    bool TryValidate(IReadOnlyList<string> args, out string? errorText);
+    /// <returns><see langword="true"/> when parsing succeeds; otherwise <see langword="false"/>.</returns>
+    bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText);
 
     /// <summary>
     /// Creates the runtime scenario instance for the supplied CLI request.
@@ -50,15 +50,6 @@ public interface ICliScenarioHandler
     /// <param name="request">Per-input CLI request.</param>
     /// <returns>Scenario instance used to build the transcode plan.</returns>
     TranscodeScenario CreateScenario(CliTranscodeRequest request);
-
-    /// <summary>
-    /// Formats info-mode output for a successfully built plan.
-    /// </summary>
-    /// <param name="request">Per-input CLI request.</param>
-    /// <param name="video">Inspected source video facts.</param>
-    /// <param name="plan">Built transcode plan.</param>
-    /// <returns>Info-mode output line.</returns>
-    string FormatInfo(CliTranscodeRequest request, SourceVideo video, TranscodePlan plan);
 
     /// <summary>
     /// Maps an exception to scenario-specific CLI failure output.

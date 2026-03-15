@@ -2,39 +2,53 @@
 
 Russian version: [architecture.ru.md](architecture.ru.md)
 
+This document describes the current implemented architecture and runtime flow.
+If a separate refactoring document captures a simpler target shape, that is not a contradiction: `architecture*.md` remains the current-state description until the code changes.
+
 ## Runtime Flow
 
 Current runtime pipeline:
 
-`path -> VideoInspector -> SourceVideo -> TranscodeScenario -> TranscodePlan (+ optional TranscodeExecutionSpec) -> ITranscodeTool -> ToolExecution`
+`argv -> CliArgumentParser -> CliParseResult(normalized ScenarioInput) -> CliTranscodeRequest(per input) -> VideoInspector -> SourceVideo -> TranscodeScenario -> ScenarioExecution`
 
 Core runtime types:
 
+- `src/MediaTranscodeEngine.Cli.Core/Parsing/CliContracts.cs` - shared CLI parse result that carries normalized `ScenarioInput`.
+- `src/MediaTranscodeEngine.Cli.Core/CliTranscodeRequest.cs` - per-input CLI request built from the common parse result.
 - `src/MediaTranscodeEngine.Runtime/Videos/SourceVideo.cs` - normalized facts about the input file.
 - `src/MediaTranscodeEngine.Runtime/Videos/VideoInspector.cs` - builds `SourceVideo` from probe output.
-- `src/MediaTranscodeEngine.Runtime/Scenarios/TranscodeScenario.cs` - makes domain decisions.
-- `src/MediaTranscodeEngine.Runtime/Plans/TranscodePlan.cs` - tool-agnostic transform intent.
-- `src/MediaTranscodeEngine.Runtime/Scenarios/TranscodeExecutionSpec.cs` - optional scenario-specific execution payload for a concrete tool.
-- `src/MediaTranscodeEngine.Runtime/Tools/ITranscodeTool.cs` - concrete execution backend.
-- `src/MediaTranscodeEngine.Runtime/Tools/ToolExecution.cs` - final execution recipe.
+- `src/MediaTranscodeEngine.Runtime/Scenarios/TranscodeScenario.cs` - scenario contract that exposes `FormatInfo(...)` and `BuildExecution(...)`.
+- `src/MediaTranscodeEngine.Runtime/Scenarios/ScenarioExecution.cs` - final scenario-level command recipe.
+- `src/MediaTranscodeEngine.Runtime/Plans/VideoPlan.cs` and `src/MediaTranscodeEngine.Runtime/Plans/AudioPlan.cs` - shared stream-level plan primitives reused by multiple scenarios.
+- `src/MediaTranscodeEngine.Runtime/VideoSettings/*` - shared video-settings catalog and resolver used by multiple scenarios.
+- `src/MediaTranscodeEngine.Runtime/Tools/Ffmpeg/FfmpegExecutionLayout.cs` - shared helper for output/temp path layout and post-operations.
+- `src/MediaTranscodeEngine.Scenarios.ToH264Gpu/Runtime/ToH264GpuDecision.cs` and `src/MediaTranscodeEngine.Scenarios.ToMkvGpu/Runtime/ToMkvGpuDecision.cs` - scenario-local rich decision models; they are internal to scenario projects, not shared runtime contracts.
 
 CLI wiring:
 
 - `src/MediaTranscodeEngine.Cli/Program.cs`
-- `src/MediaTranscodeEngine.Cli/Scenarios/CliScenarioRegistry.cs`
-- `src/MediaTranscodeEngine.Cli/Scenarios/ICliScenarioHandler.cs`
-- `src/MediaTranscodeEngine.Cli/Scenarios/ToMkvGpu/ToMkvGpuCliRequestParser.cs`
-- `src/MediaTranscodeEngine.Cli/Scenarios/ToH264Gpu/ToH264GpuCliRequestParser.cs`
+- `src/MediaTranscodeEngine.Cli.Core/Parsing/CliArgumentParser.cs`
+- `src/MediaTranscodeEngine.Cli.Core/Parsing/CliContracts.cs`
+- `src/MediaTranscodeEngine.Cli.Core/Scenarios/CliScenarioRegistry.cs`
+- `src/MediaTranscodeEngine.Cli.Core/Scenarios/ICliScenarioHandler.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToMkvGpu/Cli/ToMkvGpuCliScenarioHandler.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToMkvGpu/Cli/ToMkvGpuCliRequestParser.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToH264Gpu/Cli/ToH264GpuCliScenarioHandler.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToH264Gpu/Cli/ToH264GpuCliRequestParser.cs`
 - `src/MediaTranscodeEngine.Runtime/Inspection/FfprobeVideoProbe.cs`
-- `src/MediaTranscodeEngine.Runtime/Scenarios/ToMkvGpu/ToMkvGpuScenario.cs`
-- `src/MediaTranscodeEngine.Runtime/Scenarios/ToMkvGpu/ToMkvGpuFfmpegTool.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToH264Gpu/Runtime/ToH264GpuScenario.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToH264Gpu/Runtime/ToH264GpuFfmpegTool.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToMkvGpu/Runtime/ToMkvGpuScenario.cs`
+- `src/MediaTranscodeEngine.Scenarios.ToMkvGpu/Runtime/ToMkvGpuFfmpegTool.cs`
 
 CLI flow at a high level:
 
 - the common CLI layer parses shared arguments such as the required scenario name, input paths, and `--info`;
-- the selected scenario owns its raw scenario-specific argv parsing in the CLI layer, validates those transport values, and maps them to its runtime request type;
-- processing then loads source facts, asks the scenario to build a `TranscodePlan` and an optional `TranscodeExecutionSpec`, and picks the first tool that can execute that combination;
-- in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the runtime request/scenario types it uses; if the ffmpeg rendering policy differs materially, it may also justify a dedicated tool adapter instead of growing a shared one.
+- the selected scenario handler parses scenario-specific argv exactly once in the CLI layer and returns a normalized runtime request as `ScenarioInput`;
+- the common CLI layer stores that normalized scenario input in `CliParseResult`, then builds one `CliTranscodeRequest` per input file without reparsing scenario argv;
+- processing loads source facts, asks the handler to create the scenario from the already parsed input, and then calls `scenario.FormatInfo(...)` or `scenario.BuildExecution(...)`;
+- concrete ffmpeg command rendering now stays inside scenario projects; the shared runtime no longer resolves tools and no longer routes execution through a shared `plan/spec/tool` pipeline;
+- in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the runtime request/scenario-local rendering types it uses.
 - ordinary encode and downscale now share the same profile-driven video-settings axis: output-height buckets, content/quality profiles, bucket bounds, and autosample/bitrate-hint adjustment all come from the shared video-settings profile catalog rather than scenario-local hardcoded fallbacks.
 - runtime request/value types no longer know raw `--option` spellings; the CLI layer is the transport adapter and runtime stays the domain source of truth.
 
@@ -45,12 +59,17 @@ Current boundary rules:
 - `Runtime` owns domain request objects, supported-value catalogs, normalization, validation, and scenario invariants.
 - `CLI` owns raw option names, argv token reading, required-value checks, parse diagnostics, and help rendering.
 - `CLI` may contain option-to-domain binding logic, because that is transport-adapter knowledge.
+- scenario-specific argv must be parsed once at the CLI boundary into normalized scenario input.
+- `CliParseResult` and per-input `CliTranscodeRequest` carry that normalized scenario input downstream; they are not raw-only carriers anymore.
+- info path, normal execution path, and failure path must work from the already available parsed scenario input or avoid reparsing entirely.
 - `CLI` must not carry its own domain supported-value lists when the same values already exist in `Runtime`.
 - `Runtime` must not contain `--option` literals, argv parsing, or CLI help formatting concerns.
 
 In practice:
 
-- scenario-local CLI parsers translate argv into runtime request objects;
+- scenario-local CLI parsers translate argv into runtime request objects exactly once;
+- `CliArgumentParser` stores the parsed scenario object in `CliParseResult`;
+- per-input CLI processing carries that same object through `CliTranscodeRequest`;
 - runtime request/value types validate canonical domain values;
 - CLI help should format supported values from runtime-owned catalogs instead of duplicating those lists.
 
