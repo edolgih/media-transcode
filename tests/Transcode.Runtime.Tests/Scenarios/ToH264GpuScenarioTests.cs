@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Runtime.MediaIntent;
 using Transcode.Runtime.Videos;
 using Transcode.Runtime.VideoSettings;
@@ -425,6 +426,33 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenAccurateAutosampleIsRequested_UsesSampleBackedResolution()
+    {
+        var sut = CreateSut(
+            new ToH264GpuRequest(
+                videoSettings: new VideoSettingsRequest(
+                    contentProfile: "film",
+                    qualityProfile: "default",
+                    autoSampleMode: "accurate")),
+            (_, _, _, _) => 20m);
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["ac3"],
+            bitrate: 10_000_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        actual.CopyVideo.Should().BeFalse();
+        spec.VideoCq.Should().Be(29);
+        spec.VideoMaxrateKbps.Should().Be(2400);
+        spec.VideoBufferSizeKbps.Should().Be(4800);
+    }
+
+    [Fact]
     public void BuildDecision_WhenDownscale424UsesProfileOnlyRequest_UsesFastAutosampleDefaults()
     {
         var sut = CreateSut(new ToH264GpuRequest(
@@ -524,11 +552,18 @@ public sealed class ToH264GpuScenarioTests
         spec.AudioFilter.Should().Be("aresample=48000:async=1:first_pts=0");
     }
 
-    private static ToH264GpuScenario CreateSut(ToH264GpuRequest? request = null)
+    private static ToH264GpuScenario CreateSut(
+        ToH264GpuRequest? request = null,
+        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider = null)
     {
-        return request is null
-            ? new ToH264GpuScenario()
-            : new ToH264GpuScenario(request);
+        return sampleReductionProvider is null
+            ? request is null
+                ? new ToH264GpuScenario()
+                : new ToH264GpuScenario(request)
+            : new ToH264GpuScenario(
+                request ?? new ToH264GpuRequest(),
+                sampleReductionProvider,
+                new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance));
     }
 
     private static EncodeVideoIntent GetRequiredEncodeVideo(ToH264GpuDecision decision)

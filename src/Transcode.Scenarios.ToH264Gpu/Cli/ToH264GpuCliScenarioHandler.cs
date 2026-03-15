@@ -21,6 +21,7 @@ namespace Transcode.Scenarios.ToH264Gpu.Cli;
 public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
 {
     private readonly ToH264GpuInfoFormatter _infoFormatter;
+    private readonly FfmpegSampleMeasurer? _sampleMeasurer;
     private readonly ToH264GpuFfmpegTool _ffmpegTool;
 
     /// <summary>
@@ -28,7 +29,10 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     /// </summary>
     /// <param name="infoFormatter">Formatter used for failure markers.</param>
     public ToH264GpuCliScenarioHandler(ToH264GpuInfoFormatter infoFormatter)
-        : this(infoFormatter, new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance))
+        : this(
+            infoFormatter,
+            new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance),
+            sampleMeasurer: null)
     {
     }
 
@@ -37,10 +41,25 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     /// </summary>
     /// <param name="infoFormatter">Formatter used for failure markers.</param>
     /// <param name="ffmpegTool">Concrete ffmpeg renderer passed into created scenarios.</param>
-    public ToH264GpuCliScenarioHandler(ToH264GpuInfoFormatter infoFormatter, ToH264GpuFfmpegTool ffmpegTool)
+    /// <param name="sampleMeasurer">Explicit sample measurer used for accurate autosample paths.</param>
+    public ToH264GpuCliScenarioHandler(
+        ToH264GpuInfoFormatter infoFormatter,
+        ToH264GpuFfmpegTool ffmpegTool,
+        FfmpegSampleMeasurer? sampleMeasurer)
     {
         _infoFormatter = infoFormatter ?? throw new ArgumentNullException(nameof(infoFormatter));
         _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
+        _sampleMeasurer = sampleMeasurer;
+    }
+
+    /// <summary>
+    /// Initializes the CLI handler for the <c>toh264gpu</c> scenario.
+    /// </summary>
+    /// <param name="infoFormatter">Formatter used for failure markers.</param>
+    /// <param name="ffmpegTool">Concrete ffmpeg renderer passed into created scenarios.</param>
+    public ToH264GpuCliScenarioHandler(ToH264GpuInfoFormatter infoFormatter, ToH264GpuFfmpegTool ffmpegTool)
+        : this(infoFormatter, ffmpegTool, sampleMeasurer: null)
+    {
     }
 
     public string Name => "toh264gpu";
@@ -92,7 +111,10 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     public TranscodeScenario CreateScenario(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return new ToH264GpuScenario(GetRuntimeRequest(request), _ffmpegTool);
+        var runtimeRequest = GetRuntimeRequest(request);
+        return _sampleMeasurer is null
+            ? new ToH264GpuScenario(runtimeRequest, _ffmpegTool)
+            : new ToH264GpuScenario(runtimeRequest, _sampleMeasurer, _ffmpegTool);
     }
 
     public CliScenarioFailure DescribeFailure(CliTranscodeRequest request, Exception exception)

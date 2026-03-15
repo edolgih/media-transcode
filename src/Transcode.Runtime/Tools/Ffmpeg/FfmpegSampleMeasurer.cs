@@ -78,7 +78,7 @@ public sealed class FfmpegSampleMeasurer
             return null;
         }
 
-        var samplePath = Path.Combine(Path.GetTempPath(), $"tomkvgpu-srcsample-{Guid.NewGuid():N}.mkv");
+        var samplePath = Path.Combine(Path.GetTempPath(), $"transcode-srcsample-{Guid.NewGuid():N}.mkv");
         var arguments = new[]
         {
             "-hide_banner",
@@ -117,7 +117,7 @@ public sealed class FfmpegSampleMeasurer
             return null;
         }
 
-        var outputPath = Path.Combine(Path.GetTempPath(), $"tomkvgpu-outsample-{Guid.NewGuid():N}.mkv");
+        var outputPath = Path.Combine(Path.GetTempPath(), $"transcode-outsample-{Guid.NewGuid():N}.mkv");
         var arguments = new[]
         {
             "-hide_banner",

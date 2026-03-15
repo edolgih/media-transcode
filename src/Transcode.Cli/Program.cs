@@ -84,23 +84,23 @@ public static class Program
 				var logger = services.GetRequiredService<ILogger<ToH264GpuFfmpegTool>>();
 				return new ToH264GpuFfmpegTool(options.FfmpegPath!, logger);
 			});
+			builder.Services.AddSingleton(static services =>
+				new FfmpegSampleMeasurer(
+					services.GetRequiredService<IOptions<RuntimeValues>>().Value.FfmpegPath!));
 
 			builder.Services.AddSingleton<ToMkvGpuInfoFormatter>();
 			builder.Services.AddSingleton<ICliScenarioHandler>(static services =>
-			{
-				var sampleMeasurer = new FfmpegSampleMeasurer(
-					services.GetRequiredService<IOptions<RuntimeValues>>().Value.FfmpegPath!);
-				return new ToMkvGpuCliScenarioHandler(
+				new ToMkvGpuCliScenarioHandler(
 					services.GetRequiredService<ToMkvGpuInfoFormatter>(),
 					services.GetRequiredService<ToMkvGpuFfmpegTool>(),
-					sampleMeasurer);
-			});
+					services.GetRequiredService<FfmpegSampleMeasurer>()));
 
 			builder.Services.AddSingleton<ToH264GpuInfoFormatter>();
 			builder.Services.AddSingleton<ICliScenarioHandler>(static services =>
 				new ToH264GpuCliScenarioHandler(
 					services.GetRequiredService<ToH264GpuInfoFormatter>(),
-					services.GetRequiredService<ToH264GpuFfmpegTool>()));
+					services.GetRequiredService<ToH264GpuFfmpegTool>(),
+					services.GetRequiredService<FfmpegSampleMeasurer>()));
 			builder.Services.AddSingleton(static services =>
 				new CliScenarioRegistry(services.GetServices<ICliScenarioHandler>()));
 			builder.Services.AddSingleton<ITranscodeProcessor, PrimaryTranscodeProcessor>();
@@ -366,15 +366,17 @@ public static class Program
 
 	private static CliScenarioRegistry CreateDefaultScenarioRegistry()
 	{
+		var sampleMeasurer = new FfmpegSampleMeasurer("ffmpeg");
 		return new CliScenarioRegistry(
 		[
 			new ToH264GpuCliScenarioHandler(
 				new ToH264GpuInfoFormatter(),
-				new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance)),
+				new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance),
+				sampleMeasurer),
 			new ToMkvGpuCliScenarioHandler(
 				new ToMkvGpuInfoFormatter(),
 				new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance),
-				sampleMeasurer: null)
+				sampleMeasurer)
 		]);
 	}
 }
