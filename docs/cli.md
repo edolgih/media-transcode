@@ -117,7 +117,7 @@ Quality-oriented video settings:
 - `--content-profile <anime|mult|film>`; default: `film`
 - `--quality-profile <high|default|low>`; default: `default`
 - `--autosample-mode <accurate|fast|hybrid>`; default: `fast` for encode, `hybrid` for explicit downscale
-- `--downscale-algo <bilinear|bicubic|lanczos>`; default: `bicubic`
+- `--downscale-algo <bilinear|bicubic|lanczos>`; default: profile default, currently `bilinear` in built-in profiles
 - `--cq <1..51>`; default: resolved profile value
 - `--maxrate <number>`; default: resolved profile value
 - `--bufsize <number>`; default: resolved profile value

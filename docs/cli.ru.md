@@ -117,7 +117,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--content-profile <anime|mult|film>`; по умолчанию `film`
 - `--quality-profile <high|default|low>`; по умолчанию `default`
 - `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `fast` для encode и `hybrid` для explicit downscale
-- `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию `bicubic`
+- `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию profile default, сейчас во встроенных профилях это `bilinear`
 - `--cq <1..51>`; по умолчанию resolved profile value
 - `--maxrate <number>`; по умолчанию resolved profile value
 - `--bufsize <number>`; по умолчанию resolved profile value

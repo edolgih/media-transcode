@@ -113,7 +113,7 @@ public sealed class FfmpegToolTests
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
-        actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bicubic:format=nv12");
+        actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
     }
 
     [Fact]

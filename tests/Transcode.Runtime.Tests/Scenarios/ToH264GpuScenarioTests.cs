@@ -370,7 +370,7 @@ public sealed class ToH264GpuScenarioTests
         var encodeVideo = GetRequiredEncodeVideo(actual);
 
         encodeVideo.Downscale!.TargetHeight.Should().Be(576);
-        encodeVideo.Downscale.Algorithm.Should().Be("bicubic");
+        encodeVideo.Downscale.Algorithm.Should().Be("bilinear");
         encodeVideo.TargetFramesPerSecond.Should().BeApproximately(30000d / 1001d, 0.0001);
         encodeVideo.VideoSettings.Should().BeNull();
     }

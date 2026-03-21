@@ -267,7 +267,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Default: default.");
             output.ToString().Should().Contain("Default: fast for encode, hybrid for explicit downscale.");
             output.ToString().Should().Contain("Default: p6.");
-            output.ToString().Should().Contain("Default: bicubic.");
+            output.ToString().Should().Contain("Default: profile default; built-in profiles currently bilinear.");
             output.ToString().Should().Contain("RuntimeValues:FfprobePath current: ffprobe-custom");
             output.ToString().Should().Contain("RuntimeValues:FfmpegPath  current: ffmpeg-custom");
             error.ToString().Should().BeEmpty();

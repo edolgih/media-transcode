@@ -40,7 +40,7 @@ public sealed class ToH264GpuRequest
         }
 
         KeepSource = keepSource;
-        Downscale = downscale?.WithDefaultAlgorithm(FfmpegScaleAlgorithms.Bicubic);
+        Downscale = downscale;
         KeepFramesPerSecond = keepFramesPerSecond;
         VideoSettings = videoSettings;
         NvencPreset = normalizedNvencPreset ?? NvencPresetOptions.DefaultPreset;

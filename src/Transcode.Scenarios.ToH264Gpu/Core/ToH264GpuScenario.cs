@@ -125,8 +125,12 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var targetFramesPerSecond = copyVideo
             ? (double?)null
             : ResolveTargetFramesPerSecond(video, useDownscale);
+        var videoSettings = copyVideo
+            ? null
+            : ResolveVideoSettings(video, useDownscale, downscaleRequest, videoSettingsRequest);
         var resolvedDownscale = useDownscale
-            ? downscaleRequest
+            ? downscaleRequest?.WithDefaultAlgorithm(
+                videoSettings?.Algorithm ?? throw new InvalidOperationException("Downscale algorithm must be resolved for encode path."))
             : null;
         VideoIntent videoIntent = copyVideo
             ? new CopyVideoIntent()
@@ -139,10 +143,6 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 VideoSettings: videoSettingsRequest,
                 Downscale: resolvedDownscale,
                 EncoderPreset: Request.NvencPreset);
-
-        var videoSettings = copyVideo
-            ? null
-            : ResolveVideoSettings(video, useDownscale, resolvedDownscale, videoSettingsRequest);
         var mux = new ToH264GpuDecision.MuxExecution(
             optimizeForFastStart: targetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
             mapPrimaryAudioOnly: true);
