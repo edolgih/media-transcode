@@ -93,39 +93,38 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 
 Параметры quality-oriented video settings:
 
-- `--keep-source`
-- `--overlay-bg`
-- `--downscale <720|576|480|424>`
-- `--max-fps <50|40|30|24>`
-- `--sync-audio`
-- `--content-profile <anime|mult|film>`
-- `--quality-profile <high|default|low>`
-- `--autosample-mode <accurate|fast|hybrid>`
-- `--downscale-algo <bilinear|bicubic|lanczos>`
-- `--cq <int>`
-- `--maxrate <number>`
-- `--bufsize <number>`
-- `--nvenc-preset <preset>`
+- `--keep-source`; по умолчанию выключен
+- `--overlay-bg`; по умолчанию выключен
+- `--downscale <720|576|480|424>`; по умолчанию не применяется
+- `--max-fps <50|40|30|24>`; по умолчанию без cap
+- `--sync-audio`; по умолчанию выключен
+- `--content-profile <anime|mult|film>`; по умолчанию `film`
+- `--quality-profile <high|default|low>`; по умолчанию `default`
+- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `fast` для encode и `hybrid` для explicit downscale
+- `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию profile default, сейчас во встроенных профилях это `bilinear`
+- `--cq <int>`; по умолчанию resolved profile value
+- `--maxrate <number>`; по умолчанию resolved profile value
+- `--bufsize <number>`; по умолчанию resolved profile value
+- `--nvenc-preset <preset>`; по умолчанию `p6`
 
 Опции `toh264gpu`:
 
 Параметры quality-oriented video settings:
 
-- `--keep-source`
-- `--downscale <720|576|480|424>`
-- `--keep-fps`
-- `--content-profile <anime|mult|film>`
-- `--quality-profile <high|default|low>`
-- `--autosample-mode <accurate|fast|hybrid>`
-- `--downscale-algo <bilinear|bicubic|lanczos>`
-- `--cq <1..51>`
-- `--maxrate <number>`
-- `--bufsize <number>`
-- `--nvenc-preset <p1..p7>`
-- `--denoise`
-- `--sync-audio`
-  Использует явный audio-sync repair path.
-- `--mkv`
+- `--keep-source`; по умолчанию выключен
+- `--downscale <720|576|480|424>`; по умолчанию не применяется
+- `--keep-fps`; по умолчанию выключен
+- `--content-profile <anime|mult|film>`; по умолчанию `film`
+- `--quality-profile <high|default|low>`; по умолчанию `default`
+- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `fast` для encode и `hybrid` для explicit downscale
+- `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию `bicubic`
+- `--cq <1..51>`; по умолчанию resolved profile value
+- `--maxrate <number>`; по умолчанию resolved profile value
+- `--bufsize <number>`; по умолчанию resolved profile value
+- `--nvenc-preset <p1..p7>`; по умолчанию `p6`
+- `--denoise`; по умолчанию выключен
+- `--sync-audio`; по умолчанию выключен; при включении использует явный audio-sync repair path
+- `--mkv`; по умолчанию выключен, поэтому выход остаётся MP4
 
 ## Требования
 

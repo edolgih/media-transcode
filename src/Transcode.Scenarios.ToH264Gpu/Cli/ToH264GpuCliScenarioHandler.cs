@@ -68,20 +68,20 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
 
     public IReadOnlyList<CliHelpOption> HelpOptions =>
     [
-        new CliHelpOption("--keep-source", "Keep the source file instead of replacing it when output path matches the input."),
-        new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "GPU downscale when the source is higher than the target."),
-        new CliHelpOption("--keep-fps", "Keep the source FPS in downscale mode instead of capping to 30000/1001."),
-        new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile."),
-        new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile."),
-        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode."),
-        new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Downscale interpolation algorithm."),
-        new CliHelpOption("--cq <1..51>", "Explicit CQ override."),
-        new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s."),
-        new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s."),
-        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", "Explicit NVENC preset override."),
-        new CliHelpOption("--denoise", "Enable denoise in normal encode mode."),
-        new CliHelpOption("--sync-audio", "Use the explicit audio-sync repair path."),
-        new CliHelpOption("--mkv", "Write MKV instead of MP4.")
+        new CliHelpOption("--keep-source", "Keep the source file instead of replacing it when output path matches the input. Default: off."),
+        new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "GPU downscale when the source is higher than the target. Default: off."),
+        new CliHelpOption("--keep-fps", "Keep the source FPS in downscale mode instead of capping to 30000/1001. Default: off."),
+        new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
+        new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile. Default: default."),
+        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode. Default: fast for encode, hybrid for explicit downscale."),
+        new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Downscale interpolation algorithm. Default: bicubic."),
+        new CliHelpOption("--cq <1..51>", "Explicit CQ override. Default: resolved profile value."),
+        new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s. Default: resolved profile value."),
+        new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s. Default: resolved profile value."),
+        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", $"Explicit NVENC preset override. Default: {NvencPresetOptions.DefaultPreset}."),
+        new CliHelpOption("--denoise", "Enable denoise in normal encode mode. Default: off."),
+        new CliHelpOption("--sync-audio", "Use the explicit audio-sync repair path. Default: off."),
+        new CliHelpOption("--mkv", "Write MKV instead of MP4. Default: off (MP4).")
     ];
 
     public IReadOnlyList<string> GetHelpExamples(string exeName)

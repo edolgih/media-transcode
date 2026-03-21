@@ -73,19 +73,19 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
 
     public IReadOnlyList<CliHelpOption> HelpOptions { get; } =
     [
-        new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "Downscale target height."),
-        new CliHelpOption("--keep-source", "Keep source file and write output to a new path."),
-        new CliHelpOption("--overlay-bg", "Apply overlay background path during encode."),
-        new CliHelpOption($"--max-fps <{CliValueFormatter.FormatAlternatives(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}>", $"Optional frame-rate cap. Supported values: {CliValueFormatter.FormatList(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}."),
-        new CliHelpOption("--sync-audio", "Force sync-safe audio path."),
-        new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile."),
-        new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile."),
-        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode."),
-        new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Explicit downscale algorithm override."),
-        new CliHelpOption("--cq <int>", "Explicit NVENC CQ override."),
-        new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s."),
-        new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s."),
-        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", "Explicit NVENC preset override.")
+        new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "Downscale target height. Default: off."),
+        new CliHelpOption("--keep-source", "Keep source file and write output to a new path. Default: off."),
+        new CliHelpOption("--overlay-bg", "Apply overlay background path during encode. Default: off."),
+        new CliHelpOption($"--max-fps <{CliValueFormatter.FormatAlternatives(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}>", $"Optional frame-rate cap. Default: no cap. Supported values: {CliValueFormatter.FormatList(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}."),
+        new CliHelpOption("--sync-audio", "Force sync-safe audio path. Default: off."),
+        new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
+        new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile. Default: default."),
+        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode. Default: fast for encode, hybrid for explicit downscale."),
+        new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Explicit downscale algorithm override. Default: profile default; built-in profiles currently bilinear."),
+        new CliHelpOption("--cq <int>", "Explicit NVENC CQ override. Default: resolved profile value."),
+        new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s. Default: resolved profile value."),
+        new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s. Default: resolved profile value."),
+        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", $"Explicit NVENC preset override. Default: {NvencPresetOptions.DefaultPreset}.")
     ];
 
     /// <summary>

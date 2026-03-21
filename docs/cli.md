@@ -93,39 +93,38 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 
 Quality-oriented video settings:
 
-- `--keep-source`
-- `--overlay-bg`
-- `--downscale <720|576|480|424>`
-- `--max-fps <50|40|30|24>`
-- `--sync-audio`
-- `--content-profile <anime|mult|film>`
-- `--quality-profile <high|default|low>`
-- `--autosample-mode <accurate|fast|hybrid>`
-- `--downscale-algo <bilinear|bicubic|lanczos>`
-- `--cq <int>`
-- `--maxrate <number>`
-- `--bufsize <number>`
-- `--nvenc-preset <preset>`
+- `--keep-source`; default: off
+- `--overlay-bg`; default: off
+- `--downscale <720|576|480|424>`; default: off
+- `--max-fps <50|40|30|24>`; default: no cap
+- `--sync-audio`; default: off
+- `--content-profile <anime|mult|film>`; default: `film`
+- `--quality-profile <high|default|low>`; default: `default`
+- `--autosample-mode <accurate|fast|hybrid>`; default: `fast` for encode, `hybrid` for explicit downscale
+- `--downscale-algo <bilinear|bicubic|lanczos>`; default: profile default, currently `bilinear` in built-in profiles
+- `--cq <int>`; default: resolved profile value
+- `--maxrate <number>`; default: resolved profile value
+- `--bufsize <number>`; default: resolved profile value
+- `--nvenc-preset <preset>`; default: `p6`
 
 `toh264gpu` options:
 
 Quality-oriented video settings:
 
-- `--keep-source`
-- `--downscale <720|576|480|424>`
-- `--keep-fps`
-- `--content-profile <anime|mult|film>`
-- `--quality-profile <high|default|low>`
-- `--autosample-mode <accurate|fast|hybrid>`
-- `--downscale-algo <bilinear|bicubic|lanczos>`
-- `--cq <1..51>`
-- `--maxrate <number>`
-- `--bufsize <number>`
-- `--nvenc-preset <p1..p7>`
-- `--denoise`
-- `--sync-audio`
-  Uses the explicit audio-sync repair path.
-- `--mkv`
+- `--keep-source`; default: off
+- `--downscale <720|576|480|424>`; default: off
+- `--keep-fps`; default: off
+- `--content-profile <anime|mult|film>`; default: `film`
+- `--quality-profile <high|default|low>`; default: `default`
+- `--autosample-mode <accurate|fast|hybrid>`; default: `fast` for encode, `hybrid` for explicit downscale
+- `--downscale-algo <bilinear|bicubic|lanczos>`; default: `bicubic`
+- `--cq <1..51>`; default: resolved profile value
+- `--maxrate <number>`; default: resolved profile value
+- `--bufsize <number>`; default: resolved profile value
+- `--nvenc-preset <p1..p7>`; default: `p6`
+- `--denoise`; default: off
+- `--sync-audio`; default: off; uses the explicit audio-sync repair path when enabled
+- `--mkv`; default: off, so output stays MP4
 
 ## Requirements
 
