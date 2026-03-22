@@ -212,9 +212,9 @@ public sealed class ToMkvGpuFfmpegTool
         return decision.Audio switch
         {
             CopyAudioIntent => "-map 0:a? -c:a copy",
-            SynchronizeAudioIntent => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"",
-            RepairAudioIntent => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k -af \"aresample=async=1:first_pts=0\"",
-            EncodeAudioIntent => "-map 0:a? -c:a aac -ar 48000 -ac 2 -b:a 192k",
+            SynchronizeAudioIntent => "-map 0:a? -c:a libmp3lame -q:a 2 -af \"aresample=async=1:first_pts=0\"",
+            RepairAudioIntent => "-map 0:a? -c:a libmp3lame -q:a 2 -af \"aresample=async=1:first_pts=0\"",
+            EncodeAudioIntent => "-map 0:a? -c:a libmp3lame -q:a 2",
             _ => throw new InvalidOperationException("Unsupported audio intent type.")
         };
     }

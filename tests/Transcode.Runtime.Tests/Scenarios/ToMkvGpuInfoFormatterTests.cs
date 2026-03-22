@@ -20,7 +20,7 @@ public sealed class ToMkvGpuInfoFormatterTests
     public void Format_WhenPlanDoesNothing_ReturnsEmptyString()
     {
         var sut = CreateSut();
-        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"]);
         var plan = CreateDecision(copyVideo: true, copyAudio: true, outputPath: video.FilePath);
 
         var actual = sut.Format(video, plan);
@@ -37,14 +37,14 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.Format(video, plan);
 
-        actual.Should().Be("input.mp4: [container .mp4→mkv] [vcodec av1] [audio non-AAC]");
+        actual.Should().Be("input.mp4: [container .mp4→mkv] [vcodec av1] [audio non-MP3]");
     }
 
     [Fact]
     public void Format_WhenSyncAudioIsRequested_ReturnsSyncAudioMarker()
     {
         var sut = CreateSut();
-        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"]);
         var plan = CreateDecision(copyVideo: true, copyAudio: false, outputPath: video.FilePath, synchronizeAudio: true);
 
         var actual = sut.Format(video, plan);
@@ -56,7 +56,7 @@ public sealed class ToMkvGpuInfoFormatterTests
     public void Format_WhenFrameRateCapIsApplied_ReturnsFpsMarker()
     {
         var sut = CreateSut();
-        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["aac"]);
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"]);
         var plan = CreateDecision(
             copyVideo: false,
             copyAudio: false,

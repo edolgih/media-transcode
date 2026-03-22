@@ -23,7 +23,7 @@ public sealed class ToMkvGpuScenarioTests
     public void BuildDecision_WhenVideoCodecIsCopyCompatibleAndNoOverrides_CopiesVideo(string videoCodec)
     {
         var sut = CreateSut();
-        var video = CreateVideo(videoCodec: videoCodec, audioCodecs: ["aac"], container: "mkv");
+        var video = CreateVideo(videoCodec: videoCodec, audioCodecs: ["mp3"], container: "mkv");
 
         var actual = sut.BuildDecision(video);
 
@@ -106,10 +106,10 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildDecision_WhenAudioContainsNonAac_ForcesAudioEncodeWhileKeepingVideoCopy()
+    public void BuildDecision_WhenAudioContainsNonMp3_ForcesAudioEncodeWhileKeepingVideoCopy()
     {
         var sut = CreateSut();
-        var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac", "ac3"]);
+        var video = CreateVideo(videoCodec: "h264", audioCodecs: ["mp3", "ac3"]);
 
         var actual = sut.BuildDecision(video);
 
@@ -122,7 +122,7 @@ public sealed class ToMkvGpuScenarioTests
     public void BuildDecision_WhenSynchronizeAudioIsRequested_ForcesAudioEncode()
     {
         var sut = CreateSut(synchronizeAudio: true);
-        var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"]);
+        var video = CreateVideo(videoCodec: "h264", audioCodecs: ["mp3"]);
 
         var actual = sut.BuildDecision(video);
 
@@ -150,7 +150,7 @@ public sealed class ToMkvGpuScenarioTests
     public void BuildDecision_WhenMaxFpsIsNotLowerThanSourceFrameRate_DoesNotForceVideoEncode()
     {
         var sut = CreateSut(maxFramesPerSecond: 30);
-        var video = CreateVideo(videoCodec: "h264", audioCodecs: ["aac"], framesPerSecond: 23.976);
+        var video = CreateVideo(videoCodec: "h264", audioCodecs: ["mp3"], framesPerSecond: 23.976);
 
         var actual = sut.BuildDecision(video);
 

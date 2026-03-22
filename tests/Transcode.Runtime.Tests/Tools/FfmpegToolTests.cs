@@ -21,7 +21,7 @@ public sealed class FfmpegToolTests
     public void ToMkvGpuTool_WhenDecisionIsNoOp_ReturnsEmptyExecution()
     {
         var tool = CreateToMkvTool();
-        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
         var decision = new ToMkvGpuScenario(new ToMkvGpuRequest()).BuildDecision(video);
 
         var actual = tool.BuildExecution(video, decision);
@@ -42,7 +42,8 @@ public sealed class FfmpegToolTests
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
         actual.Commands[0].Should().Contain("-preset p6");
-        actual.Commands[0].Should().Contain("-c:a aac");
+        actual.Commands[0].Should().Contain("-c:a libmp3lame");
+        actual.Commands[0].Should().Contain("-q:a 2");
         actual.Commands[1].Should().Be("del \"C:\\video\\input.mp4\"");
     }
 
@@ -65,12 +66,14 @@ public sealed class FfmpegToolTests
     {
         var tool = CreateToMkvTool();
         var request = new ToMkvGpuRequest(synchronizeAudio: true);
-        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
         var decision = new ToMkvGpuScenario(request).BuildDecision(video);
 
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands[0].Should().Contain("-c:v copy -copytb 1");
+        actual.Commands[0].Should().Contain("-c:a libmp3lame");
+        actual.Commands[0].Should().Contain("-q:a 2");
         actual.Commands[0].Should().Contain("-af \"aresample=async=1:first_pts=0\"");
     }
 

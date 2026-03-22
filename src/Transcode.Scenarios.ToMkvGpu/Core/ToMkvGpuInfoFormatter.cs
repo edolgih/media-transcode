@@ -68,9 +68,9 @@ public sealed class ToMkvGpuInfoFormatter
             parts.Add($"fps {targetFramesPerSecond:0.###}");
         }
 
-        if (HasNonAacAudio(video))
+        if (HasNonMp3Audio(video))
         {
-            parts.Add("audio non-AAC");
+            parts.Add("audio non-MP3");
         }
 
         if (decision.SynchronizeAudio && video.HasAudio)
@@ -86,9 +86,9 @@ public sealed class ToMkvGpuInfoFormatter
         return $"{video.FileName}: [{string.Join("] [", parts)}]";
     }
 
-    private static bool HasNonAacAudio(SourceVideo video)
+    private static bool HasNonMp3Audio(SourceVideo video)
     {
-        return video.AudioCodecs.Any(codec => !codec.Equals("aac", StringComparison.OrdinalIgnoreCase));
+        return video.AudioCodecs.Any(codec => !codec.Equals("mp3", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string ResolveFailureMarker(Exception exception)

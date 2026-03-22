@@ -253,7 +253,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             return true;
         }
 
-        return audioCodecs.All(codec => codec.Equals("aac", StringComparison.OrdinalIgnoreCase));
+        return audioCodecs.All(codec => codec.Equals("mp3", StringComparison.OrdinalIgnoreCase));
     }
 
     private string ResolveOutputPath(SourceVideo video, bool copyVideo, bool copyAudio)
