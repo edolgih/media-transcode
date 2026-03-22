@@ -1,3 +1,4 @@
+using System.Globalization;
 using Transcode.Core.Failures;
 using Transcode.Core.MediaIntent;
 using Transcode.Core.Videos;
@@ -65,6 +66,11 @@ public sealed class ToH264GpuInfoFormatter
             return string.Empty;
         }
 
-        return $"{video.FileName}: [{string.Join("] [", parts)}]";
+        return $"{video.FileName}: {FormatSourceFacts(video)} [{string.Join("] [", parts)}]";
+    }
+
+    private static string FormatSourceFacts(SourceVideo video)
+    {
+        return $"{video.Width}x{video.Height} fps {video.FramesPerSecond.ToString("0.###", CultureInfo.InvariantCulture)}";
     }
 }

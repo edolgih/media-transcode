@@ -37,7 +37,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.Format(video, plan);
 
-        actual.Should().Be("input.mp4: [container .mp4→mkv] [vcodec av1] [audio non-MP3]");
+        actual.Should().Be("input.mp4: 1920x1080 fps 29.97 [container .mp4→mkv] [vcodec av1] [audio non-MP3]");
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.Format(video, plan);
 
-        actual.Should().Be("input.mkv: [sync audio]");
+        actual.Should().Be("input.mkv: 1920x1080 fps 29.97 [sync audio]");
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed class ToMkvGpuInfoFormatterTests
 
         var actual = sut.Format(video, plan);
 
-        actual.Should().Be("input.mkv: [vcodec h264] [fps 50]");
+        actual.Should().Be("input.mkv: 1920x1080 fps 29.97 [vcodec h264] [fps 50]");
     }
 
     [Fact]
