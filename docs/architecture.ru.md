@@ -99,8 +99,3 @@ CLI wiring:
 - fps-cap path добавляет только те framing controls, которые действительно нужны;
 - `--sync-audio` остаётся явным repair mode.
 
-## Reference Data
-
-Стабильные legacy reference data остаются в:
-
-- `docs/reference/legacy-fe62f0c/ToMkvGPU.576.Profiles.yaml`

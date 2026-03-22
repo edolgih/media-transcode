@@ -99,8 +99,3 @@ Current intent:
 - fps-cap path adds only the framing controls it really needs;
 - `--sync-audio` remains an explicit repair mode.
 
-## Reference Data
-
-Stable legacy reference data remains under:
-
-- `docs/reference/legacy-fe62f0c/ToMkvGPU.576.Profiles.yaml`
