@@ -165,7 +165,7 @@ public static class Program
 	}
 
 	/// <summary>
-	/// Runs the CLI using the registry available from the service provider or the default registry.
+	/// Runs the CLI using the scenario registry resolved from the service provider.
 	/// </summary>
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
@@ -183,12 +183,12 @@ public static class Program
 			logger,
 			services,
 			runtimeValues,
-			services.GetService<CliScenarioRegistry>() ?? CreateDefaultScenarioRegistry(),
+			services.GetRequiredService<CliScenarioRegistry>(),
 			readRedirectedStdIn: true);
 	}
 
 	/// <summary>
-	/// Runs the CLI using the registry available from the service provider or the default registry.
+	/// Runs the CLI using the scenario registry resolved from the service provider and explicit stdin behavior.
 	/// </summary>
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
@@ -208,7 +208,7 @@ public static class Program
 			logger,
 			services,
 			runtimeValues,
-			services.GetService<CliScenarioRegistry>() ?? CreateDefaultScenarioRegistry(),
+			services.GetRequiredService<CliScenarioRegistry>(),
 			readRedirectedStdIn);
 	}
 
@@ -364,19 +364,4 @@ public static class Program
 		       string.Equals(token, "-h", StringComparison.OrdinalIgnoreCase);
 	}
 
-	private static CliScenarioRegistry CreateDefaultScenarioRegistry()
-	{
-		var sampleMeasurer = new FfmpegSampleMeasurer("ffmpeg");
-		return new CliScenarioRegistry(
-		[
-			new ToH264GpuCliScenarioHandler(
-				new ToH264GpuInfoFormatter(),
-				new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance),
-				sampleMeasurer),
-			new ToMkvGpuCliScenarioHandler(
-				new ToMkvGpuInfoFormatter(),
-				new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance),
-				sampleMeasurer)
-		]);
-	}
 }

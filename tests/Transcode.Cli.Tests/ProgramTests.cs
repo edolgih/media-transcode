@@ -7,6 +7,8 @@ using Transcode.Cli.Core.Scenarios;
 using Transcode.Cli.Tests.Logging;
 using Transcode.Core.Inspection;
 using Transcode.Core.Videos;
+using Transcode.Scenarios.ToH264Gpu.Cli;
+using Transcode.Scenarios.ToH264Gpu.Core;
 using Transcode.Scenarios.ToMkvGpu.Cli;
 using Transcode.Scenarios.ToMkvGpu.Core;
 
@@ -69,9 +71,7 @@ public sealed class ProgramTests
     [Fact]
     public void RunCli_WhenNonInfoMode_WritesChcpOnceBeforeProcessorOutput()
     {
-        var services = new ServiceCollection()
-            .AddSingleton<ITranscodeProcessor>(new StubProcessor("ffmpeg -i \"C:\\video\\a.mp4\" \"C:\\video\\a.mkv\""))
-            .BuildServiceProvider();
+        var services = CreateServices(new StubProcessor("ffmpeg -i \"C:\\video\\a.mp4\" \"C:\\video\\a.mkv\""));
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
         var runtimeValues = new RuntimeValues
@@ -106,9 +106,7 @@ public sealed class ProgramTests
     [Fact]
     public void RunCli_WhenInfoMode_DoesNotWriteChcp()
     {
-        var services = new ServiceCollection()
-            .AddSingleton<ITranscodeProcessor>(new StubProcessor("a.mp4: [ffprobe failed]"))
-            .BuildServiceProvider();
+        var services = CreateServices(new StubProcessor("a.mp4: [ffprobe failed]"));
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
         var runtimeValues = new RuntimeValues
@@ -143,9 +141,7 @@ public sealed class ProgramTests
     [Fact]
     public void RunCli_WhenNonInfoProcessorReturnsEmptyLine_WritesOnlyChcp()
     {
-        var services = new ServiceCollection()
-            .AddSingleton<ITranscodeProcessor>(new StubProcessor(string.Empty))
-            .BuildServiceProvider();
+        var services = CreateServices(new StubProcessor(string.Empty));
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
         var runtimeValues = new RuntimeValues
@@ -179,9 +175,7 @@ public sealed class ProgramTests
     [Fact]
     public void RunCli_WhenParseSucceeds_LogsRequestAndPerInputLifecycle()
     {
-        var services = new ServiceCollection()
-            .AddSingleton<ITranscodeProcessor>(new StubProcessor("ffmpeg -i input output"))
-            .BuildServiceProvider();
+        var services = CreateServices(new StubProcessor("ffmpeg -i input output"));
         using var provider = new ListLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var logger = loggerFactory.CreateLogger("test");
@@ -236,7 +230,7 @@ public sealed class ProgramTests
     [Fact]
     public void RunCli_WhenHelpRequested_WritesHelpTextAndReturnsZero()
     {
-        var services = new ServiceCollection().BuildServiceProvider();
+        var services = CreateServices();
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
         var runtimeValues = new RuntimeValues
@@ -282,7 +276,7 @@ public sealed class ProgramTests
     [Fact]
     public void RunCli_WhenNoInputsAreProvided_WritesErrorAndReturnsOne()
     {
-        var services = new ServiceCollection().BuildServiceProvider();
+        var services = CreateServices();
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
         var runtimeValues = new RuntimeValues
@@ -322,9 +316,7 @@ public sealed class ProgramTests
             new VideoInspector(new ThrowingVideoProbe(new IOException("Disk read failed."))),
             CreateScenarioRegistry(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
-        var services = new ServiceCollection()
-            .AddSingleton<ITranscodeProcessor>(processor)
-            .BuildServiceProvider();
+        var services = CreateServices(processor);
         var logger = loggerFactory.CreateLogger("test");
         var runtimeValues = new RuntimeValues
         {
@@ -405,7 +397,23 @@ public sealed class ProgramTests
     private static CliScenarioRegistry CreateScenarioRegistry()
     {
         return new CliScenarioRegistry(
-            [new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())]
+            [
+                new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
+                new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
+            ]
         );
+    }
+
+    private static ServiceProvider CreateServices(ITranscodeProcessor? processor = null)
+    {
+        var services = new ServiceCollection()
+            .AddSingleton(CreateScenarioRegistry());
+
+        if (processor is not null)
+        {
+            services.AddSingleton<ITranscodeProcessor>(processor);
+        }
+
+        return services.BuildServiceProvider();
     }
 }
