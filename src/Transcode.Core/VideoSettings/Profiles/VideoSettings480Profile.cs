@@ -58,9 +58,9 @@ internal static class VideoSettings480Profile
                         new VideoSettingsRange("anime", "high", MinInclusive: 20.0m, MaxInclusive: 34.0m),
                         new VideoSettingsRange("anime", "default", MinInclusive: 34.0m, MaxInclusive: 48.0m),
                         new VideoSettingsRange("anime", "low", MinInclusive: 48.0m, MaxInclusive: 66.0m),
-                        new VideoSettingsRange("mult", "high", MinInclusive: 18.0m, MaxInclusive: 30.0m),
-                        new VideoSettingsRange("mult", "default", MinInclusive: 30.0m, MaxInclusive: 44.0m),
-                        new VideoSettingsRange("mult", "low", MinInclusive: 44.0m, MaxInclusive: 62.0m),
+                        new VideoSettingsRange("mult", "high", MinInclusive: 22.0m, MaxInclusive: 36.0m),
+                        new VideoSettingsRange("mult", "default", MinInclusive: 34.0m, MaxInclusive: 52.0m),
+                        new VideoSettingsRange("mult", "low", MinInclusive: 52.0m, MaxInclusive: 70.0m),
                         new VideoSettingsRange("film", "high", MinInclusive: 14.0m, MaxInclusive: 28.0m),
                         new VideoSettingsRange("film", "default", MinInclusive: 28.0m, MaxInclusive: 42.0m),
                         new VideoSettingsRange("film", "low", MinInclusive: 42.0m, MaxInclusive: 58.0m)
@@ -68,7 +68,7 @@ internal static class VideoSettings480Profile
                     BoundsOverrides:
                     [
                         new VideoSettingsBoundsOverride("mult", "high", CqMin: 16, MaxrateMax: 3.2m),
-                        new VideoSettingsBoundsOverride("mult", "default", CqMin: 20, MaxrateMax: 2.6m),
+                        new VideoSettingsBoundsOverride("mult", "default", CqMin: 19, MaxrateMax: 3.0m),
                         new VideoSettingsBoundsOverride("mult", "low", CqMin: 25, MaxrateMax: 1.8m)
                     ]),
                 new SourceHeightBucket(

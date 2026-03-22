@@ -34,6 +34,28 @@ internal static class VideoSettings720Profile
             sourceBuckets:
             [
                 new SourceHeightBucket(
+                    "hdplus_900",
+                    MinHeight: 800,
+                    MaxHeight: 999,
+                    Ranges:
+                    [
+                        new VideoSettingsRange("anime", "high", MinInclusive: 18.0m, MaxInclusive: 32.0m),
+                        new VideoSettingsRange("anime", "default", MinInclusive: 32.0m, MaxInclusive: 46.0m),
+                        new VideoSettingsRange("anime", "low", MinInclusive: 46.0m, MaxInclusive: 62.0m),
+                        new VideoSettingsRange("mult", "high", MinInclusive: 22.0m, MaxInclusive: 36.0m),
+                        new VideoSettingsRange("mult", "default", MinInclusive: 34.0m, MaxInclusive: 48.0m),
+                        new VideoSettingsRange("mult", "low", MinInclusive: 48.0m, MaxInclusive: 64.0m),
+                        new VideoSettingsRange("film", "high", MinInclusive: 14.0m, MaxInclusive: 28.0m),
+                        new VideoSettingsRange("film", "default", MinInclusive: 26.0m, MaxInclusive: 40.0m),
+                        new VideoSettingsRange("film", "low", MinInclusive: 40.0m, MaxInclusive: 56.0m)
+                    ],
+                    BoundsOverrides:
+                    [
+                        new VideoSettingsBoundsOverride("mult", "high", CqMin: 18, MaxrateMax: 4.4m),
+                        new VideoSettingsBoundsOverride("mult", "default", CqMin: 21, MaxrateMax: 3.6m),
+                        new VideoSettingsBoundsOverride("mult", "low", CqMin: 25, MaxrateMax: 2.6m)
+                    ]),
+                new SourceHeightBucket(
                     "fhd_1080",
                     MinHeight: 1000,
                     MaxHeight: 1300,
@@ -42,9 +64,9 @@ internal static class VideoSettings720Profile
                         new VideoSettingsRange("anime", "high", MinInclusive: 20.0m, MaxInclusive: 35.0m),
                         new VideoSettingsRange("anime", "default", MinInclusive: 35.0m, MaxInclusive: 48.0m),
                         new VideoSettingsRange("anime", "low", MinInclusive: 48.0m, MaxInclusive: 66.0m),
-                        new VideoSettingsRange("mult", "high", MinInclusive: 24.0m, MaxInclusive: 39.0m),
-                        new VideoSettingsRange("mult", "default", MinInclusive: 39.0m, MaxInclusive: 54.0m),
-                        new VideoSettingsRange("mult", "low", MinInclusive: 54.0m, MaxInclusive: 72.0m),
+                        new VideoSettingsRange("mult", "high", MinInclusive: 20.0m, MaxInclusive: 30.0m),
+                        new VideoSettingsRange("mult", "default", MinInclusive: 30.0m, MaxInclusive: 46.0m),
+                        new VideoSettingsRange("mult", "low", MinInclusive: 46.0m, MaxInclusive: 64.0m),
                         new VideoSettingsRange("film", "high", MinInclusive: 16.0m, MaxInclusive: 30.0m),
                         new VideoSettingsRange("film", "default", MinInclusive: 30.0m, MaxInclusive: 45.0m),
                         new VideoSettingsRange("film", "low", MinInclusive: 45.0m, MaxInclusive: 62.0m)

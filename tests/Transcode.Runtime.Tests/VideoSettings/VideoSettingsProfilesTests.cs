@@ -82,8 +82,8 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(720);
 
-        sut.SourceBuckets.Should().HaveCount(2);
-        sut.SourceBuckets.Select(static bucket => bucket.Name).Should().Equal("fhd_1080", "uhd_2160");
+        sut.SourceBuckets.Should().HaveCount(3);
+        sut.SourceBuckets.Select(static bucket => bucket.Name).Should().Equal("hdplus_900", "fhd_1080", "uhd_2160");
     }
 
     [Fact]
@@ -91,8 +91,9 @@ public sealed class VideoSettingsProfilesTests
     {
         var sut = VideoSettingsProfiles.Default.GetRequiredProfile(1080);
 
-        sut.SourceBuckets.Should().HaveCount(2);
-        sut.SourceBuckets.Select(static bucket => bucket.Name).Should().Equal("qhd_1440", "uhd_2160");
+        sut.SourceBuckets.Should().HaveCount(3);
+        sut.SourceBuckets.Select(static bucket => bucket.Name).Should().Equal("native_encode", "qhd_1440", "uhd_2160");
+        sut.SourceBuckets[0].IsDefault.Should().BeTrue();
     }
 
     [Fact]

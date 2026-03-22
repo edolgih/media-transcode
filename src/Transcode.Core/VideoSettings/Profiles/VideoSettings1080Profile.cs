@@ -34,6 +34,23 @@ internal static class VideoSettings1080Profile
             sourceBuckets:
             [
                 new SourceHeightBucket(
+                    "native_encode",
+                    MinHeight: 1,
+                    MaxHeight: 1,
+                    Ranges:
+                    [
+                        new VideoSettingsRange("anime", "high", MinInclusive: 25.0m, MaxInclusive: 40.0m),
+                        new VideoSettingsRange("anime", "default", MinExclusive: 40.0m, MaxInclusive: 50.0m),
+                        new VideoSettingsRange("anime", "low", MinExclusive: 50.0m, MaxInclusive: 80.0m),
+                        new VideoSettingsRange("mult", "high", MinInclusive: 20.0m, MaxInclusive: 30.0m),
+                        new VideoSettingsRange("mult", "default", MinInclusive: 30.0m, MaxInclusive: 42.0m),
+                        new VideoSettingsRange("mult", "low", MinExclusive: 42.0m, MaxInclusive: 60.0m),
+                        new VideoSettingsRange("film", "high", MinInclusive: 20.0m, MaxInclusive: 38.0m),
+                        new VideoSettingsRange("film", "default", MinExclusive: 38.0m, MaxInclusive: 52.0m),
+                        new VideoSettingsRange("film", "low", MinExclusive: 52.0m, MaxInclusive: 78.0m)
+                    ],
+                    IsDefault: true),
+                new SourceHeightBucket(
                     "qhd_1440",
                     MinHeight: 1301,
                     MaxHeight: 1799,

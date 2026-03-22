@@ -55,12 +55,12 @@ internal static class VideoSettings424Profile
                     MaxHeight: 899,
                     Ranges:
                     [
-                        new VideoSettingsRange("anime", "high", MinInclusive: 18.0m, MaxInclusive: 30.0m),
-                        new VideoSettingsRange("anime", "default", MinInclusive: 30.0m, MaxInclusive: 42.0m),
-                        new VideoSettingsRange("anime", "low", MinInclusive: 42.0m, MaxInclusive: 58.0m),
-                        new VideoSettingsRange("mult", "high", MinInclusive: 16.0m, MaxInclusive: 27.0m),
-                        new VideoSettingsRange("mult", "default", MinInclusive: 27.0m, MaxInclusive: 39.0m),
-                        new VideoSettingsRange("mult", "low", MinInclusive: 39.0m, MaxInclusive: 54.0m),
+                        new VideoSettingsRange("anime", "high", MinInclusive: 24.0m, MaxInclusive: 40.0m),
+                        new VideoSettingsRange("anime", "default", MinInclusive: 40.0m, MaxInclusive: 56.0m),
+                        new VideoSettingsRange("anime", "low", MinInclusive: 56.0m, MaxInclusive: 72.0m),
+                        new VideoSettingsRange("mult", "high", MinInclusive: 30.0m, MaxInclusive: 45.0m),
+                        new VideoSettingsRange("mult", "default", MinInclusive: 45.0m, MaxInclusive: 62.0m),
+                        new VideoSettingsRange("mult", "low", MinInclusive: 62.0m, MaxInclusive: 78.0m),
                         new VideoSettingsRange("film", "high", MinInclusive: 12.0m, MaxInclusive: 24.0m),
                         new VideoSettingsRange("film", "default", MinInclusive: 24.0m, MaxInclusive: 36.0m),
                         new VideoSettingsRange("film", "low", MinInclusive: 36.0m, MaxInclusive: 50.0m)
@@ -68,7 +68,7 @@ internal static class VideoSettings424Profile
                     BoundsOverrides:
                     [
                         new VideoSettingsBoundsOverride("mult", "high", CqMin: 18, MaxrateMax: 2.4m),
-                        new VideoSettingsBoundsOverride("mult", "default", CqMin: 22, MaxrateMax: 2.0m),
+                        new VideoSettingsBoundsOverride("mult", "default", CqMin: 20, MaxrateMax: 2.4m),
                         new VideoSettingsBoundsOverride("mult", "low", CqMin: 26, MaxrateMax: 1.4m)
                     ]),
                 new SourceHeightBucket(
