@@ -54,7 +54,19 @@ public sealed class ToH264GpuInfoFormatterTests
 
         var actual = sut.Format(video, decision);
 
-        actual.Should().Be("input.mp4: 1920x1080 fps 29.97 [remux-only] [sync audio]");
+        actual.Should().Be("input.mp4: 1920x1080 fps 29.97 [copy video] [sync audio]");
+    }
+
+    [Fact]
+    public void Format_WhenVideoIsCopiedButAudioIsEncoded_ReturnsCopyVideoAndAudioMarkers()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["ac3"]);
+        var decision = CreateDecision(copyVideo: true, copyAudio: false, outputPath: @"C:\video\input.mp4", targetContainer: "mp4");
+
+        var actual = sut.Format(video, decision);
+
+        actual.Should().Be("input.mkv: 1920x1080 fps 29.97 [copy video] [container .mkv->mp4] [audio aac]");
     }
 
     [Fact]

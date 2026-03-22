@@ -115,9 +115,8 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var downscaleRequest = Request.Downscale;
         var useDownscale = downscaleRequest is not null && video.Height > downscaleRequest.TargetHeight;
         var synchronizeAudio = Request.SynchronizeAudio || RequiresAutomaticTimestampRepair(video);
-        var videoCopyCompatible = CanCopyVideo(video, targetContainer, useDownscale);
-        var copyVideo = !synchronizeAudio && videoCopyCompatible && CanCopyAudio(video) ||
-                        synchronizeAudio && videoCopyCompatible;
+        var videoCopyCompatible = CanCopyVideo(video, useDownscale);
+        var copyVideo = videoCopyCompatible;
         var copyAudio = !synchronizeAudio && CanCopyAudio(video);
         AudioIntent audioIntent = copyAudio
             ? new CopyAudioIntent()
@@ -185,7 +184,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return _ffmpegTool.BuildExecution(video, BuildDecision(video));
     }
 
-    private bool CanCopyVideo(SourceVideo video, string targetContainer, bool useDownscale)
+    private bool CanCopyVideo(SourceVideo video, bool useDownscale)
     {
         if (Request.Denoise || useDownscale)
         {
@@ -198,22 +197,6 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         }
 
         if (HasVariableFrameRateSignal(video))
-        {
-            return false;
-        }
-
-        if (targetContainer.Equals("mkv", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (!IsMp4Family(video.FormatName))
-        {
-            return false;
-        }
-
-        if (!video.FileExtension.Equals(".mp4", StringComparison.OrdinalIgnoreCase) &&
-            !video.FileExtension.Equals(".m4v", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -369,21 +352,6 @@ public sealed class ToH264GpuScenario : TranscodeScenario
 
         return !string.IsNullOrWhiteSpace(video.FormatName) &&
                video.FormatName.Contains("asf", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsMp4Family(string? formatName)
-    {
-        if (string.IsNullOrWhiteSpace(formatName))
-        {
-            return false;
-        }
-
-        return formatName.Contains("mov", StringComparison.OrdinalIgnoreCase) ||
-               formatName.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
-               formatName.Contains("m4a", StringComparison.OrdinalIgnoreCase) ||
-               formatName.Contains("3gp", StringComparison.OrdinalIgnoreCase) ||
-               formatName.Contains("3g2", StringComparison.OrdinalIgnoreCase) ||
-               formatName.Contains("mj2", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool HasVariableFrameRateSignal(SourceVideo video)

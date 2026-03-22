@@ -162,23 +162,26 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildDecision_WhenPrimaryAudioCodecIsAc3_DisablesAudioCopy()
+    public void BuildDecision_WhenPrimaryAudioCodecIsAc3_KeepsCopyCompatibleVideoAndDisablesAudioCopy()
     {
+        // Arrange
         var sut = CreateSut();
         var video = CreateVideo(
-            filePath: @"C:\video\input.mp4",
-            container: "mp4",
-            formatName: "mov,mp4,m4a,3gp,3g2,mj2",
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
             videoCodec: "h264",
             audioCodecs: ["ac3"],
             primaryAudioBitrate: 192_000);
 
+        // Act
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        actual.CopyVideo.Should().BeFalse();
+        // Assert
+        actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeFalse();
-        spec.VideoExecutionDetails.Should().NotBeNull();
+        spec.VideoExecutionDetails.Should().BeNull();
         spec.AudioExecutionDetails.Should().NotBeNull();
         spec.AudioBitrateKbps.Should().Be(192);
     }
@@ -618,15 +621,41 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildExecution_WhenCopyMp4NeedsMuxRewrite_BuildsNonEmptyExecution()
     {
+        // Arrange
         var tool = CreateFfmpegTool();
         var video = CreateVideo(container: "mp4", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
         var decision = CreateSut().BuildDecision(video);
 
+        // Act
         var actual = tool.BuildExecution(video, decision);
 
+        // Assert
         actual.IsEmpty.Should().BeFalse();
         actual.Commands[0].Should().Contain("-movflags +faststart");
         actual.Commands[0].Should().Contain("-map 0:a:0? -c:a copy");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenVideoCanBeCopiedButAudioNeedsEncode_CopiesVideoAndEncodesAudio()
+    {
+        // Arrange
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "h264",
+            audioCodecs: ["ac3"]);
+        var decision = CreateSut().BuildDecision(video);
+
+        // Act
+        var actual = tool.BuildExecution(video, decision);
+
+        // Assert
+        actual.Commands[0].Should().Contain("-map 0:v:0 -c:v copy");
+        actual.Commands[0].Should().Contain("-c:a aac");
+        actual.Commands[0].Should().Contain("-movflags +faststart");
+        actual.Commands[0].Should().NotContain("-c:v h264_nvenc");
     }
 
     [Fact]

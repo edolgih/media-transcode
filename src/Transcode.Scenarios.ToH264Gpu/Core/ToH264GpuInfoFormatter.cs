@@ -37,9 +37,13 @@ public sealed class ToH264GpuInfoFormatter
         ArgumentNullException.ThrowIfNull(decision);
 
         var parts = new List<string>();
-        if (decision.CopyVideo)
+        if (decision.CopyVideo && decision.CopyAudio)
         {
             parts.Add("remux-only");
+        }
+        else if (decision.CopyVideo)
+        {
+            parts.Add("copy video");
         }
         else
         {
@@ -54,6 +58,13 @@ public sealed class ToH264GpuInfoFormatter
         if (decision.Video is EncodeVideoIntent { Downscale: { } downscale })
         {
             parts.Add($"downscale {downscale.TargetHeight}p");
+        }
+
+        if (decision.CopyVideo &&
+            !decision.CopyAudio &&
+            !decision.SynchronizeAudio)
+        {
+            parts.Add("audio aac");
         }
 
         if (decision.SynchronizeAudio)
