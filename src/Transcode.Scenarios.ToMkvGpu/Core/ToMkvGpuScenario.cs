@@ -132,6 +132,11 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// <param name="video">Source video facts used by the scenario.</param>
     internal ToMkvGpuDecision BuildDecision(SourceVideo video)
     {
+        return BuildDecision(video, includeExecutionPayload: true);
+    }
+
+    private ToMkvGpuDecision BuildDecision(SourceVideo video, bool includeExecutionPayload)
+    {
         ArgumentNullException.ThrowIfNull(video);
 
         var applyDownscale = Request.Downscale is not null &&
@@ -170,7 +175,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
 
         ProfileDrivenVideoSettingsResolution? videoResolution = null;
         ToMkvGpuResolvedSourceBitrate? sourceBitrate = null;
-        if (videoIntent is EncodeVideoIntent encodeVideo)
+        if (includeExecutionPayload && videoIntent is EncodeVideoIntent encodeVideo)
         {
             var outputHeight = ResolveOutputHeight(video, videoIntent, Request.OverlayBackground, encodeVideo.Downscale);
             var actualSampleHeight = encodeVideo.Downscale?.TargetHeight ?? outputHeight;
@@ -212,7 +217,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// <inheritdoc />
     protected override string FormatInfoCore(SourceVideo video)
     {
-        return InfoFormatter.Format(video, BuildDecision(video));
+        return InfoFormatter.Format(video, BuildDecision(video, includeExecutionPayload: false));
     }
 
     /// <inheritdoc />

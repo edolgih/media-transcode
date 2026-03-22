@@ -441,6 +441,31 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void FormatInfo_WhenEncodeDecisionIsNeeded_DoesNotInvokeSampleReductionProvider()
+    {
+        // Arrange
+        var sut = new ToMkvGpuScenario(
+            new ToMkvGpuRequest(
+                downscale: new DownscaleRequest(576),
+                videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default", autoSampleMode: "accurate")),
+            VideoSettingsProfiles.Default,
+            (_, _, _, _) => throw new InvalidOperationException("sample provider must not run in info mode"));
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "av1",
+            filePath: @"C:\video\input.mp4",
+            height: 1080,
+            bitrate: 10_000_000);
+
+        // Act
+        var actual = sut.FormatInfo(video);
+
+        // Assert
+        actual.Should().Contain("vcodec av1");
+        actual.Should().Contain("1920x1080 fps 29.97");
+    }
+
+    [Fact]
     public void BuildExecution_WhenDecisionIsNoOp_ReturnsEmptyExecution()
     {
         var tool = CreateFfmpegTool();
