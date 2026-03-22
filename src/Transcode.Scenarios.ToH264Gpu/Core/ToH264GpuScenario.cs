@@ -13,7 +13,7 @@ namespace Transcode.Scenarios.ToH264Gpu.Core;
 и какие узкие ffmpeg-настройки нужны для сохранения legacy-поведения без раздувания общей модели.
 */
 /// <summary>
-/// Represents the legacy ToH264Gpu use case as a scenario that prefers mp4-compatible remuxing and falls back to H.264 NVENC encoding.
+/// Represents the legacy ToH264Gpu use case as an MP4/H.264-first scenario for general-purpose playback on full OS and web-friendly targets.
 /// </summary>
 public sealed class ToH264GpuScenario : TranscodeScenario
 {

@@ -15,6 +15,12 @@
 
 В CLI сценарий нужно указывать явно через `--scenario <name>`. Сейчас публично поддерживаются `tomkvgpu` и `toh264gpu`.
 
+## Назначение Сценариев
+
+- `tomkvgpu` - MKV-first compatibility path. Он ориентирован на более консервативный выход в MKV и решения по transcode/remux для appliance-style playback targets вроде телевизоров и похожих устройств.
+- `toh264gpu` - MP4/H.264-first path. Он ориентирован на более общий playback на полноценной ОС и на web/mobile-friendly окружения, где H.264 в MP4 обычно является более безопасным default.
+- оба сценария используют общую inspection и profile-driven video-settings основу, но намеренно принимают разные container, remux, audio и compatibility решения.
+
 ## Структура Репозитория
 
 - `src/Transcode.Core` - общая core-модель, инспекция входного файла, video settings и базовые контракты сценариев

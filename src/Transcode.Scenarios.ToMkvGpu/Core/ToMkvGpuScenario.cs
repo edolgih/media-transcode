@@ -13,7 +13,7 @@ namespace Transcode.Scenarios.ToMkvGpu.Core;
 Он решает, достаточно ли remux в mkv, или нужно строить план GPU-кодирования в H.264/H.265.
 */
 /// <summary>
-/// Represents the legacy ToMkvGpu use case as a scenario that decides when MKV remuxing is enough and when H.264 GPU encoding is required.
+/// Represents the legacy ToMkvGpu use case as an MKV-first compatibility scenario for conservative TV-style playback targets.
 /// </summary>
 public sealed class ToMkvGpuScenario : TranscodeScenario
 {
