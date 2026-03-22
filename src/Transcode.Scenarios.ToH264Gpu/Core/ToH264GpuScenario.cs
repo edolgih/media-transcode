@@ -413,10 +413,22 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                                video.Height > Request.Downscale.TargetHeight;
         if (appliedDownscale)
         {
-            return Path.Combine(directory, $"{video.FileNameWithoutExtension} {Request.Downscale!.TargetHeight}p.{targetContainer}");
+            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, Request.Downscale!.TargetHeight)}.{targetContainer}");
         }
 
         return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.{targetContainer}");
+    }
+
+    private static string FormatKeepSourceDownscaleFileName(string fileNameWithoutExtension, int targetHeight)
+    {
+        var suffix = $"{targetHeight}p";
+        if (fileNameWithoutExtension.EndsWith(")", StringComparison.Ordinal) &&
+            fileNameWithoutExtension.LastIndexOf('(') >= 0)
+        {
+            return string.Concat(fileNameWithoutExtension.AsSpan(0, fileNameWithoutExtension.Length - 1), ", ", suffix, ")");
+        }
+
+        return $"{fileNameWithoutExtension} ({suffix})";
     }
 
     private static ToH264GpuFfmpegTool CreateDefaultTool()

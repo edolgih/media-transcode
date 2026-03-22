@@ -276,10 +276,22 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
                                video.Height > Request.Downscale.TargetHeight;
         if (appliedDownscale)
         {
-            return Path.Combine(directory, $"{video.FileNameWithoutExtension} {Request.Downscale!.TargetHeight}p.mkv");
+            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, Request.Downscale!.TargetHeight)}.mkv");
         }
 
         return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.mkv");
+    }
+
+    private static string FormatKeepSourceDownscaleFileName(string fileNameWithoutExtension, int targetHeight)
+    {
+        var suffix = $"{targetHeight}p";
+        if (fileNameWithoutExtension.EndsWith(")", StringComparison.Ordinal) &&
+            fileNameWithoutExtension.LastIndexOf('(') >= 0)
+        {
+            return string.Concat(fileNameWithoutExtension.AsSpan(0, fileNameWithoutExtension.Length - 1), ", ", suffix, ")");
+        }
+
+        return $"{fileNameWithoutExtension} ({suffix})";
     }
 
     private static int ResolveOutputHeight(SourceVideo video, VideoIntent videoIntent, bool applyOverlayBackground, DownscaleRequest? downscale)
