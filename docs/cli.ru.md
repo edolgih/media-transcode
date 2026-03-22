@@ -100,7 +100,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--sync-audio`; по умолчанию выключен
 - `--content-profile <anime|mult|film>`; по умолчанию `film`
 - `--quality-profile <high|default|low>`; по умолчанию `default`
-- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `fast` для encode и `hybrid` для explicit downscale
+- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `hybrid` и для encode, и для explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию profile default, сейчас во встроенных профилях это `bilinear`
 - `--cq <int>`; по умолчанию resolved profile value
 - `--maxrate <number>`; по умолчанию resolved profile value
@@ -116,7 +116,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--keep-fps`; по умолчанию выключен
 - `--content-profile <anime|mult|film>`; по умолчанию `film`
 - `--quality-profile <high|default|low>`; по умолчанию `default`
-- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `fast` для encode и `hybrid` для explicit downscale
+- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `hybrid` и для encode, и для explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию profile default, сейчас во встроенных профилях это `bilinear`
 - `--cq <1..51>`; по умолчанию resolved profile value
 - `--maxrate <number>`; по умолчанию resolved profile value

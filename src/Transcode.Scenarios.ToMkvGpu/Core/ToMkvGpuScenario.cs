@@ -194,7 +194,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
                     duration: video.Duration,
                     sourceBitrate: sourceBitrate.Bitrate,
                     hasAudio: video.HasAudio,
-                    defaultAutoSampleMode: "fast",
+                    defaultAutoSampleMode: "hybrid",
                     accurateReductionProvider: accurateReductionProvider);
         }
 

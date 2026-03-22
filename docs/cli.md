@@ -100,7 +100,7 @@ Quality-oriented video settings:
 - `--sync-audio`; default: off
 - `--content-profile <anime|mult|film>`; default: `film`
 - `--quality-profile <high|default|low>`; default: `default`
-- `--autosample-mode <accurate|fast|hybrid>`; default: `fast` for encode, `hybrid` for explicit downscale
+- `--autosample-mode <accurate|fast|hybrid>`; default: `hybrid` for encode and explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; default: profile default, currently `bilinear` in built-in profiles
 - `--cq <int>`; default: resolved profile value
 - `--maxrate <number>`; default: resolved profile value
@@ -116,7 +116,7 @@ Quality-oriented video settings:
 - `--keep-fps`; default: off
 - `--content-profile <anime|mult|film>`; default: `film`
 - `--quality-profile <high|default|low>`; default: `default`
-- `--autosample-mode <accurate|fast|hybrid>`; default: `fast` for encode, `hybrid` for explicit downscale
+- `--autosample-mode <accurate|fast|hybrid>`; default: `hybrid` for encode and explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; default: profile default, currently `bilinear` in built-in profiles
 - `--cq <1..51>`; default: resolved profile value
 - `--maxrate <number>`; default: resolved profile value

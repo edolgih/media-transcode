@@ -265,7 +265,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("--downscale <720|576|480|424>");
             output.ToString().Should().Contain("Default: film.");
             output.ToString().Should().Contain("Default: default.");
-            output.ToString().Should().Contain("Default: fast for encode, hybrid for explicit downscale.");
+            output.ToString().Should().Contain("Default: hybrid for encode and explicit downscale.");
             output.ToString().Should().Contain("Default: p6.");
             output.ToString().Should().Contain("Default: profile default; built-in profiles currently bilinear.");
             output.ToString().Should().Contain("RuntimeValues:FfprobePath current: ffprobe-custom");

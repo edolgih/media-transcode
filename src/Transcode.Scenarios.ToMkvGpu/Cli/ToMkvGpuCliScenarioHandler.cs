@@ -80,7 +80,7 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--sync-audio", "Force sync-safe audio path. Default: off."),
         new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
         new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile. Default: default."),
-        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode. Default: fast for encode, hybrid for explicit downscale."),
+        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode. Default: hybrid for encode and explicit downscale."),
         new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Explicit downscale algorithm override. Default: profile default; built-in profiles currently bilinear."),
         new CliHelpOption("--cq <int>", "Explicit NVENC CQ override. Default: resolved profile value."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s. Default: resolved profile value."),

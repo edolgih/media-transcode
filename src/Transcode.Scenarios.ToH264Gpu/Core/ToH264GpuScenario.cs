@@ -304,7 +304,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             duration: video.Duration,
             sourceBitrate: ResolveSourceBitrate(video),
             hasAudio: video.HasAudio,
-            defaultAutoSampleMode: "fast",
+            defaultAutoSampleMode: "hybrid",
             accurateReductionProvider: accurateReductionProvider).Settings;
     }
 
