@@ -552,6 +552,104 @@ public sealed class ToH264GpuScenarioTests
         spec.AudioFilter.Should().Be("aresample=48000:async=1:first_pts=0");
     }
 
+    [Fact]
+    public void BuildExecution_WhenCopyMp4NeedsMuxRewrite_BuildsNonEmptyExecution()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
+        var decision = CreateSut().BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.IsEmpty.Should().BeFalse();
+        actual.Commands[0].Should().Contain("-movflags +faststart");
+        actual.Commands[0].Should().Contain("-map 0:a:0? -c:a copy");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenEncodeIsRequired_UsesNvencPresetAndCqMode()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", audioCodecs: ["ac3"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut().BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-c:v h264_nvenc");
+        actual.Commands[0].Should().Contain("-preset p6");
+        actual.Commands[0].Should().Contain("-rc vbr_hq -cq");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenDownscaleIsRequested_UsesScaleCudaAndHardwareDecode()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", filePath: @"C:\video\input.mp4", height: 1080);
+        var decision = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576))).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenDenoiseIsRequestedWithoutDownscale_UsesVideoFilterAndPixelFormat()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut(new ToH264GpuRequest(denoise: true)).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-vf \"hqdn3d=1.2:1.2:6:6\"");
+        actual.Commands[0].Should().Contain("-pix_fmt yuv420p");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenSyncAudioIsRequested_EncodesAudioWithResample()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut(new ToH264GpuRequest(synchronizeAudio: true)).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-c:a aac");
+        actual.Commands[0].Should().Contain("-af \"aresample=async=1:first_pts=0\"");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenOutputReplacesSource_AddsDeleteAndRenameSteps()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
+        var decision = CreateSut().BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands.Should().HaveCount(3);
+        actual.Commands[1].Should().Be("del \"C:\\video\\input.mp4\"");
+        actual.Commands[2].Should().Be("ren \"C:\\video\\input_temp.mp4\" \"input.mp4\"");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenContainerIsUnsupported_CanHandleReturnsFalse()
+    {
+        var tool = CreateFfmpegTool();
+        var decision = new ToH264GpuDecision(
+            targetContainer: "avi",
+            videoIntent: new CopyVideoIntent(),
+            audioIntent: new CopyAudioIntent(),
+            keepSource: false,
+            outputPath: @"C:\video\input.avi",
+            mux: new ToH264GpuDecision.MuxExecution(optimizeForFastStart: true, mapPrimaryAudioOnly: true));
+
+        var actual = tool.CanHandle(decision);
+
+        actual.Should().BeFalse();
+    }
+
     private static ToH264GpuScenario CreateSut(
         ToH264GpuRequest? request = null,
         Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider = null)
@@ -564,6 +662,11 @@ public sealed class ToH264GpuScenarioTests
                 request ?? new ToH264GpuRequest(),
                 sampleReductionProvider,
                 new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance));
+    }
+
+    private static ToH264GpuFfmpegTool CreateFfmpegTool()
+    {
+        return new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance);
     }
 
     private static EncodeVideoIntent GetRequiredEncodeVideo(ToH264GpuDecision decision)

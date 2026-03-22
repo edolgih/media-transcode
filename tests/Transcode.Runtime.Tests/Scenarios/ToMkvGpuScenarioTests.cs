@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Core.Failures;
 using Transcode.Core.MediaIntent;
 using Transcode.Core.Videos;
@@ -400,6 +401,64 @@ public sealed class ToMkvGpuScenarioTests
         videoResolution.AutoSample.Path.Should().Be("sample");
     }
 
+    [Fact]
+    public void BuildExecution_WhenDecisionIsNoOp_ReturnsEmptyExecution()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut().BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildExecution_WhenEncodeIsRequired_BuildsNvencCommandAndDeleteStep()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "av1", audioCodecs: ["ac3"], filePath: @"C:\video\input.mp4");
+        var decision = CreateSut().BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands.Should().HaveCount(2);
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().Contain("-c:v h264_nvenc");
+        actual.Commands[0].Should().Contain("-preset p6");
+        actual.Commands[0].Should().Contain("-c:a libmp3lame");
+        actual.Commands[0].Should().Contain("-q:a 2");
+        actual.Commands[1].Should().Be("del \"C:\\video\\input.mp4\"");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenOverlayBackgroundIsEnabled_UsesFilterComplex()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", width: 720, height: 1280);
+        var decision = CreateSut(overlayBackground: true).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-filter_complex");
+        actual.Commands[0].Should().Contain("overlay");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenSynchronizeAudioOnCopyVideo_UsesStrongSyncRemux()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut(synchronizeAudio: true).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-c:v copy -copytb 1");
+        actual.Commands[0].Should().Contain("-c:a libmp3lame");
+        actual.Commands[0].Should().Contain("-q:a 2");
+        actual.Commands[0].Should().Contain("-af \"aresample=async=1:first_pts=0\"");
+    }
+
     private static ToMkvGpuScenario CreateSut(
         bool overlayBackground = false,
         int? downscaleTarget = null,
@@ -413,6 +472,11 @@ public sealed class ToMkvGpuScenarioTests
             keepSource: keepSource,
             downscale: downscaleTarget.HasValue ? new DownscaleRequest(downscaleTarget.Value) : null,
             maxFramesPerSecond: maxFramesPerSecond));
+    }
+
+    private static ToMkvGpuFfmpegTool CreateFfmpegTool()
+    {
+        return new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance);
     }
 
     private static EncodeVideoIntent GetRequiredEncodeVideo(ToMkvGpuDecision decision)
