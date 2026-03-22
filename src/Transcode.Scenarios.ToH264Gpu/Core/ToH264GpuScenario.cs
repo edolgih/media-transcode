@@ -409,6 +409,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             return outputPath;
         }
 
+        var appliedDownscale = Request.Downscale is not null &&
+                               video.Height > Request.Downscale.TargetHeight;
+        if (appliedDownscale)
+        {
+            return Path.Combine(directory, $"{video.FileNameWithoutExtension} {Request.Downscale!.TargetHeight}p.{targetContainer}");
+        }
+
         return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.{targetContainer}");
     }
 

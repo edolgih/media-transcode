@@ -283,6 +283,24 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_UsesTargetHeightInOutputPath()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(keepSource: true, downscale: new DownscaleRequest(720)));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mp4",
+            container: "mp4",
+            formatName: "mov,mp4,m4a,3gp,3g2,mj2",
+            videoCodec: "h264",
+            height: 1080,
+            audioCodecs: ["aac"]);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.OutputPath.Should().Be(@"C:\video\input 720p.mp4");
+    }
+
+    [Fact]
     public void BuildDecision_WhenEncodePresetIsNotSpecified_UsesP6Preset()
     {
         var sut = CreateSut();

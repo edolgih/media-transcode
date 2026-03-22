@@ -272,6 +272,13 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             return outputPath;
         }
 
+        var appliedDownscale = Request.Downscale is not null &&
+                               video.Height > Request.Downscale.TargetHeight;
+        if (appliedDownscale)
+        {
+            return Path.Combine(directory, $"{video.FileNameWithoutExtension} {Request.Downscale!.TargetHeight}p.mkv");
+        }
+
         return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.mkv");
     }
 
