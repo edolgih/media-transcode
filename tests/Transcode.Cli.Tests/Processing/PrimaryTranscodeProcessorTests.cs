@@ -262,6 +262,27 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
+    public void Process_WhenInfoFormattingThrows_DoesNotLogInfoOutputGenerated()
+    {
+        // Arrange
+        using var provider = new ListLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
+        var scenarioHandler = new ThrowingInfoScenarioHandler(new InvalidOperationException("Unexpected info formatting failure."));
+        var sut = new PrimaryTranscodeProcessor(
+            CreateInspector(CreateVideo(filePath: @"C:\video\a.mp4", container: "mp4", videoCodec: "h264")),
+            new CliScenarioRegistry([scenarioHandler]),
+            loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
+
+        // Act
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", "throwing-info", true));
+
+        // Assert
+        actual.Should().Be("a.mp4: [unexpected failure]");
+        provider.Entries.Should().NotContain(entry => entry.Level == LogLevel.Information &&
+                                                      entry.Message.Contains("Info output generated.", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Process_WhenScenarioExecutionThrowsUnexpectedException_ReturnsLegacyUnexpectedRemLineAndLogsWarning()
     {
         using var provider = new ListLoggerProvider();
@@ -600,6 +621,69 @@ public sealed class PrimaryTranscodeProcessorTests
         protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
         {
             throw _exception;
+        }
+    }
+
+    private sealed class ThrowingInfoScenarioHandler : ICliScenarioHandler
+    {
+        private readonly Exception _exception;
+
+        public ThrowingInfoScenarioHandler(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public string Name => "throwing-info";
+
+        public IReadOnlyList<string> LegacyCommandTokens { get; } = [];
+
+        public IReadOnlyList<CliHelpOption> HelpOptions { get; } = [];
+
+        public IReadOnlyList<string> GetHelpExamples(string exeName)
+        {
+            return [];
+        }
+
+        public bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText)
+        {
+            scenarioInput = new object();
+            errorText = null;
+            return true;
+        }
+
+        public TranscodeScenario CreateScenario(CliTranscodeRequest request)
+        {
+            return new ThrowingInfoScenario(_exception);
+        }
+
+        public CliScenarioFailure DescribeFailure(CliTranscodeRequest request, Exception exception)
+        {
+            return new CliScenarioFailure(
+                LogLevel.Warning,
+                "unexpected_failure",
+                $"REM Unexpected failure: {Path.GetFileName(request.InputPath)}",
+                $"{Path.GetFileName(request.InputPath)}: [unexpected failure]");
+        }
+    }
+
+    private sealed class ThrowingInfoScenario : TranscodeScenario
+    {
+        private readonly Exception _exception;
+
+        public ThrowingInfoScenario(Exception exception)
+            : base("throwing-info")
+        {
+            _exception = exception;
+        }
+
+        protected override string FormatInfoCore(SourceVideo video)
+        {
+            throw _exception;
+        }
+
+        protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
+        {
+            throw new InvalidOperationException("Execution path is not expected in this test.");
         }
     }
 }

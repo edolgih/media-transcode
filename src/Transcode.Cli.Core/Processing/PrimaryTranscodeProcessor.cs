@@ -58,8 +58,9 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
 
             if (request.Info)
             {
+                var infoOutput = scenario.FormatInfo(video);
                 _logger.LogInformation("Info output generated. InputPath={InputPath}", request.InputPath);
-                return scenario.FormatInfo(video);
+                return infoOutput;
             }
 
             var execution = scenario.BuildExecution(video);
