@@ -64,7 +64,7 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildDecision_WhenSynchronizeAudioIsRequested_KeepsCopyCompatibleVideoAndDisablesAudioCopy()
     {
-        var sut = CreateSut(new ToH264GpuRequest(synchronizeAudio: true));
+        var sut = CreateSut(synchronizeAudio: true);
         var video = CreateVideo(
             filePath: @"C:\video\input.mp4",
             container: "mp4",
@@ -83,7 +83,7 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildDecision_WhenSynchronizeAudioIsRequested_PopulatesRepairAudioExecutionPayload()
     {
-        var sut = CreateSut(new ToH264GpuRequest(synchronizeAudio: true));
+        var sut = CreateSut(synchronizeAudio: true);
         var video = CreateVideo(
             filePath: @"C:\video\input.mp4",
             container: "mp4",
@@ -268,7 +268,7 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildDecision_WhenKeepSourceIsRequestedAndTargetPathMatchesSource_ReturnsDistinctOutputPath()
     {
-        var sut = CreateSut(new ToH264GpuRequest(keepSource: true));
+        var sut = CreateSut(keepSource: true);
         var video = CreateVideo(
             filePath: @"C:\video\input.mp4",
             container: "mp4",
@@ -285,7 +285,7 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_UsesTargetHeightInOutputPath()
     {
-        var sut = CreateSut(new ToH264GpuRequest(keepSource: true, downscale: new DownscaleRequest(720)));
+        var sut = CreateSut(keepSource: true, downscaleTarget: 720);
         var video = CreateVideo(
             filePath: @"C:\video\input.mp4",
             container: "mp4",
@@ -297,6 +297,8 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
 
         actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(720);
         actual.OutputPath.Should().Be(@"C:\video\input 720p.mp4");
     }
 
@@ -337,7 +339,7 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildDecision_WhenDownscaleIsRequestedAndSourceIsAlreadySmall_KeepsSourceDimensions()
     {
-        var sut = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576)));
+        var sut = CreateSut(downscaleTarget: 576);
         var video = CreateVideo(
             filePath: @"C:\video\input.mp4",
             container: "mp4",
@@ -355,7 +357,7 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildDecision_WhenDownscaleIsRequestedAndCopyIsStillSafe_CreatesRemuxOnlyPlan()
     {
-        var sut = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576)));
+        var sut = CreateSut(downscaleTarget: 576);
         var video = CreateVideo(
             filePath: @"C:\video\input.mp4",
             container: "mp4",
@@ -374,7 +376,7 @@ public sealed class ToH264GpuScenarioTests
     [Fact]
     public void BuildDecision_WhenDownscaleIsRequestedForLargeSource_CapsFrameRateTo30000Over1001()
     {
-        var sut = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576)));
+        var sut = CreateSut(downscaleTarget: 576);
         var video = CreateVideo(
             filePath: @"C:\video\input.mkv",
             container: "mkv",
@@ -603,7 +605,7 @@ public sealed class ToH264GpuScenarioTests
     {
         var tool = CreateFfmpegTool();
         var video = CreateVideo(container: "mp4", videoCodec: "h264", filePath: @"C:\video\input.mp4", height: 1080);
-        var decision = CreateSut(new ToH264GpuRequest(downscale: new DownscaleRequest(576))).BuildDecision(video);
+        var decision = CreateSut(downscaleTarget: 576).BuildDecision(video);
 
         var actual = tool.BuildExecution(video, decision);
 
@@ -616,7 +618,7 @@ public sealed class ToH264GpuScenarioTests
     {
         var tool = CreateFfmpegTool();
         var video = CreateVideo(container: "mkv", videoCodec: "av1", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
-        var decision = CreateSut(new ToH264GpuRequest(denoise: true)).BuildDecision(video);
+        var decision = CreateSut(denoise: true).BuildDecision(video);
 
         var actual = tool.BuildExecution(video, decision);
 
@@ -629,7 +631,7 @@ public sealed class ToH264GpuScenarioTests
     {
         var tool = CreateFfmpegTool();
         var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
-        var decision = CreateSut(new ToH264GpuRequest(synchronizeAudio: true)).BuildDecision(video);
+        var decision = CreateSut(synchronizeAudio: true).BuildDecision(video);
 
         var actual = tool.BuildExecution(video, decision);
 
@@ -669,7 +671,31 @@ public sealed class ToH264GpuScenarioTests
     }
 
     private static ToH264GpuScenario CreateSut(
-        ToH264GpuRequest? request = null,
+        bool keepSource = false,
+        int? downscaleTarget = null,
+        bool keepFramesPerSecond = false,
+        VideoSettingsRequest? videoSettings = null,
+        string? nvencPreset = null,
+        bool denoise = false,
+        bool synchronizeAudio = false,
+        bool outputMkv = false,
+        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider = null)
+    {
+        return CreateSut(
+            new ToH264GpuRequest(
+                keepSource: keepSource,
+                downscale: downscaleTarget.HasValue ? new DownscaleRequest(downscaleTarget.Value) : null,
+                keepFramesPerSecond: keepFramesPerSecond,
+                videoSettings: videoSettings,
+                nvencPreset: nvencPreset,
+                denoise: denoise,
+                synchronizeAudio: synchronizeAudio,
+                outputMkv: outputMkv),
+            sampleReductionProvider);
+    }
+
+    private static ToH264GpuScenario CreateSut(
+        ToH264GpuRequest? request,
         Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider = null)
     {
         return sampleReductionProvider is null
