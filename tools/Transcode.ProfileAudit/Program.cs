@@ -35,6 +35,11 @@ var results = new List<AuditCaseResult>();
 foreach (var filePath in files)
 {
     var relativePath = Path.GetRelativePath(options.SourceRoot, filePath);
+    if (!options.MatchesIncludeFilters(relativePath))
+    {
+        continue;
+    }
+
     var folderName = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
     if (!TryMapContentProfile(folderName, out var contentProfile))
     {
@@ -58,7 +63,7 @@ foreach (var filePath in files)
     var request = VideoSettingsRequest.CreateOrNull(
         contentProfile: contentProfile,
         qualityProfile: options.QualityProfile,
-        autoSampleMode: null,
+        autoSampleMode: options.AutoSampleMode,
         cq: null,
         maxrate: null,
         bufsize: null);
@@ -136,7 +141,7 @@ static AuditCaseResult EvaluateCase(
             duration: sourceVideo.Duration,
             sourceBitrate: sourceVideo.Bitrate,
             hasAudio: sourceVideo.HasAudio,
-            defaultAutoSampleMode: "fast",
+            defaultAutoSampleMode: options.AutoSampleMode ?? "hybrid",
             accurateReductionProvider: (settings, windows) => sampleMeasurer.MeasureAverageReduction(sourceVideo.FilePath, targetHeight, settings, windows))
         : resolver.ResolveForDownscale(
             request: downscaleRequest,
@@ -145,7 +150,7 @@ static AuditCaseResult EvaluateCase(
             duration: sourceVideo.Duration,
             sourceBitrate: sourceVideo.Bitrate,
             hasAudio: sourceVideo.HasAudio,
-            defaultAutoSampleMode: "hybrid",
+            defaultAutoSampleMode: options.AutoSampleMode ?? "hybrid",
             accurateReductionProvider: (settings, windows) => sampleMeasurer.MeasureAverageReduction(sourceVideo.FilePath, targetHeight, settings, windows));
 
     var shouldRunFullEncode = options.FullEncodeMode.Equals("all", StringComparison.OrdinalIgnoreCase) ||
@@ -437,7 +442,12 @@ static string BuildMarkdownReport(AuditOptions options, IReadOnlyList<AuditCaseR
     builder.AppendLine($"- Generated: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
     builder.AppendLine($"- Source root: `{options.SourceRoot}`");
     builder.AppendLine($"- Quality profile: `{options.QualityProfile}`");
+    builder.AppendLine($"- Autosample mode: `{options.AutoSampleMode ?? "scenario-default"}`");
     builder.AppendLine($"- Full encode mode: `{options.FullEncodeMode}`");
+    if (options.IncludeFilters.Count > 0)
+    {
+        builder.AppendLine($"- Include filters: `{string.Join("`, `", options.IncludeFilters)}`");
+    }
     builder.AppendLine($"- Source files: `{completedResults.Select(static result => result.RelativePath).Distinct(StringComparer.OrdinalIgnoreCase).Count()}`");
     builder.AppendLine($"- Audit cases: `{completedResults.Length}`");
     builder.AppendLine($"- Skipped cases: `{skippedResults.Length}`");
@@ -738,6 +748,8 @@ internal sealed record AuditOptions(
     string FfmpegPath,
     string FfprobePath,
     string QualityProfile,
+    string? AutoSampleMode,
+    IReadOnlyList<string> IncludeFilters,
     string FullEncodeMode)
 {
     private const string DefaultSourceRoot = @"C:\Users\Evgeny\Desktop\downscale\tests\src";
@@ -756,6 +768,8 @@ internal sealed record AuditOptions(
           --ffmpeg <path>            ffmpeg executable path. Default: ffmpeg
           --ffprobe <path>           ffprobe executable path. Default: ffprobe
           --quality-profile <name>   Quality profile. Supported: high, default, low. Default: default
+          --autosample-mode <mode>   accurate | fast | hybrid. Default: scenario-default
+          --include <text>           Relative-path substring filter. Can be repeated.
           --full-encode <mode>       none | native-only | all. Default: native-only
           --help                     Show this help and exit.
 
@@ -775,6 +789,8 @@ internal sealed record AuditOptions(
         string ffmpegPath = "ffmpeg";
         string ffprobePath = "ffprobe";
         var qualityProfile = "default";
+        string? autoSampleMode = null;
+        var includeFilters = new List<string>();
         var fullEncodeMode = "native-only";
 
         for (var index = 0; index < args.Count; index++)
@@ -803,6 +819,12 @@ internal sealed record AuditOptions(
                 case "--quality-profile":
                     qualityProfile = ReadValue(args, ref index, token).Trim().ToLowerInvariant();
                     break;
+                case "--autosample-mode":
+                    autoSampleMode = ReadValue(args, ref index, token).Trim().ToLowerInvariant();
+                    break;
+                case "--include":
+                    includeFilters.Add(ReadValue(args, ref index, token));
+                    break;
                 case "--full-encode":
                     fullEncodeMode = ReadValue(args, ref index, token).Trim().ToLowerInvariant();
                     break;
@@ -817,7 +839,7 @@ internal sealed record AuditOptions(
 
         if (showHelp)
         {
-            return new AuditOptions(true, string.Empty, string.Empty, string.Empty, string.Empty, ffmpegPath, ffprobePath, qualityProfile, fullEncodeMode);
+            return new AuditOptions(true, string.Empty, string.Empty, string.Empty, string.Empty, ffmpegPath, ffprobePath, qualityProfile, autoSampleMode, includeFilters, fullEncodeMode);
         }
 
         sourceRoot ??= DefaultSourceRoot;
@@ -842,12 +864,18 @@ internal sealed record AuditOptions(
             throw new ArgumentOutOfRangeException(nameof(qualityProfile), $"Supported values: {string.Join(", ", VideoSettingsRequest.SupportedQualityProfiles)}.");
         }
 
+        if (autoSampleMode is not null &&
+            !VideoSettingsRequest.IsSupportedAutoSampleMode(autoSampleMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(autoSampleMode), $"Supported values: {string.Join(", ", VideoSettingsRequest.SupportedAutoSampleModes)}.");
+        }
+
         if (fullEncodeMode is not ("none" or "native-only" or "all"))
         {
             throw new ArgumentOutOfRangeException(nameof(fullEncodeMode), "Supported values: none, native-only, all.");
         }
 
-        return new AuditOptions(false, sourceRoot, reportPath, csvPath, tempDirectory, ffmpegPath, ffprobePath, qualityProfile, fullEncodeMode);
+        return new AuditOptions(false, sourceRoot, reportPath, csvPath, tempDirectory, ffmpegPath, ffprobePath, qualityProfile, autoSampleMode, includeFilters, fullEncodeMode);
     }
 
     private static string ReadValue(IReadOnlyList<string> args, ref int index, string optionName)
@@ -859,6 +887,16 @@ internal sealed record AuditOptions(
 
         index++;
         return args[index];
+    }
+
+    public bool MatchesIncludeFilters(string relativePath)
+    {
+        if (IncludeFilters.Count == 0)
+        {
+            return true;
+        }
+
+        return IncludeFilters.Any(filter => relativePath.Contains(filter, StringComparison.OrdinalIgnoreCase));
     }
 }
 
