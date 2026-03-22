@@ -518,6 +518,29 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void FormatInfo_WhenEncodeDecisionIsNeeded_DoesNotInvokeSampleReductionProvider()
+    {
+        var sut = CreateSut(
+            new ToH264GpuRequest(
+                downscale: new DownscaleRequest(576),
+                videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default", autoSampleMode: "accurate")),
+            (_, _, _, _) => throw new InvalidOperationException("sample provider must not run in info mode"));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["ac3"],
+            height: 1080,
+            bitrate: 10_000_000);
+
+        var actual = sut.FormatInfo(video);
+
+        actual.Should().Contain("encode h264");
+        actual.Should().Contain("downscale 576p");
+    }
+
+    [Fact]
     public void BuildDecision_WhenSourceAudioBitrateIsInsideCorridor_UsesSourceAudioBitrate()
     {
         var sut = CreateSut();

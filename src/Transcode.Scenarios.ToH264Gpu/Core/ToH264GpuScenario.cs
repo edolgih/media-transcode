@@ -104,6 +104,11 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// </summary>
     internal ToH264GpuDecision BuildDecision(SourceVideo video)
     {
+        return BuildDecision(video, includeExecutionPayload: true);
+    }
+
+    private ToH264GpuDecision BuildDecision(SourceVideo video, bool includeExecutionPayload)
+    {
         ArgumentNullException.ThrowIfNull(video);
 
         var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
@@ -127,10 +132,14 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             : ResolveTargetFramesPerSecond(video, useDownscale);
         var videoSettings = copyVideo
             ? null
-            : ResolveVideoSettings(video, useDownscale, downscaleRequest, videoSettingsRequest);
+            : includeExecutionPayload
+                ? ResolveVideoSettings(video, useDownscale, downscaleRequest, videoSettingsRequest)
+                : null;
         var resolvedDownscale = useDownscale
-            ? downscaleRequest?.WithDefaultAlgorithm(
-                videoSettings?.Algorithm ?? throw new InvalidOperationException("Downscale algorithm must be resolved for encode path."))
+            ? includeExecutionPayload
+                ? downscaleRequest?.WithDefaultAlgorithm(
+                    videoSettings?.Algorithm ?? throw new InvalidOperationException("Downscale algorithm must be resolved for encode path."))
+                : downscaleRequest
             : null;
         VideoIntent videoIntent = copyVideo
             ? new CopyVideoIntent()
@@ -146,10 +155,10 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var mux = new ToH264GpuDecision.MuxExecution(
             optimizeForFastStart: targetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
             mapPrimaryAudioOnly: true);
-        var videoExecution = copyVideo || videoSettings is null
+        var videoExecution = !includeExecutionPayload || copyVideo || videoSettings is null
             ? null
             : BuildVideoExecution(videoSettings, useDownscale);
-        var audioExecution = copyAudio
+        var audioExecution = !includeExecutionPayload || copyAudio
             ? null
             : BuildAudioExecution(video, audioIntent);
 
@@ -167,7 +176,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// <inheritdoc />
     protected override string FormatInfoCore(SourceVideo video)
     {
-        return InfoFormatter.Format(video, BuildDecision(video));
+        return InfoFormatter.Format(video, BuildDecision(video, includeExecutionPayload: false));
     }
 
     /// <inheritdoc />
