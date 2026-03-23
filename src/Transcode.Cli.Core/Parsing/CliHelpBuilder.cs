@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Transcode.Cli.Core.Scenarios;
 
 namespace Transcode.Cli.Core.Parsing;
@@ -13,12 +14,12 @@ internal static class CliHelpBuilder
     /// <summary>
     /// Builds help text using the supplied scenario registry.
     /// </summary>
-    /// <param name="runtimeValues">Configured external tool executable paths.</param>
+    /// <param name="configuration">Resolved CLI configuration.</param>
     /// <param name="registry">Registered CLI scenarios.</param>
     /// <returns>Rendered help text.</returns>
-    public static string BuildHelpText(RuntimeValues runtimeValues, CliScenarioRegistry registry)
+    public static string BuildHelpText(IConfiguration configuration, CliScenarioRegistry registry)
     {
-        ArgumentNullException.ThrowIfNull(runtimeValues);
+        ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(registry);
 
         var exeName = Path.GetFileName(Environment.ProcessPath);
@@ -43,8 +44,8 @@ internal static class CliHelpBuilder
 
         lines.Add(string.Empty);
         lines.Add("Configuration (appsettings / environment):");
-        lines.Add($"  {nameof(RuntimeValues)}:FfprobePath current: {runtimeValues.FfprobePath}");
-        lines.Add($"  {nameof(RuntimeValues)}:FfmpegPath  current: {runtimeValues.FfmpegPath}");
+        lines.Add($"  {ToolConfigurationKeys.FfprobePath} current: {configuration[ToolConfigurationKeys.FfprobePath]}");
+        lines.Add($"  {ToolConfigurationKeys.FfmpegPath}  current: {configuration[ToolConfigurationKeys.FfmpegPath]}");
 
         foreach (var handler in registry.GetScenarioHandlersOrdered())
         {
@@ -57,7 +58,7 @@ internal static class CliHelpBuilder
                 AddOptionRows(lines, handler.HelpOptions, indent: "    ");
             }
 
-            var configurationRows = handler.GetConfigurationDisplayRows(runtimeValues);
+            var configurationRows = handler.GetConfigurationDisplayRows(configuration);
             if (configurationRows.Count > 0)
             {
                 lines.Add("  Configuration:");

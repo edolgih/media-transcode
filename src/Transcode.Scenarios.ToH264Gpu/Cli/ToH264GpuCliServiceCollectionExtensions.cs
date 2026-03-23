@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Transcode.Cli.Core;
@@ -12,15 +13,17 @@ namespace Transcode.Scenarios.ToH264Gpu.Cli;
 /// </summary>
 public static class ToH264GpuCliServiceCollectionExtensions
 {
-    public static IServiceCollection AddToH264GpuCliScenario(this IServiceCollection services)
+    public static IServiceCollection AddToH264GpuCliScenario(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddSingleton(static services =>
+        var ffmpegPath = GetRequiredConfigurationValue(configuration, ToolConfigurationKeys.FfmpegPath);
+
+        services.AddSingleton(services =>
         {
-            var runtimeValues = services.GetRequiredService<RuntimeValues>();
             var logger = services.GetRequiredService<ILogger<ToH264GpuFfmpegTool>>();
-            return new ToH264GpuFfmpegTool(runtimeValues.FfmpegPath!, logger);
+            return new ToH264GpuFfmpegTool(ffmpegPath, logger);
         });
         services.AddSingleton<ToH264GpuInfoFormatter>();
         services.AddSingleton<ICliScenarioHandler>(static services =>
@@ -30,5 +33,16 @@ public static class ToH264GpuCliServiceCollectionExtensions
                 services.GetRequiredService<FfmpegSampleMeasurer>()));
 
         return services;
+    }
+
+    private static string GetRequiredConfigurationValue(IConfiguration configuration, string key)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Configuration key '{key}' is required for toh264gpu.");
+        }
+
+        return value;
     }
 }

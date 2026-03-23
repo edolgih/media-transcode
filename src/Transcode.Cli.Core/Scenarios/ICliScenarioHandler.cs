@@ -1,6 +1,6 @@
+using Microsoft.Extensions.Configuration;
 using Transcode.Cli.Core.Parsing;
 using Transcode.Core.Scenarios;
-using Transcode.Cli.Core;
 
 namespace Transcode.Cli.Core.Scenarios;
 
@@ -38,11 +38,11 @@ public interface ICliScenarioHandler
     /// <summary>
     /// Returns scenario-specific runtime/configuration rows for CLI help output.
     /// </summary>
-    /// <param name="runtimeValues">Configured external tool values.</param>
+    /// <param name="configuration">Resolved CLI configuration.</param>
     /// <returns>Scenario-specific configuration rows.</returns>
-    IReadOnlyList<string> GetConfigurationDisplayRows(RuntimeValues runtimeValues)
+    IReadOnlyList<string> GetConfigurationDisplayRows(IConfiguration configuration)
     {
-        ArgumentNullException.ThrowIfNull(runtimeValues);
+        ArgumentNullException.ThrowIfNull(configuration);
         return [];
     }
 

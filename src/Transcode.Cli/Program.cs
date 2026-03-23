@@ -1,9 +1,9 @@
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Serilog;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Parsing;
@@ -13,11 +13,8 @@ using Transcode.Core.Inspection;
 using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.Videos;
 using Transcode.Scenarios.ToH264Gpu.Cli;
-using Transcode.Scenarios.ToH264Gpu.Core;
 using Transcode.Scenarios.ToH264Rife.Cli;
-using Transcode.Scenarios.ToH264Rife.Core;
 using Transcode.Scenarios.ToMkvGpu.Cli;
-using Transcode.Scenarios.ToMkvGpu.Core;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Transcode.Cli;
@@ -57,31 +54,18 @@ public static class Program
 					.ReadFrom.Configuration(builder.Configuration)
 					.ReadFrom.Services(services)
 					.Enrich.FromLogContext());
+			var ffprobePath = GetRequiredConfigurationValue(builder.Configuration, ToolConfigurationKeys.FfprobePath, "CLI startup");
+			var ffmpegPath = GetRequiredConfigurationValue(builder.Configuration, ToolConfigurationKeys.FfmpegPath, "CLI startup");
 
-			builder.Services
-				.AddOptions<RuntimeValues>()
-				.Bind(builder.Configuration.GetSection(nameof(RuntimeValues)))
-				.Validate(
-					options => !string.IsNullOrWhiteSpace(options.FfprobePath) &&
-					           !string.IsNullOrWhiteSpace(options.FfmpegPath),
-					"Invalid external tool options in configuration.")
-				.ValidateOnStart();
-			builder.Services.AddSingleton(static services =>
-				services.GetRequiredService<IOptions<RuntimeValues>>().Value);
-
-			builder.Services.AddSingleton<IVideoProbe>(static services =>
-			{
-				var runtimeValues = services.GetRequiredService<RuntimeValues>();
-				return new FfprobeVideoProbe(runtimeValues.FfprobePath!);
-			});
+			builder.Services.AddSingleton<IVideoProbe>(services =>
+				new FfprobeVideoProbe(ffprobePath));
 			builder.Services.AddSingleton<VideoInspector>(static services =>
 				new VideoInspector(services.GetRequiredService<IVideoProbe>()));
-			builder.Services.AddSingleton(static services =>
-				new FfmpegSampleMeasurer(
-					services.GetRequiredService<RuntimeValues>().FfmpegPath!));
-			builder.Services.AddToMkvGpuCliScenario();
-			builder.Services.AddToH264GpuCliScenario();
-			builder.Services.AddToH264RifeCliScenario();
+			builder.Services.AddSingleton(services =>
+				new FfmpegSampleMeasurer(ffmpegPath));
+			builder.Services.AddToMkvGpuCliScenario(builder.Configuration);
+			builder.Services.AddToH264GpuCliScenario(builder.Configuration);
+			builder.Services.AddToH264RifeCliScenario(builder.Configuration);
 			builder.Services.AddSingleton(static services =>
 				new CliScenarioRegistry(services.GetServices<ICliScenarioHandler>()));
 			builder.Services.AddSingleton<ITranscodeProcessor, PrimaryTranscodeProcessor>();
@@ -89,10 +73,10 @@ public static class Program
 			using var host = builder.Build();
 			var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
 			startupLogger = logger;
-			var runtimeOptions = host.Services.GetRequiredService<RuntimeValues>();
+			var configuration = host.Services.GetRequiredService<IConfiguration>();
 			var scenarioRegistry = host.Services.GetRequiredService<CliScenarioRegistry>();
 
-			return RunCli(args, logger, host.Services, runtimeOptions, scenarioRegistry, readRedirectedStdIn: true);
+			return RunCli(args, logger, host.Services, configuration, scenarioRegistry, readRedirectedStdIn: true);
 		}
 		catch (Exception ex)
 		{
@@ -151,19 +135,19 @@ public static class Program
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
 	/// <param name="services">Application services.</param>
-	/// <param name="runtimeValues">Configured ffmpeg/ffprobe executable paths.</param>
+	/// <param name="configuration">Resolved CLI configuration.</param>
 	/// <returns>Process exit code.</returns>
 	internal static int RunCli(
 		string[] args,
 		ILogger logger,
 		IServiceProvider services,
-		RuntimeValues runtimeValues)
+		IConfiguration configuration)
 	{
 		return RunCli(
 			args,
 			logger,
 			services,
-			runtimeValues,
+			configuration,
 			services.GetRequiredService<CliScenarioRegistry>(),
 			readRedirectedStdIn: true);
 	}
@@ -174,21 +158,21 @@ public static class Program
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
 	/// <param name="services">Application services.</param>
-	/// <param name="runtimeValues">Configured ffmpeg/ffprobe executable paths.</param>
+	/// <param name="configuration">Resolved CLI configuration.</param>
 	/// <param name="readRedirectedStdIn">Whether redirected standard input should be treated as additional input paths.</param>
 	/// <returns>Process exit code.</returns>
 	internal static int RunCli(
 		string[] args,
 		ILogger logger,
 		IServiceProvider services,
-		RuntimeValues runtimeValues,
+		IConfiguration configuration,
 		bool readRedirectedStdIn)
 	{
 		return RunCli(
 			args,
 			logger,
 			services,
-			runtimeValues,
+			configuration,
 			services.GetRequiredService<CliScenarioRegistry>(),
 			readRedirectedStdIn);
 	}
@@ -199,7 +183,7 @@ public static class Program
 	/// <param name="args">Command-line arguments.</param>
 	/// <param name="logger">Logger used for CLI lifecycle events.</param>
 	/// <param name="services">Application services.</param>
-	/// <param name="runtimeValues">Configured ffmpeg/ffprobe executable paths.</param>
+	/// <param name="configuration">Resolved CLI configuration.</param>
 	/// <param name="scenarioRegistry">Registered CLI scenarios.</param>
 	/// <param name="readRedirectedStdIn">Whether redirected standard input should be treated as additional input paths.</param>
 	/// <returns>Process exit code.</returns>
@@ -207,14 +191,14 @@ public static class Program
 		string[] args,
 		ILogger logger,
 		IServiceProvider services,
-		RuntimeValues runtimeValues,
+		IConfiguration configuration,
 		CliScenarioRegistry scenarioRegistry,
 		bool readRedirectedStdIn)
 	{
 		ArgumentNullException.ThrowIfNull(args);
 		ArgumentNullException.ThrowIfNull(logger);
 		ArgumentNullException.ThrowIfNull(services);
-		ArgumentNullException.ThrowIfNull(runtimeValues);
+		ArgumentNullException.ThrowIfNull(configuration);
 		ArgumentNullException.ThrowIfNull(scenarioRegistry);
 
 		var effectiveArgs = BuildEffectiveArgs(args, readRedirectedStdIn);
@@ -227,7 +211,7 @@ public static class Program
 		if (effectiveArgs.Length == 0 || effectiveArgs.Any(IsHelpToken))
 		{
 			logger.LogInformation("CLI help requested.");
-			Console.WriteLine(CliHelpBuilder.BuildHelpText(runtimeValues, scenarioRegistry));
+			Console.WriteLine(CliHelpBuilder.BuildHelpText(configuration, scenarioRegistry));
 			return 0;
 		}
 
@@ -343,6 +327,17 @@ public static class Program
 	{
 		return string.Equals(token, "--help", StringComparison.OrdinalIgnoreCase) ||
 		       string.Equals(token, "-h", StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static string GetRequiredConfigurationValue(IConfiguration configuration, string key, string consumer)
+	{
+		var value = configuration[key];
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			throw new InvalidOperationException($"Configuration key '{key}' is required for {consumer}.");
+		}
+
+		return value;
 	}
 
 }

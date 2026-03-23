@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Parsing;
@@ -45,13 +46,13 @@ public sealed class ToH264RifeCliScenarioHandler : ICliScenarioHandler
         ];
     }
 
-    public IReadOnlyList<string> GetConfigurationDisplayRows(RuntimeValues runtimeValues)
+    public IReadOnlyList<string> GetConfigurationDisplayRows(IConfiguration configuration)
     {
-        ArgumentNullException.ThrowIfNull(runtimeValues);
+        ArgumentNullException.ThrowIfNull(configuration);
 
         return
         [
-            $"{nameof(RuntimeValues)}:RifeNcnnPath current: {runtimeValues.RifeNcnnPath}"
+            $"{ToH264RifeCliConfigurationKeys.RifeNcnnPath} current: {configuration[ToH264RifeCliConfigurationKeys.RifeNcnnPath]}"
         ];
     }
 

@@ -54,7 +54,7 @@ public sealed class ToH264RifeTool
 
         if (string.IsNullOrWhiteSpace(RifeNcnnPath))
         {
-            throw new InvalidOperationException("RuntimeValues:RifeNcnnPath must be configured for toh264rife execution.");
+            throw new InvalidOperationException($"{Cli.ToH264RifeCliConfigurationKeys.RifeNcnnPath} must be configured for toh264rife execution.");
         }
 
         var inputFramesDirectory = Path.Combine(

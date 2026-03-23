@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Transcode.Cli.Core;
@@ -84,11 +85,7 @@ public sealed class ProgramTests
         var services = CreateServices(new StubProcessor("ffmpeg -i \"C:\\video\\a.mp4\" \"C:\\video\\a.mkv\""));
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe",
-            FfmpegPath = "ffmpeg"
-        };
+        var configuration = CreateConfiguration();
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -99,7 +96,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, services, configuration, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().Contain("chcp 65001");
@@ -119,11 +116,7 @@ public sealed class ProgramTests
         var services = CreateServices(new StubProcessor("a.mp4: [ffprobe failed]"));
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe",
-            FfmpegPath = "ffmpeg"
-        };
+        var configuration = CreateConfiguration();
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -134,7 +127,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--info"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--info"], logger, services, configuration, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().NotContain("chcp 65001");
@@ -154,11 +147,7 @@ public sealed class ProgramTests
         var services = CreateServices(new StubProcessor(string.Empty));
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe",
-            FfmpegPath = "ffmpeg"
-        };
+        var configuration = CreateConfiguration();
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -169,7 +158,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mkv"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mkv"], logger, services, configuration, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Trim().Should().Be("chcp 65001");
@@ -189,11 +178,7 @@ public sealed class ProgramTests
         using var provider = new ListLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         var logger = loggerFactory.CreateLogger("test");
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe",
-            FfmpegPath = "ffmpeg"
-        };
+        var configuration = CreateConfiguration();
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -208,7 +193,7 @@ public sealed class ProgramTests
                 ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale", "576", "--autosample-mode", "fast"],
                 logger,
                 services,
-                runtimeValues,
+                configuration,
                 readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
@@ -243,12 +228,10 @@ public sealed class ProgramTests
         var services = CreateServices();
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe-custom",
-            FfmpegPath = "ffmpeg-custom",
-            RifeNcnnPath = "rife-custom"
-        };
+        var configuration = CreateConfiguration(
+            ffprobePath: "ffprobe-custom",
+            ffmpegPath: "ffmpeg-custom",
+            rifeNcnnPath: "rife-custom");
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -259,7 +242,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--help"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--help"], logger, services, configuration, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().Contain("Transcode CLI");
@@ -277,9 +260,9 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Default: hybrid for encode and explicit downscale.");
             output.ToString().Should().Contain("Default: p6.");
             output.ToString().Should().Contain("Default: profile default; built-in profiles currently bilinear.");
-            output.ToString().Should().Contain("RuntimeValues:FfprobePath current: ffprobe-custom");
-            output.ToString().Should().Contain("RuntimeValues:FfmpegPath  current: ffmpeg-custom");
-            output.ToString().Should().Contain("RuntimeValues:RifeNcnnPath current: rife-custom");
+            output.ToString().Should().Contain("Tools:FfprobePath current: ffprobe-custom");
+            output.ToString().Should().Contain("Tools:FfmpegPath  current: ffmpeg-custom");
+            output.ToString().Should().Contain("Scenarios:ToH264Rife:RifeNcnnPath current: rife-custom");
             error.ToString().Should().BeEmpty();
         }
         finally
@@ -295,11 +278,7 @@ public sealed class ProgramTests
         var services = CreateServices();
         using var loggerFactory = LoggerFactory.Create(static _ => { });
         var logger = loggerFactory.CreateLogger("test");
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe",
-            FfmpegPath = "ffmpeg"
-        };
+        var configuration = CreateConfiguration();
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -310,7 +289,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--scenario", "tomkvgpu"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu"], logger, services, configuration, readRedirectedStdIn: false);
 
             exitCode.Should().Be(1);
             output.ToString().Should().BeEmpty();
@@ -335,11 +314,7 @@ public sealed class ProgramTests
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
         using var runServices = CreateServices(processor);
         var logger = loggerFactory.CreateLogger("test");
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe",
-            FfmpegPath = "ffmpeg"
-        };
+        var configuration = CreateConfiguration();
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -350,7 +325,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, runServices, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, runServices, configuration, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().Contain("chcp 65001");
@@ -413,20 +388,15 @@ public sealed class ProgramTests
 
     private static ServiceProvider CreateServices(ITranscodeProcessor? processor = null)
     {
-        var runtimeValues = new RuntimeValues
-        {
-            FfprobePath = "ffprobe",
-            FfmpegPath = "ffmpeg",
-            RifeNcnnPath = "rife-ncnn-vulkan"
-        };
+        var configuration = CreateConfiguration();
 
         var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
-        services.AddSingleton(runtimeValues);
-        services.AddSingleton(new FfmpegSampleMeasurer(runtimeValues.FfmpegPath!));
-        services.AddToMkvGpuCliScenario();
-        services.AddToH264GpuCliScenario();
-        services.AddToH264RifeCliScenario();
+        services.AddSingleton(new FfmpegSampleMeasurer("ffmpeg"));
+        services.AddToMkvGpuCliScenario(configuration);
+        services.AddToH264GpuCliScenario(configuration);
+        services.AddToH264RifeCliScenario(configuration);
         services.AddSingleton(static services => new CliScenarioRegistry(services.GetServices<ICliScenarioHandler>()));
 
         if (processor is not null)
@@ -435,5 +405,20 @@ public sealed class ProgramTests
         }
 
         return services.BuildServiceProvider();
+    }
+
+    private static IConfiguration CreateConfiguration(
+        string ffprobePath = "ffprobe",
+        string ffmpegPath = "ffmpeg",
+        string rifeNcnnPath = "rife-ncnn-vulkan")
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(
+            [
+                new KeyValuePair<string, string?>("Tools:FfprobePath", ffprobePath),
+                new KeyValuePair<string, string?>("Tools:FfmpegPath", ffmpegPath),
+                new KeyValuePair<string, string?>("Scenarios:ToH264Rife:RifeNcnnPath", rifeNcnnPath)
+            ])
+            .Build();
     }
 }

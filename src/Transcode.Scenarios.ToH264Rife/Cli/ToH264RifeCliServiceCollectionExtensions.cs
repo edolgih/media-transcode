@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Transcode.Cli.Core;
@@ -11,22 +12,38 @@ namespace Transcode.Scenarios.ToH264Rife.Cli;
 /// </summary>
 public static class ToH264RifeCliServiceCollectionExtensions
 {
-    public static IServiceCollection AddToH264RifeCliScenario(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
+	public static IServiceCollection AddToH264RifeCliScenario(this IServiceCollection services,
+		IConfiguration configuration)
+	{
+		ArgumentNullException.ThrowIfNull(services);
+		ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddSingleton(static services =>
-        {
-            var runtimeValues = services.GetRequiredService<RuntimeValues>();
-            var logger = services.GetRequiredService<ILogger<ToH264RifeTool>>();
-            return new ToH264RifeTool(runtimeValues.FfmpegPath!, runtimeValues.RifeNcnnPath, logger);
-        });
-        services.AddSingleton<ToH264RifeInfoFormatter>();
-        services.AddSingleton<ICliScenarioHandler>(static services =>
-            new ToH264RifeCliScenarioHandler(
-                services.GetRequiredService<ToH264RifeInfoFormatter>(),
-                services.GetRequiredService<ToH264RifeTool>()));
+		var ffmpegPath = GetRequiredConfigurationValue(configuration, ToolConfigurationKeys.FfmpegPath, "toh264rife");
+		var rifeNcnnPath =
+			GetRequiredConfigurationValue(configuration, ToH264RifeCliConfigurationKeys.RifeNcnnPath, "toh264rife");
 
-        return services;
-    }
+		services.AddSingleton(services =>
+		{
+			var logger = services.GetRequiredService<ILogger<ToH264RifeTool>>();
+			return new ToH264RifeTool(ffmpegPath, rifeNcnnPath, logger);
+		});
+		services.AddSingleton<ToH264RifeInfoFormatter>();
+		services.AddSingleton<ICliScenarioHandler>(static services =>
+			new ToH264RifeCliScenarioHandler(
+				services.GetRequiredService<ToH264RifeInfoFormatter>(),
+				services.GetRequiredService<ToH264RifeTool>()));
+
+		return services;
+	}
+
+	private static string GetRequiredConfigurationValue(IConfiguration configuration, string key, string scenarioName)
+	{
+		var value = configuration[key];
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			throw new InvalidOperationException($"Configuration key '{key}' is required for {scenarioName}.");
+		}
+
+		return value;
+	}
 }
