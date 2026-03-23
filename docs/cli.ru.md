@@ -76,6 +76,24 @@ dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\
 dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --sync-audio --keep-source
 ```
 
+Генерация команд для `toh264rife`:
+
+```bash
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.mkv"
+```
+
+`toh264rife` с явной целью `60` FPS:
+
+```bash
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.mkv" --target-fps 60 --keep-source
+```
+
+`toh264rife` с явным выбором выходного контейнера:
+
+```bash
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.avi" --container mp4
+```
+
 Чтение путей из stdin:
 
 ```powershell
@@ -86,7 +104,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 
 - `--help`, `-h`
 - `--input <path>`; можно указывать несколько раз
-- `--scenario <name>`; обязательно, сейчас поддерживаются `tomkvgpu` и `toh264gpu`
+- `--scenario <name>`; обязательно, сейчас поддерживаются `toh264gpu`, `toh264rife` и `tomkvgpu`
 - `--info`
 
 Опции `tomkvgpu`:
@@ -126,19 +144,31 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--sync-audio`; по умолчанию выключен; при включении использует явный audio-sync repair path
 - `--mkv`; по умолчанию выключен, поэтому выход остаётся MP4
 
+Опции `toh264rife`:
+
+- `--keep-source`; по умолчанию выключен
+- `--target-fps <50|60>`; по умолчанию 2x с scenario-side normalization до точного cadence
+- `--container <mp4|mkv>`; по умолчанию сохраняет source container, если это mp4 или mkv; иначе mp4
+
 ## Требования
 
 - `.NET SDK` `9.0.x`
 - `ffprobe` с JSON output
 - `ffmpeg` с нужными фильтрами и кодировщиками, например `h264_nvenc` и `scale_cuda`
+- `rife-ncnn-vulkan` для `toh264rife`
 
-CLI получает пути к бинарникам из стандартных источников host configuration, например `appsettings.json` и переменных окружения. Минимальный `appsettings.json` выглядит так:
+CLI получает пути к бинарникам из стандартных источников host configuration, например `appsettings.json` и переменных окружения. `Scenarios:ToH264Rife:RifeNcnnPath` требуется только для `toh264rife`. Минимальный `appsettings.json` выглядит так:
 
 ```json
 {
-  "RuntimeValues": {
+  "Tools": {
     "FfprobePath": "ffprobe",
     "FfmpegPath": "ffmpeg"
+  },
+  "Scenarios": {
+    "ToH264Rife": {
+      "RifeNcnnPath": "rife-ncnn-vulkan"
+    }
   }
 }
 ```
