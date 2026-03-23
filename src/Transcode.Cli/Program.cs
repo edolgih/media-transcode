@@ -66,54 +66,22 @@ public static class Program
 					           !string.IsNullOrWhiteSpace(options.FfmpegPath),
 					"Invalid external tool options in configuration.")
 				.ValidateOnStart();
+			builder.Services.AddSingleton(static services =>
+				services.GetRequiredService<IOptions<RuntimeValues>>().Value);
 
 			builder.Services.AddSingleton<IVideoProbe>(static services =>
 			{
-				var options = services.GetRequiredService<IOptions<RuntimeValues>>().Value;
-				return new FfprobeVideoProbe(options.FfprobePath!);
+				var runtimeValues = services.GetRequiredService<RuntimeValues>();
+				return new FfprobeVideoProbe(runtimeValues.FfprobePath!);
 			});
 			builder.Services.AddSingleton<VideoInspector>(static services =>
 				new VideoInspector(services.GetRequiredService<IVideoProbe>()));
 			builder.Services.AddSingleton(static services =>
-			{
-				var options = services.GetRequiredService<IOptions<RuntimeValues>>().Value;
-				var logger = services.GetRequiredService<ILogger<ToMkvGpuFfmpegTool>>();
-				return new ToMkvGpuFfmpegTool(options.FfmpegPath!, logger);
-			});
-			builder.Services.AddSingleton(static services =>
-			{
-				var options = services.GetRequiredService<IOptions<RuntimeValues>>().Value;
-				var logger = services.GetRequiredService<ILogger<ToH264GpuFfmpegTool>>();
-				return new ToH264GpuFfmpegTool(options.FfmpegPath!, logger);
-			});
-			builder.Services.AddSingleton(static services =>
-			{
-				var options = services.GetRequiredService<IOptions<RuntimeValues>>().Value;
-				var logger = services.GetRequiredService<ILogger<ToH264RifeTool>>();
-				return new ToH264RifeTool(options.FfmpegPath!, options.RifeNcnnPath, logger);
-			});
-			builder.Services.AddSingleton(static services =>
 				new FfmpegSampleMeasurer(
-					services.GetRequiredService<IOptions<RuntimeValues>>().Value.FfmpegPath!));
-
-			builder.Services.AddSingleton<ToMkvGpuInfoFormatter>();
-			builder.Services.AddSingleton<ICliScenarioHandler>(static services =>
-				new ToMkvGpuCliScenarioHandler(
-					services.GetRequiredService<ToMkvGpuInfoFormatter>(),
-					services.GetRequiredService<ToMkvGpuFfmpegTool>(),
-					services.GetRequiredService<FfmpegSampleMeasurer>()));
-
-			builder.Services.AddSingleton<ToH264GpuInfoFormatter>();
-			builder.Services.AddSingleton<ICliScenarioHandler>(static services =>
-				new ToH264GpuCliScenarioHandler(
-					services.GetRequiredService<ToH264GpuInfoFormatter>(),
-					services.GetRequiredService<ToH264GpuFfmpegTool>(),
-					services.GetRequiredService<FfmpegSampleMeasurer>()));
-			builder.Services.AddSingleton<ToH264RifeInfoFormatter>();
-			builder.Services.AddSingleton<ICliScenarioHandler>(static services =>
-				new ToH264RifeCliScenarioHandler(
-					services.GetRequiredService<ToH264RifeInfoFormatter>(),
-					services.GetRequiredService<ToH264RifeTool>()));
+					services.GetRequiredService<RuntimeValues>().FfmpegPath!));
+			builder.Services.AddToMkvGpuCliScenario();
+			builder.Services.AddToH264GpuCliScenario();
+			builder.Services.AddToH264RifeCliScenario();
 			builder.Services.AddSingleton(static services =>
 				new CliScenarioRegistry(services.GetServices<ICliScenarioHandler>()));
 			builder.Services.AddSingleton<ITranscodeProcessor, PrimaryTranscodeProcessor>();
@@ -121,7 +89,7 @@ public static class Program
 			using var host = builder.Build();
 			var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
 			startupLogger = logger;
-			var runtimeOptions = host.Services.GetRequiredService<IOptions<RuntimeValues>>().Value;
+			var runtimeOptions = host.Services.GetRequiredService<RuntimeValues>();
 			var scenarioRegistry = host.Services.GetRequiredService<CliScenarioRegistry>();
 
 			return RunCli(args, logger, host.Services, runtimeOptions, scenarioRegistry, readRedirectedStdIn: true);

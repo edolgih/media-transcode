@@ -1,19 +1,16 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Processing;
 using Transcode.Cli.Core.Scenarios;
 using Transcode.Cli.Tests.Logging;
 using Transcode.Core.Inspection;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.Videos;
 using Transcode.Scenarios.ToH264Gpu.Cli;
-using Transcode.Scenarios.ToH264Gpu.Core;
 using Transcode.Scenarios.ToH264Rife.Cli;
-using Transcode.Scenarios.ToH264Rife.Core;
 using Transcode.Scenarios.ToMkvGpu.Cli;
-using Transcode.Scenarios.ToMkvGpu.Core;
 
 namespace Transcode.Cli.Tests;
 
@@ -69,6 +66,16 @@ public sealed class ProgramTests
         var actual = Program.ResolveLogFilePath(null, @"C:\tools\mte\bin\Debug\net9.0");
 
         actual.Should().Be(Path.GetFullPath(@"C:\tools\mte\bin\Debug\net9.0\logs\transcode-.log"));
+    }
+
+    [Fact]
+    public void CreateServices_WhenScenarioModulesAreRegistered_BuildsRegistryWithAllScenarioNames()
+    {
+        using var services = CreateServices();
+
+        var registry = services.GetRequiredService<CliScenarioRegistry>();
+
+        registry.GetSupportedScenarioDisplay().Should().Be("toh264gpu, toh264rife, tomkvgpu");
     }
 
     [Fact]
@@ -321,11 +328,12 @@ public sealed class ProgramTests
     {
         using var provider = new ListLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(provider));
+        using var services = CreateServices();
         var processor = new PrimaryTranscodeProcessor(
             new VideoInspector(new ThrowingVideoProbe(new IOException("Disk read failed."))),
-            CreateScenarioRegistry(),
+            services.GetRequiredService<CliScenarioRegistry>(),
             loggerFactory.CreateLogger<PrimaryTranscodeProcessor>());
-        var services = CreateServices(processor);
+        using var runServices = CreateServices(processor);
         var logger = loggerFactory.CreateLogger("test");
         var runtimeValues = new RuntimeValues
         {
@@ -342,7 +350,7 @@ public sealed class ProgramTests
         Console.SetError(error);
         try
         {
-            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, services, runtimeValues, readRedirectedStdIn: false);
+            var exitCode = Program.RunCli(["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4"], logger, runServices, runtimeValues, readRedirectedStdIn: false);
 
             exitCode.Should().Be(0);
             output.ToString().Should().Contain("chcp 65001");
@@ -403,23 +411,23 @@ public sealed class ProgramTests
         }
     }
 
-    private static CliScenarioRegistry CreateScenarioRegistry()
-    {
-        return new CliScenarioRegistry(
-            [
-                new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
-                new ToH264RifeCliScenarioHandler(
-                    new ToH264RifeInfoFormatter(),
-                    new ToH264RifeTool("ffmpeg", "rife-ncnn-vulkan", NullLogger<ToH264RifeTool>.Instance)),
-                new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
-            ]
-        );
-    }
-
     private static ServiceProvider CreateServices(ITranscodeProcessor? processor = null)
     {
-        var services = new ServiceCollection()
-            .AddSingleton(CreateScenarioRegistry());
+        var runtimeValues = new RuntimeValues
+        {
+            FfprobePath = "ffprobe",
+            FfmpegPath = "ffmpeg",
+            RifeNcnnPath = "rife-ncnn-vulkan"
+        };
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(runtimeValues);
+        services.AddSingleton(new FfmpegSampleMeasurer(runtimeValues.FfmpegPath!));
+        services.AddToMkvGpuCliScenario();
+        services.AddToH264GpuCliScenario();
+        services.AddToH264RifeCliScenario();
+        services.AddSingleton(static services => new CliScenarioRegistry(services.GetServices<ICliScenarioHandler>()));
 
         if (processor is not null)
         {
