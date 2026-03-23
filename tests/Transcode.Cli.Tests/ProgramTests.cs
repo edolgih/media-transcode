@@ -239,7 +239,8 @@ public sealed class ProgramTests
         var runtimeValues = new RuntimeValues
         {
             FfprobePath = "ffprobe-custom",
-            FfmpegPath = "ffmpeg-custom"
+            FfmpegPath = "ffmpeg-custom",
+            RifeNcnnPath = "rife-custom"
         };
 
         using var output = new StringWriter();
@@ -257,6 +258,8 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Transcode CLI");
             output.ToString().Should().Contain("Usage:");
             output.ToString().Should().Contain("Scenario name. Required.");
+            output.ToString().Should().Contain("Scenario: toh264gpu");
+            output.ToString().Should().Contain("Scenario: toh264rife");
             output.ToString().Should().Contain("--scenario toh264gpu");
             output.ToString().Should().Contain("--scenario toh264rife");
             output.ToString().Should().Contain("--max-fps <50|40|30|24>");
@@ -269,7 +272,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Default: profile default; built-in profiles currently bilinear.");
             output.ToString().Should().Contain("RuntimeValues:FfprobePath current: ffprobe-custom");
             output.ToString().Should().Contain("RuntimeValues:FfmpegPath  current: ffmpeg-custom");
-            output.ToString().Should().Contain("RuntimeValues:RifeNcnnPath current:");
+            output.ToString().Should().Contain("RuntimeValues:RifeNcnnPath current: rife-custom");
             error.ToString().Should().BeEmpty();
         }
         finally

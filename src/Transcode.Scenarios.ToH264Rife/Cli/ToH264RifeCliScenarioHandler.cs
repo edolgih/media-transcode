@@ -45,6 +45,16 @@ public sealed class ToH264RifeCliScenarioHandler : ICliScenarioHandler
         ];
     }
 
+    public IReadOnlyList<string> GetConfigurationDisplayRows(RuntimeValues runtimeValues)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeValues);
+
+        return
+        [
+            $"{nameof(RuntimeValues)}:RifeNcnnPath current: {runtimeValues.RifeNcnnPath}"
+        ];
+    }
+
     public bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText)
     {
         if (ToH264RifeCliRequestParser.TryParse(args, out var runtimeRequest, out errorText))

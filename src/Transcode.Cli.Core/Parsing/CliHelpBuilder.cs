@@ -36,29 +36,56 @@ internal static class CliHelpBuilder
             "Options:"
         };
 
-        AddOptionRows(lines, registry.GetHelpOptions());
+        AddOptionRows(
+            lines,
+            CliCommonOptions.CreateHelpOptions(registry.GetSupportedScenarioDisplay()),
+            indent: "  ");
 
         lines.Add(string.Empty);
         lines.Add("Configuration (appsettings / environment):");
         lines.Add($"  {nameof(RuntimeValues)}:FfprobePath current: {runtimeValues.FfprobePath}");
         lines.Add($"  {nameof(RuntimeValues)}:FfmpegPath  current: {runtimeValues.FfmpegPath}");
-        lines.Add($"  {nameof(RuntimeValues)}:RifeNcnnPath current: {runtimeValues.RifeNcnnPath}");
 
-        lines.Add(string.Empty);
-        lines.Add("Examples:");
-        foreach (var example in registry.GetHelpExamples(exeName))
+        foreach (var handler in registry.GetScenarioHandlersOrdered())
         {
-            lines.Add($"  {example}");
+            lines.Add(string.Empty);
+            lines.Add($"Scenario: {handler.Name}");
+
+            if (handler.HelpOptions.Count > 0)
+            {
+                lines.Add("  Options:");
+                AddOptionRows(lines, handler.HelpOptions, indent: "    ");
+            }
+
+            var configurationRows = handler.GetConfigurationDisplayRows(runtimeValues);
+            if (configurationRows.Count > 0)
+            {
+                lines.Add("  Configuration:");
+                foreach (var row in configurationRows)
+                {
+                    lines.Add($"    {row}");
+                }
+            }
+
+            var examples = handler.GetHelpExamples(exeName);
+            if (examples.Count > 0)
+            {
+                lines.Add("  Examples:");
+                foreach (var example in examples)
+                {
+                    lines.Add($"    {example}");
+                }
+            }
         }
 
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static void AddOptionRows(List<string> lines, IReadOnlyList<CliHelpOption> options)
+    private static void AddOptionRows(List<string> lines, IReadOnlyList<CliHelpOption> options, string indent)
     {
         foreach (var option in options)
         {
-            lines.Add($"  {option.Usage,-32} {option.HelpText}");
+            lines.Add($"{indent}{option.Usage,-32} {option.HelpText}");
         }
     }
 }

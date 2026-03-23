@@ -1,5 +1,3 @@
-using Transcode.Cli.Core.Parsing;
-
 namespace Transcode.Cli.Core.Scenarios;
 
 /*
@@ -57,28 +55,13 @@ internal sealed class CliScenarioRegistry
     }
 
     /// <summary>
-    /// Returns help rows for shared and scenario-specific CLI options.
+    /// Returns registered scenario handlers ordered for deterministic help output.
     /// </summary>
-    /// <returns>Help rows shown in CLI usage output.</returns>
-    public IReadOnlyList<CliHelpOption> GetHelpOptions()
-    {
-        return CliCommonOptions.CreateHelpOptions(GetSupportedScenarioDisplay())
-            .Concat(_handlersByName.Values
-                .OrderBy(static handler => handler.Name, StringComparer.OrdinalIgnoreCase)
-                .SelectMany(static handler => handler.HelpOptions))
-            .ToArray();
-    }
-
-    /// <summary>
-    /// Returns scenario-specific help examples for all registered scenarios.
-    /// </summary>
-    /// <param name="exeName">Executable name used in rendered examples.</param>
-    /// <returns>Help examples.</returns>
-    public IReadOnlyList<string> GetHelpExamples(string exeName)
+    /// <returns>Scenario handlers ordered by scenario name.</returns>
+    public IReadOnlyList<ICliScenarioHandler> GetScenarioHandlersOrdered()
     {
         return _handlersByName.Values
             .OrderBy(static handler => handler.Name, StringComparer.OrdinalIgnoreCase)
-            .SelectMany(handler => handler.GetHelpExamples(exeName))
             .ToArray();
     }
 

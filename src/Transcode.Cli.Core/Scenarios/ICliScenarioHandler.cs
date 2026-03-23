@@ -1,5 +1,6 @@
 using Transcode.Cli.Core.Parsing;
 using Transcode.Core.Scenarios;
+using Transcode.Cli.Core;
 
 namespace Transcode.Cli.Core.Scenarios;
 
@@ -33,6 +34,17 @@ public interface ICliScenarioHandler
     /// <param name="exeName">Executable name used in rendered examples.</param>
     /// <returns>Scenario-specific examples.</returns>
     IReadOnlyList<string> GetHelpExamples(string exeName);
+
+    /// <summary>
+    /// Returns scenario-specific runtime/configuration rows for CLI help output.
+    /// </summary>
+    /// <param name="runtimeValues">Configured external tool values.</param>
+    /// <returns>Scenario-specific configuration rows.</returns>
+    IReadOnlyList<string> GetConfigurationDisplayRows(RuntimeValues runtimeValues)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeValues);
+        return [];
+    }
 
     /// <summary>
     /// Parses raw scenario-specific CLI arguments into a normalized scenario input object.
