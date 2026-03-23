@@ -157,7 +157,7 @@ Quality-oriented video settings:
 - `ffmpeg` with required filters and encoders such as `h264_nvenc` and `scale_cuda`
 - `rife-ncnn-vulkan` for `toh264rife`
 
-The CLI resolves binary paths from standard host configuration sources such as `appsettings.json` and environment variables. `Scenarios:ToH264Rife:RifeNcnnPath` is required only for `toh264rife`. A minimal `appsettings.json` looks like this:
+The CLI resolves binary paths from standard host configuration sources such as `appsettings.json` and environment variables. `Scenarios:ToH264Rife:RifeNcnnPath` is required only for `toh264rife` and defaults to the repo-local `tools/third_party` layout. A minimal `appsettings.json` looks like this:
 
 ```json
 {
@@ -167,7 +167,7 @@ The CLI resolves binary paths from standard host configuration sources such as `
   },
   "Scenarios": {
     "ToH264Rife": {
-      "RifeNcnnPath": "rife-ncnn-vulkan"
+      "RifeNcnnPath": "tools/third_party/rife-ncnn-vulkan/rife-ncnn-vulkan/rife-ncnn-vulkan-20221029-windows/rife-ncnn-vulkan.exe"
     }
   }
 }

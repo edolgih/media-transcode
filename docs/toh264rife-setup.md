@@ -54,7 +54,13 @@ After extraction, verify that the directory contains:
 
 ### 3. Point The CLI To The Backend Executable
 
-Option A: configure `appsettings.json`
+Option A: use the repo-local default from `appsettings.json`
+
+The repository default points `Scenarios:ToH264Rife:RifeNcnnPath` at the repo-local
+`tools/third_party/.../rife-ncnn-vulkan.exe` path. That is the preferred setup when
+the backend package is unpacked inside this repository.
+
+Option B: override `appsettings.json` with an explicit absolute path
 
 ```json
 {
@@ -70,7 +76,7 @@ Option A: configure `appsettings.json`
 }
 ```
 
-Option B: set it through an environment variable for the current PowerShell session
+Option C: set it through an environment variable for the current PowerShell session
 
 ```powershell
 $env:Scenarios__ToH264Rife__RifeNcnnPath = 'D:\Tools\rife-ncnn-vulkan\rife-ncnn-vulkan.exe'

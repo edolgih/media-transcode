@@ -103,6 +103,37 @@ public sealed class ToH264RifeScenarioTests
     }
 
     [Fact]
+    public void BuildExecution_WhenExecutableNamesAreBareCommands_DoesNotQuoteThem()
+    {
+        var tool = CreateTool();
+        var sut = new ToH264RifeScenario(new ToH264RifeRequest(targetFramesPerSecond: 60), tool);
+        var video = CreateVideo(filePath: @"C:\video\input.mp4", framesPerSecond: 25);
+
+        var actual = sut.BuildExecution(video);
+
+        actual.Commands.Should().Contain(command => command.StartsWith("ffmpeg -hide_banner", StringComparison.Ordinal));
+        actual.Commands.Should().Contain(command => command.Contains("rife-ncnn-vulkan -i", StringComparison.Ordinal));
+        actual.Commands.Should().NotContain(command => command.Contains("\"rife-ncnn-vulkan\"", StringComparison.Ordinal));
+        actual.Commands.Should().NotContain(command => command.StartsWith("\"ffmpeg\"", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BuildExecution_WhenExecutablePathsContainSpaces_QuotesThem()
+    {
+        var tool = new ToH264RifeTool(
+            @"C:\Program Files\FFmpeg\bin\ffmpeg.exe",
+            @"D:\Tools\rife ncnn vulkan\rife-ncnn-vulkan.exe",
+            NullLogger<ToH264RifeTool>.Instance);
+        var sut = new ToH264RifeScenario(new ToH264RifeRequest(targetFramesPerSecond: 60), tool);
+        var video = CreateVideo(filePath: @"C:\video\input.mp4", framesPerSecond: 25);
+
+        var actual = sut.BuildExecution(video);
+
+        actual.Commands.Should().Contain(command => command.StartsWith("\"C:\\Program Files\\FFmpeg\\bin\\ffmpeg.exe\" -hide_banner", StringComparison.Ordinal));
+        actual.Commands.Should().Contain(command => command.Contains("\"D:\\Tools\\rife ncnn vulkan\\rife-ncnn-vulkan.exe\" -i", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void BuildExecution_WhenInterpolationIsNotNeededAndContainerMatches_ReturnsEmptyExecution()
     {
         var tool = CreateTool();

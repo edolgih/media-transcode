@@ -18,9 +18,8 @@ public static class ToH264RifeCliServiceCollectionExtensions
 		ArgumentNullException.ThrowIfNull(services);
 		ArgumentNullException.ThrowIfNull(configuration);
 
-		var ffmpegPath = GetRequiredConfigurationValue(configuration, ToolConfigurationKeys.FfmpegPath, "toh264rife");
-		var rifeNcnnPath =
-			GetRequiredConfigurationValue(configuration, ToH264RifeCliConfigurationKeys.RifeNcnnPath, "toh264rife");
+		var ffmpegPath = CliPathResolver.GetRequiredExecutable(configuration, ToolConfigurationKeys.FfmpegPath, "toh264rife");
+		var rifeNcnnPath = CliPathResolver.GetRequiredExecutable(configuration, ToH264RifeCliConfigurationKeys.RifeNcnnPath, "toh264rife");
 
 		services.AddSingleton(services =>
 		{
@@ -34,16 +33,5 @@ public static class ToH264RifeCliServiceCollectionExtensions
 				services.GetRequiredService<ToH264RifeTool>()));
 
 		return services;
-	}
-
-	private static string GetRequiredConfigurationValue(IConfiguration configuration, string key, string scenarioName)
-	{
-		var value = configuration[key];
-		if (string.IsNullOrWhiteSpace(value))
-		{
-			throw new InvalidOperationException($"Configuration key '{key}' is required for {scenarioName}.");
-		}
-
-		return value;
 	}
 }

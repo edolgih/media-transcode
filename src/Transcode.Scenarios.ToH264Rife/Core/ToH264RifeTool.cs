@@ -81,7 +81,7 @@ public sealed class ToH264RifeTool
     {
         var parts = new List<string>
         {
-            FfmpegPath,
+            FfmpegExecutionLayout.CommandToken(FfmpegPath),
             "-hide_banner",
             "-i",
             FfmpegExecutionLayout.Quote(video.FilePath),
@@ -104,7 +104,7 @@ public sealed class ToH264RifeTool
     private string BuildExtractFramesCommand(SourceVideo video, string inputFramesDirectory)
     {
         return string.Join(" ",
-            FfmpegPath,
+            FfmpegExecutionLayout.CommandToken(FfmpegPath),
             "-hide_banner",
             "-i",
             FfmpegExecutionLayout.Quote(video.FilePath),
@@ -119,7 +119,7 @@ public sealed class ToH264RifeTool
             (int)Math.Round(video.Duration.TotalSeconds * decision.ResolvedTargetFramesPerSecond, MidpointRounding.AwayFromZero));
 
         return string.Join(" ",
-            FfmpegExecutionLayout.Quote(RifeNcnnPath!),
+            FfmpegExecutionLayout.CommandToken(RifeNcnnPath!),
             "-i",
             FfmpegExecutionLayout.Quote(inputFramesDirectory),
             "-o",
@@ -134,7 +134,7 @@ public sealed class ToH264RifeTool
     {
         var parts = new List<string>
         {
-            FfmpegPath,
+            FfmpegExecutionLayout.CommandToken(FfmpegPath),
             "-hide_banner",
             "-framerate",
             decision.ResolvedTargetFramesPerSecond.ToString("0.###", CultureInfo.InvariantCulture),

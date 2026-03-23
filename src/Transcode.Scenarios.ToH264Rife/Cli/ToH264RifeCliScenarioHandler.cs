@@ -52,7 +52,7 @@ public sealed class ToH264RifeCliScenarioHandler : ICliScenarioHandler
 
         return
         [
-            $"{ToH264RifeCliConfigurationKeys.RifeNcnnPath} current: {configuration[ToH264RifeCliConfigurationKeys.RifeNcnnPath]}"
+            $"{ToH264RifeCliConfigurationKeys.RifeNcnnPath} current: {CliPathResolver.GetRequiredExecutable(configuration, ToH264RifeCliConfigurationKeys.RifeNcnnPath, Name)}"
         ];
     }
 
