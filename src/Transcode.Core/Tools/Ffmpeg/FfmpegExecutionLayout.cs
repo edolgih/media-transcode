@@ -7,7 +7,7 @@ namespace Transcode.Core.Tools.Ffmpeg;
 /// <summary>
 /// Provides shared path and post-operation helpers for ffmpeg-based scenario renderers.
 /// </summary>
-internal static class FfmpegExecutionLayout
+public static class FfmpegExecutionLayout
 {
     public static string ResolveFinalOutputPath(string outputPath)
     {

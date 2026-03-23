@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Transcode.Cli.Core\Transcode.Cli.Core.csproj" />
     <ProjectReference Include="..\Transcode.Scenarios.ToH264Gpu\Transcode.Scenarios.ToH264Gpu.csproj" />
+    <ProjectReference Include="..\Transcode.Scenarios.ToH264Rife\Transcode.Scenarios.ToH264Rife.csproj" />
     <ProjectReference Include="..\Transcode.Scenarios.ToMkvGpu\Transcode.Scenarios.ToMkvGpu.csproj" />
   </ItemGroup>
 

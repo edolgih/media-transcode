@@ -42,6 +42,7 @@ internal static class CliHelpBuilder
         lines.Add("Configuration (appsettings / environment):");
         lines.Add($"  {nameof(RuntimeValues)}:FfprobePath current: {runtimeValues.FfprobePath}");
         lines.Add($"  {nameof(RuntimeValues)}:FfmpegPath  current: {runtimeValues.FfmpegPath}");
+        lines.Add($"  {nameof(RuntimeValues)}:RifeNcnnPath current: {runtimeValues.RifeNcnnPath}");
 
         lines.Add(string.Empty);
         lines.Add("Examples:");

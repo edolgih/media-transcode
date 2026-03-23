@@ -14,6 +14,8 @@ using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.Videos;
 using Transcode.Scenarios.ToH264Gpu.Cli;
 using Transcode.Scenarios.ToH264Gpu.Core;
+using Transcode.Scenarios.ToH264Rife.Cli;
+using Transcode.Scenarios.ToH264Rife.Core;
 using Transcode.Scenarios.ToMkvGpu.Cli;
 using Transcode.Scenarios.ToMkvGpu.Core;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -85,6 +87,12 @@ public static class Program
 				return new ToH264GpuFfmpegTool(options.FfmpegPath!, logger);
 			});
 			builder.Services.AddSingleton(static services =>
+			{
+				var options = services.GetRequiredService<IOptions<RuntimeValues>>().Value;
+				var logger = services.GetRequiredService<ILogger<ToH264RifeTool>>();
+				return new ToH264RifeTool(options.FfmpegPath!, options.RifeNcnnPath, logger);
+			});
+			builder.Services.AddSingleton(static services =>
 				new FfmpegSampleMeasurer(
 					services.GetRequiredService<IOptions<RuntimeValues>>().Value.FfmpegPath!));
 
@@ -101,6 +109,11 @@ public static class Program
 					services.GetRequiredService<ToH264GpuInfoFormatter>(),
 					services.GetRequiredService<ToH264GpuFfmpegTool>(),
 					services.GetRequiredService<FfmpegSampleMeasurer>()));
+			builder.Services.AddSingleton<ToH264RifeInfoFormatter>();
+			builder.Services.AddSingleton<ICliScenarioHandler>(static services =>
+				new ToH264RifeCliScenarioHandler(
+					services.GetRequiredService<ToH264RifeInfoFormatter>(),
+					services.GetRequiredService<ToH264RifeTool>()));
 			builder.Services.AddSingleton(static services =>
 				new CliScenarioRegistry(services.GetServices<ICliScenarioHandler>()));
 			builder.Services.AddSingleton<ITranscodeProcessor, PrimaryTranscodeProcessor>();

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Processing;
 using Transcode.Cli.Core.Scenarios;
@@ -9,6 +10,8 @@ using Transcode.Core.Inspection;
 using Transcode.Core.Videos;
 using Transcode.Scenarios.ToH264Gpu.Cli;
 using Transcode.Scenarios.ToH264Gpu.Core;
+using Transcode.Scenarios.ToH264Rife.Cli;
+using Transcode.Scenarios.ToH264Rife.Core;
 using Transcode.Scenarios.ToMkvGpu.Cli;
 using Transcode.Scenarios.ToMkvGpu.Core;
 
@@ -255,7 +258,9 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Usage:");
             output.ToString().Should().Contain("Scenario name. Required.");
             output.ToString().Should().Contain("--scenario toh264gpu");
+            output.ToString().Should().Contain("--scenario toh264rife");
             output.ToString().Should().Contain("--max-fps <50|40|30|24>");
+            output.ToString().Should().Contain("--target-fps <50|60>");
             output.ToString().Should().Contain("--downscale <720|576|480|424>");
             output.ToString().Should().Contain("Default: film.");
             output.ToString().Should().Contain("Default: default.");
@@ -264,6 +269,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Default: profile default; built-in profiles currently bilinear.");
             output.ToString().Should().Contain("RuntimeValues:FfprobePath current: ffprobe-custom");
             output.ToString().Should().Contain("RuntimeValues:FfmpegPath  current: ffmpeg-custom");
+            output.ToString().Should().Contain("RuntimeValues:RifeNcnnPath current:");
             error.ToString().Should().BeEmpty();
         }
         finally
@@ -399,6 +405,9 @@ public sealed class ProgramTests
         return new CliScenarioRegistry(
             [
                 new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
+                new ToH264RifeCliScenarioHandler(
+                    new ToH264RifeInfoFormatter(),
+                    new ToH264RifeTool("ffmpeg", "rife-ncnn-vulkan", NullLogger<ToH264RifeTool>.Instance)),
                 new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
             ]
         );

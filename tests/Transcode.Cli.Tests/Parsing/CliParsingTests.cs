@@ -1,9 +1,12 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Parsing;
 using Transcode.Cli.Core.Scenarios;
 using Transcode.Scenarios.ToH264Gpu.Cli;
 using Transcode.Scenarios.ToH264Gpu.Core;
+using Transcode.Scenarios.ToH264Rife.Cli;
+using Transcode.Scenarios.ToH264Rife.Core;
 using Transcode.Scenarios.ToMkvGpu.Cli;
 using Transcode.Scenarios.ToMkvGpu.Core;
 
@@ -227,6 +230,44 @@ public sealed class CliParsingTests
     }
 
     [Fact]
+    public void CreateScenario_WhenParsedArgsContainToH264RifeOptions_MapsRuntimeRequest()
+    {
+        var parsedOk = CliArgumentParser.TryParse(
+            [
+                "--scenario", "toh264rife",
+                "--input", @"C:\video\a.mkv",
+                "--target-fps", "60",
+                "--container", "mkv",
+                "--keep-source"
+            ],
+            CreateRegistry(),
+            out var parsed,
+            out var errorText);
+
+        parsedOk.Should().BeTrue();
+        errorText.Should().BeNull();
+
+        var request = new CliTranscodeRequest(
+            inputPath: @"C:\video\a.mkv",
+            scenarioName: parsed.Scenario,
+            info: parsed.Info,
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
+
+        var actual = new ToH264RifeCliScenarioHandler(
+                new ToH264RifeInfoFormatter(),
+                new ToH264RifeTool("ffmpeg", "rife-ncnn-vulkan", NullLogger<ToH264RifeTool>.Instance))
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToH264RifeScenario>()
+            .Subject;
+
+        actual.Request.KeepSource.Should().BeTrue();
+        actual.Request.TargetFramesPerSecond.Should().Be(60);
+        actual.Request.OutputContainer.Should().Be("mkv");
+    }
+
+    [Fact]
     public void CreateScenario_WhenTomkvgpuUsesSupportedHdDownscale_MapsRuntimeRequest()
     {
         var parsedOk = CliArgumentParser.TryParse(
@@ -297,7 +338,7 @@ public sealed class CliParsingTests
     [Theory]
     [InlineData("tomkvgpu", "Do not use legacy scenario command tokens. Use --scenario tomkvgpu.")]
     [InlineData("toh264gpu", "Do not use legacy scenario command tokens. Use --scenario toh264gpu.")]
-    [InlineData("--wat", "Scenario is required. Use --scenario <name>. Available scenarios: toh264gpu, tomkvgpu.")]
+    [InlineData("--wat", "Scenario is required. Use --scenario <name>. Available scenarios: toh264gpu, toh264rife, tomkvgpu.")]
     [InlineData("unexpected", "Unexpected argument: unexpected")]
     public void TryParse_WhenArgsContainUnsupportedToken_ReturnsFalse(string token, string expectedError)
     {
@@ -470,7 +511,7 @@ public sealed class CliParsingTests
             out var errorText);
 
         actual.Should().BeFalse();
-        errorText.Should().Be("Scenario is required. Use --scenario <name>. Available scenarios: toh264gpu, tomkvgpu.");
+        errorText.Should().Be("Scenario is required. Use --scenario <name>. Available scenarios: toh264gpu, toh264rife, tomkvgpu.");
     }
 
     [Fact]
@@ -483,13 +524,16 @@ public sealed class CliParsingTests
             out var errorText);
 
         actual.Should().BeFalse();
-        errorText.Should().Be("Unsupported scenario: other. Available scenarios: toh264gpu, tomkvgpu.");
+        errorText.Should().Be("Unsupported scenario: other. Available scenarios: toh264gpu, toh264rife, tomkvgpu.");
     }
     private static CliScenarioRegistry CreateRegistry()
     {
         return new CliScenarioRegistry(
             [
                 new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
+                new ToH264RifeCliScenarioHandler(
+                    new ToH264RifeInfoFormatter(),
+                    new ToH264RifeTool("ffmpeg", "rife-ncnn-vulkan", NullLogger<ToH264RifeTool>.Instance)),
                 new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
             ]);
     }

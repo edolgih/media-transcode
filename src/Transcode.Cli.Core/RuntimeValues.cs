@@ -17,4 +17,9 @@ public sealed class RuntimeValues
     /// Gets the configured path to <c>ffmpeg</c>.
     /// </summary>
     public string? FfmpegPath { get; init; }
+
+    /// <summary>
+    /// Gets the configured path to <c>rife-ncnn-vulkan</c>.
+    /// </summary>
+    public string? RifeNcnnPath { get; init; }
 }
