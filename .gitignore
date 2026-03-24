@@ -20,7 +20,6 @@ docs/reference/legacy-fe62f0c/*
 implementation_plan.md
 refactoring_current.md
 plans/
-bench/
 
 # User-specific files
 *.rsuser
