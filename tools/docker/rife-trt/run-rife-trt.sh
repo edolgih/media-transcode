@@ -56,6 +56,20 @@ esac
 
 mkdir -p /workspace/cache/trt /workspace/cache/src
 
+trt_cache_dir="/workspace/cache/trt"
+src_cache_dir="/workspace/cache/src"
+
+trt_cache_count="$(find "$trt_cache_dir" -maxdepth 1 -type f | wc -l | tr -d '[:space:]')"
+src_cache_count="$(find "$src_cache_dir" -maxdepth 1 -type f | wc -l | tr -d '[:space:]')"
+
+if [[ "$trt_cache_count" -gt 0 ]]; then
+    echo "MTE_RIFE_TRT_CACHE=warm files=$trt_cache_count dir=$trt_cache_dir"
+else
+    echo "MTE_RIFE_TRT_CACHE=cold files=0 dir=$trt_cache_dir"
+fi
+
+echo "MTE_RIFE_SOURCE_CACHE files=$src_cache_count dir=$src_cache_dir"
+
 script_path="$(mktemp /tmp/media-transcode-rife-XXXXXX.vpy)"
 cleanup() {
     rm -f "$script_path"
@@ -70,7 +84,7 @@ core = vs.core
 clip = core.bs.VideoSource(
     source="$input_path",
     cachemode=1,
-    cachepath="/workspace/cache/src"
+    cachepath="$src_cache_dir"
 )
 clip = core.resize.Bicubic(clip, format=vs.RGBH, matrix_in_s="709")
 clip = vsrife.rife(
@@ -79,7 +93,7 @@ clip = vsrife.rife(
     factor_num=$fps_multiplier,
     factor_den=1,
     trt=True,
-    trt_cache_dir="/workspace/cache/trt"
+    trt_cache_dir="$trt_cache_dir"
 )
 clip = core.resize.Bicubic(clip, format=vs.YUV420P8, matrix_s="709")
 clip.set_output()
@@ -116,3 +130,7 @@ if [[ "${container_name,,}" == "mp4" ]]; then
 fi
 
 vspipe -c y4m "$script_path" - | ffmpeg "${ffmpeg_args[@]}" "$output_path"
+
+echo "MTE_RIFE_TRT_CACHE_FILES_BEGIN"
+find "$trt_cache_dir" -maxdepth 1 -type f -printf '%f\t%s\n' | sort
+echo "MTE_RIFE_TRT_CACHE_FILES_END"
