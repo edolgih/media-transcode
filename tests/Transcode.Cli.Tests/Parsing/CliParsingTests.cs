@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Parsing;
 using Transcode.Cli.Core.Scenarios;
+using Transcode.Core.VideoSettings;
 using Transcode.Scenarios.ToH264Gpu.Cli;
 using Transcode.Scenarios.ToH264Gpu.Core;
 using Transcode.Scenarios.ToH264Rife.Cli;
@@ -236,7 +237,10 @@ public sealed class CliParsingTests
             [
                 "--scenario", "toh264rife",
                 "--input", @"C:\video\a.mkv",
-                "--target-fps", "60",
+                "--fps-multiplier", "3",
+                "--interp-quality", "high",
+                "--content-profile", "anime",
+                "--quality-profile", "high",
                 "--container", "mkv",
                 "--keep-source"
             ],
@@ -256,14 +260,18 @@ public sealed class CliParsingTests
 
         var actual = new ToH264RifeCliScenarioHandler(
                 new ToH264RifeInfoFormatter(),
-                new ToH264RifeTool("ffmpeg", "rife-ncnn-vulkan", NullLogger<ToH264RifeTool>.Instance))
+                new ToH264RifeTool("media-transcode-rife-trt", NullLogger<ToH264RifeTool>.Instance))
             .CreateScenario(request)
             .Should()
             .BeOfType<ToH264RifeScenario>()
             .Subject;
 
         actual.Request.KeepSource.Should().BeTrue();
-        actual.Request.TargetFramesPerSecond.Should().Be(60);
+        actual.Request.FramesPerSecondMultiplier.Should().Be(3);
+        actual.Request.InterpolationQualityProfile.Should().Be("high");
+        actual.Request.VideoSettings.Should().NotBeNull();
+        actual.Request.VideoSettings!.ContentProfile.Should().Be("anime");
+        actual.Request.VideoSettings.QualityProfile.Should().Be("high");
         actual.Request.OutputContainer.Should().Be("mkv");
     }
 
@@ -533,7 +541,7 @@ public sealed class CliParsingTests
                 new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter()),
                 new ToH264RifeCliScenarioHandler(
                     new ToH264RifeInfoFormatter(),
-                    new ToH264RifeTool("ffmpeg", "rife-ncnn-vulkan", NullLogger<ToH264RifeTool>.Instance)),
+                    new ToH264RifeTool("media-transcode-rife-trt", NullLogger<ToH264RifeTool>.Instance)),
                 new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
             ]);
     }

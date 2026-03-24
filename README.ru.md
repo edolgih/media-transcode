@@ -10,7 +10,7 @@
 
 - `tomkvgpu` - mkv-ориентированные решения по GPU transcode/remux;
 - `toh264gpu` - mp4-ориентированные решения по H.264 GPU transcode/remux;
-- `toh264rife` - H.264 interpolation-сценарий с backend-ом `rife-ncnn-vulkan`;
+- `toh264rife` - H.264 interpolation-сценарий с Docker backend-ом `vsrife + TensorRT`;
 - в обычном режиме: legacy-compatible строки команд и `REM ...` диагностику;
 - в `--info` режиме: короткие маркеры решений без `ffmpeg`-команды.
 
@@ -20,7 +20,7 @@
 
 - `tomkvgpu` - MKV-first compatibility path. Он ориентирован на более консервативный выход в MKV и решения по transcode/remux для appliance-style playback targets вроде телевизоров и похожих устройств.
 - `toh264gpu` - MP4/H.264-first path. Он ориентирован на более общий playback на полноценной ОС и на web/mobile-friendly окружения, где H.264 в MP4 обычно является более безопасным default.
-- `toh264rife` - interpolation path. Он ориентирован на quality-first повышение кадровой частоты с выходом в H.264, по умолчанию удваивает source fps и использует `rife-ncnn-vulkan` как backend интерполяции.
+- `toh264rife` - interpolation path. Он ориентирован на выход в H.264 с умножением кадровой частоты `x2` или `x3`, использует repo-local Docker image `media-transcode-rife-trt` как backend интерполяции, поддерживает отдельные профили качества interpolation model и резолвит финальный NVENC encode из общих `content/quality profile` defaults.
 - все три сценария используют общую inspection и profile-driven video-settings основу, но намеренно принимают разные container, remux, audio и compatibility решения.
 
 ## Структура Репозитория
@@ -39,10 +39,11 @@
 
 - `.NET SDK` `9.0.x`
 - `ffprobe` с JSON output
-- `ffmpeg` с нужными фильтрами и кодировщиками
-- `rife-ncnn-vulkan` при использовании сценария `toh264rife`
+- `ffmpeg` с нужными фильтрами и кодировщиками на host-стороне
+- `docker` с доступом к GPU при использовании сценария `toh264rife`
+- локально собранный image `media-transcode-rife-trt` из `tools/docker/rife-trt`
 
-CLI получает пути к tool-ам из стандартных источников конфигурации host-а, включая `appsettings.json` и переменные окружения. Для `toh264rife` ключ `Scenarios:ToH264Rife:RifeNcnnPath` должен указывать на executable backend-а интерполяции.
+CLI получает пути к tool-ам из стандартных источников конфигурации host-а, включая `appsettings.json` и переменные окружения. Для `toh264rife` снаружи настраивается только `Scenarios:ToH264Rife:DockerImage`. Имена cache volume и имя команды `docker` зашиты в backend.
 
 ## Сборка И Тесты
 

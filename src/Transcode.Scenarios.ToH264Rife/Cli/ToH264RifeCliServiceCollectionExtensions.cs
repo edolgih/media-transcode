@@ -18,13 +18,12 @@ public static class ToH264RifeCliServiceCollectionExtensions
 		ArgumentNullException.ThrowIfNull(services);
 		ArgumentNullException.ThrowIfNull(configuration);
 
-		var ffmpegPath = CliPathResolver.GetRequiredExecutable(configuration, ToolConfigurationKeys.FfmpegPath, "toh264rife");
-		var rifeNcnnPath = CliPathResolver.GetRequiredExecutable(configuration, ToH264RifeCliConfigurationKeys.RifeNcnnPath, "toh264rife");
+		var dockerImage = GetRequiredValue(configuration, ToH264RifeCliConfigurationKeys.DockerImage);
 
 		services.AddSingleton(services =>
 		{
 			var logger = services.GetRequiredService<ILogger<ToH264RifeTool>>();
-			return new ToH264RifeTool(ffmpegPath, rifeNcnnPath, logger);
+			return new ToH264RifeTool(dockerImage, logger);
 		});
 		services.AddSingleton<ToH264RifeInfoFormatter>();
 		services.AddSingleton<ICliScenarioHandler>(static services =>
@@ -33,5 +32,16 @@ public static class ToH264RifeCliServiceCollectionExtensions
 				services.GetRequiredService<ToH264RifeTool>()));
 
 		return services;
+	}
+
+	private static string GetRequiredValue(IConfiguration configuration, string key)
+	{
+		var value = configuration[key];
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			throw new InvalidOperationException($"Configuration key '{key}' is required for toh264rife.");
+		}
+
+		return value;
 	}
 }

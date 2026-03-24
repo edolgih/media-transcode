@@ -28,19 +28,13 @@ public sealed class ToH264RifeInfoFormatter
         var parts = new List<string>();
         var sourceContainer = video.FileExtension.TrimStart('.');
 
-        if (decision.RequiresInterpolation)
-        {
-            parts.Add($"target {decision.ResolvedTargetFramesPerSecond.ToString("0.###", CultureInfo.InvariantCulture)} fps");
-        }
-        else if (!sourceContainer.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase))
-        {
-            parts.Add("remux-only");
-            parts.Add("already near target fps");
-        }
-        else
-        {
-            parts.Add("already near target fps");
-        }
+        parts.Add($"x{decision.FramesPerSecondMultiplier}");
+        parts.Add($"target {decision.ResolvedTargetFramesPerSecond.ToString("0.###", CultureInfo.InvariantCulture)} fps");
+        parts.Add($"interp {decision.InterpolationQualityProfile}/{decision.InterpolationModelName}");
+        parts.Add($"profile {decision.ResolvedVideoSettings.ContentProfile}/{decision.ResolvedVideoSettings.QualityProfile}");
+        parts.Add($"cq {decision.ResolvedVideoSettings.Cq}");
+        parts.Add($"maxrate {decision.ResolvedVideoSettings.Maxrate.ToString("0.###", CultureInfo.InvariantCulture)}M");
+        parts.Add($"bufsize {decision.ResolvedVideoSettings.Bufsize.ToString("0.###", CultureInfo.InvariantCulture)}M");
 
         if (!sourceContainer.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase))
         {

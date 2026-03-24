@@ -1,66 +1,81 @@
 # ToH264Rife Setup
 
-This document describes the external stack required by the current `toh264rife` scenario.
+This document describes the current external stack required by `toh264rife`.
 
 ## What The Scenario Needs
 
 - `.NET SDK` `9.0.x`
-- `ffprobe`
-- `ffmpeg`
-- `rife-ncnn-vulkan`
-- a Vulkan-capable GPU with a working graphics driver
+- `ffprobe` on the host
+- `docker`
+- NVIDIA GPU access from Docker Desktop / WSL2
+- a locally built `media-transcode-rife-trt` image
 
-The current scenario is a command generator. It does not install or bundle the interpolation backend for you.
+The current scenario is a command generator. It does not install the Docker image for you.
+
+## Practical Model
+
+`toh264rife` works like this:
+
+- CLI runs on the host and uses host-side `ffprobe`
+- the generated command starts a one-shot `docker run --rm`
+- the directory that contains the processed files is bind-mounted into the container as `/workspace/work`
+- input is read directly from that mounted directory
+- output is written back into that same mounted directory
+- TRT cache and source cache live in Docker named volumes and survive between runs
+
+No source files are copied into the repository or into a separate host-side temp folder.
 
 ## Current Scenario Assumptions
 
 The current `toh264rife` command renderer invokes the backend in this shape:
 
 ```text
-"<RifeNcnnPath>" -i "<input_frames_dir>" -o "<output_frames_dir>" -n <target_frame_count> -m rife-v4 -f %%08d.png
+docker run --rm --gpus all ^
+  -v "<source_dir>:/workspace/work" ^
+  -v <trt_cache_volume>:/workspace/cache/trt ^
+  -v <source_cache_volume>:/workspace/cache/src ^
+  media-transcode-rife-trt ^
+  "/workspace/work/<input_file>" "/workspace/work/<output_file>" <fps_multiplier> <container> <interp_model> <cq> <maxrate_kbps> <bufsize_kbps>
 ```
 
-Two practical implications follow from that:
+Practical implications:
 
-- `Scenarios:ToH264Rife:RifeNcnnPath` must point to the `rife-ncnn-vulkan` executable.
-- the current renderer targets the `rife-v4` model name explicitly
+- `Scenarios:ToH264Rife:DockerImage` must point to a built local image name
+- the backend uses built-in Docker named volumes for TensorRT and source caches
+- Docker creates those cache volumes automatically on first use if they do not already exist
+- the current image supports `vsrife` interpolation profiles `low`, `default`, and `high`
+- current mapping is:
+  - `low -> 4.25.lite`
+  - `default -> 4.25`
+  - `high -> 4.26.heavy`
+- the required `vsrife` models are already bundled inside the image; no extra model download is needed for the current contract
+- the container image bundles `ffmpeg`, but CLI planning still needs host-side `ffprobe`
+- final `NVENC` settings are resolved from shared `content/quality profile` defaults without autosample in this scenario
 
-Keep the extracted backend package intact, including the bundled model directories that ship with the release package.
+## Build The Docker Image
 
-## Windows Setup
-
-### 1. Download The Backend Package
-
-Download the current Windows release archive of `rife-ncnn-vulkan` from the official releases page:
-
-- <https://github.com/nihui/rife-ncnn-vulkan/releases>
-
-The official project README states that the release package includes the binaries and required models.
-
-### 2. Extract It To A Stable Tools Directory
-
-Example PowerShell commands:
+From the repository root:
 
 ```powershell
-New-Item -ItemType Directory -Force D:\Tools | Out-Null
-Expand-Archive -Path C:\Downloads\rife-ncnn-vulkan-<windows-archive>.zip -DestinationPath D:\Tools\rife-ncnn-vulkan
-Get-ChildItem D:\Tools\rife-ncnn-vulkan
+docker build -t media-transcode-rife-trt -f tools/docker/rife-trt/Dockerfile tools/docker/rife-trt
 ```
 
-After extraction, verify that the directory contains:
+The image is built on top of `styler00dollar/vsgan_tensorrt:latest_no_avx512` and bundles the thin runner used by `toh264rife`.
 
-- `rife-ncnn-vulkan.exe`
-- the bundled model folders, including `rife-v4`
+If you change anything under `tools/docker/rife-trt`, rebuild the image with the same command before generating a new `toh264rife` command.
 
-### 3. Point The CLI To The Backend Executable
+Optional sanity checks:
 
-Option A: use the repo-local default from `appsettings.json`
+```powershell
+docker image ls media-transcode-rife-trt
+docker run --rm --entrypoint ffmpeg media-transcode-rife-trt -version
+```
 
-The repository default points `Scenarios:ToH264Rife:RifeNcnnPath` at the repo-local
-`tools/third_party/.../rife-ncnn-vulkan.exe` path. That is the preferred setup when
-the backend package is unpacked inside this repository.
+`ffmpeg` is expected inside the image. `ffprobe` is not.
 
-Option B: override `appsettings.json` with an explicit absolute path
+## Minimal Configuration
+
+The repository default already points `toh264rife` at the local image and cache volume names:
 
 ```json
 {
@@ -70,24 +85,24 @@ Option B: override `appsettings.json` with an explicit absolute path
   },
   "Scenarios": {
     "ToH264Rife": {
-      "RifeNcnnPath": "D:\\Tools\\rife-ncnn-vulkan\\rife-ncnn-vulkan.exe"
+      "DockerImage": "media-transcode-rife-trt"
     }
   }
 }
 ```
 
-Option C: set it through an environment variable for the current PowerShell session
+You can override the same values through environment variables:
 
 ```powershell
-$env:Scenarios__ToH264Rife__RifeNcnnPath = 'D:\Tools\rife-ncnn-vulkan\rife-ncnn-vulkan.exe'
+$env:Scenarios__ToH264Rife__DockerImage = 'media-transcode-rife-trt'
 ```
 
 ## Smoke Test
 
-### 1. Verify The Backend Binary
+### 1. Verify Docker GPU Access
 
 ```powershell
-& 'D:\Tools\rife-ncnn-vulkan\rife-ncnn-vulkan.exe' -h
+docker run --rm --gpus all nvidia/cuda:13.0.1-base-ubuntu24.04 nvidia-smi
 ```
 
 ### 2. Verify CLI Wiring
@@ -96,27 +111,45 @@ $env:Scenarios__ToH264Rife__RifeNcnnPath = 'D:\Tools\rife-ncnn-vulkan\rife-ncnn-
 dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\Src\clip.mkv" --info
 ```
 
+This should print a short decision line that includes:
+
+- source resolution and FPS
+- `x2` or `x3`
+- interpolation profile and model
+- final encode profile and CQ/maxrate/bufsize
+
 ### 3. Generate A Real Interpolation Command
 
 ```powershell
-dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\Src\clip.mkv" --target-fps 60 --keep-source
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\Src\clip.mkv" --fps-multiplier 2 --keep-source
 ```
 
-## Practical Note About The Model Path
+The generated command is expected to:
 
-The current scenario renders `-m rife-v4` as a relative model identifier rather than an absolute path.
+- use `docker run --rm`
+- bind-mount the source directory into `/workspace/work`
+- mount the Docker named volumes used for TRT cache and source cache
+- print live `docker/vspipe/ffmpeg` output to the same console where the `.bat` file is executed
 
-In practice, keep the backend package and its bundled model folders together. If your local runtime does not resolve `rife-v4` correctly, run the generated command from the extracted backend directory or replace `-m rife-v4` in the generated command with an explicit model path.
+### 4. Generate With Explicit Interpolation Quality
 
-This note is an inference from the current command shape in this repository, not a claim about every possible `rife-ncnn-vulkan` build.
+```powershell
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\Src\clip.mkv" --interp-quality high --keep-source
+```
+
+### 5. Generate With Explicit Encode Profiles
+
+```powershell
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\Src\clip.mkv" --content-profile anime --quality-profile high --keep-source
+```
 
 ## Troubleshooting
 
-- If `rife-ncnn-vulkan.exe -h` fails immediately, first check the GPU driver and Vulkan availability.
-- If the generated transcode command fails with a model-loading error, verify that the `rife-v4` model directory is present and reachable for the command you are running.
-- If CLI startup fails before command generation, verify `Tools:FfprobePath`, `Tools:FfmpegPath`, and `Scenarios:ToH264Rife:RifeNcnnPath`.
+- If `docker run --rm --gpus all ... nvidia-smi` fails, first check Docker Desktop GPU integration, the NVIDIA driver, and WSL2 GPU support.
+- If CLI startup fails before command generation, verify `Tools:FfprobePath`, `Tools:FfmpegPath`, and `Scenarios:ToH264Rife:DockerImage`.
+- If the generated command fails inside the container, rebuild `media-transcode-rife-trt` from `tools/docker/rife-trt`.
 
-## Official References
+## References
 
-- Project README: <https://github.com/nihui/rife-ncnn-vulkan>
-- Releases: <https://github.com/nihui/rife-ncnn-vulkan/releases>
+- Docker backend base image: <https://github.com/styler00dollar/VSGAN-tensorrt-docker>
+- Local runner image sources: [`tools/docker/rife-trt`](../tools/docker/rife-trt)

@@ -5,5 +5,5 @@ namespace Transcode.Scenarios.ToH264Rife.Cli;
 /// </summary>
 public static class ToH264RifeCliConfigurationKeys
 {
-    public const string RifeNcnnPath = "Scenarios:ToH264Rife:RifeNcnnPath";
+    public const string DockerImage = "Scenarios:ToH264Rife:DockerImage";
 }

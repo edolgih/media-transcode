@@ -1,4 +1,5 @@
 using Transcode.Core.MediaIntent;
+using Transcode.Core.VideoSettings;
 
 namespace Transcode.Scenarios.ToH264Rife.Core;
 
@@ -13,16 +14,24 @@ internal sealed class ToH264RifeDecision
         AudioIntent audio,
         bool keepSource,
         string outputPath,
+        string interpolationQualityProfile,
+        string interpolationModelName,
+        ResolvedVideoSettingsDefaults resolvedVideoSettings,
         double resolvedTargetFramesPerSecond,
-        int userFacingTargetFramesPerSecond)
+        int userFacingTargetFramesPerSecond,
+        int framesPerSecondMultiplier)
     {
         TargetContainer = targetContainer;
         Video = video;
         Audio = audio;
         KeepSource = keepSource;
         OutputPath = outputPath;
+        InterpolationQualityProfile = interpolationQualityProfile ?? throw new ArgumentNullException(nameof(interpolationQualityProfile));
+        InterpolationModelName = interpolationModelName ?? throw new ArgumentNullException(nameof(interpolationModelName));
+        ResolvedVideoSettings = resolvedVideoSettings ?? throw new ArgumentNullException(nameof(resolvedVideoSettings));
         ResolvedTargetFramesPerSecond = resolvedTargetFramesPerSecond;
         UserFacingTargetFramesPerSecond = userFacingTargetFramesPerSecond;
+        FramesPerSecondMultiplier = framesPerSecondMultiplier;
     }
 
     public string TargetContainer { get; }
@@ -35,9 +44,17 @@ internal sealed class ToH264RifeDecision
 
     public string OutputPath { get; }
 
+    public string InterpolationQualityProfile { get; }
+
+    public string InterpolationModelName { get; }
+
+    public ResolvedVideoSettingsDefaults ResolvedVideoSettings { get; }
+
     public double ResolvedTargetFramesPerSecond { get; }
 
     public int UserFacingTargetFramesPerSecond { get; }
+
+    public int FramesPerSecondMultiplier { get; }
 
     public bool CopyVideo => Video is CopyVideoIntent;
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Core.MediaIntent;
 using Transcode.Core.Scenarios;
 using Transcode.Core.Videos;
+using Transcode.Core.VideoSettings;
 using System.Globalization;
 
 namespace Transcode.Scenarios.ToH264Rife.Core;
@@ -11,11 +12,6 @@ namespace Transcode.Scenarios.ToH264Rife.Core;
 /// </summary>
 public sealed class ToH264RifeScenario : TranscodeScenario
 {
-    private const double Ntcs24FramesPerSecond = 24000d / 1001d;
-    private const double Ntcs30FramesPerSecond = 30000d / 1001d;
-    private const double Ntcs60FramesPerSecond = 60000d / 1001d;
-    private const double FrameRateNormalizationTolerance = 0.05d;
-    private const double SkipToleranceFramesPerSecond = 5d;
     private static readonly ToH264RifeInfoFormatter InfoFormatter = new();
     private readonly ToH264RifeTool _tool;
 
@@ -43,29 +39,36 @@ public sealed class ToH264RifeScenario : TranscodeScenario
         ArgumentNullException.ThrowIfNull(video);
 
         var targetContainer = ResolveTargetContainer(video);
-        var resolvedTargetFramesPerSecond = ResolveTargetFramesPerSecond(video);
+        var resolvedVideoSettings = VideoSettingsDefaultsResolver.ResolveEncodeDefaults(
+            outputHeight: video.Height,
+            sourceHeight: video.Height,
+            request: Request.VideoSettings);
+        var interpolationModelName = ToH264RifeRequest.ResolveInterpolationModelName(Request.InterpolationQualityProfile);
+        var resolvedTargetFramesPerSecond = video.FramesPerSecond * Request.FramesPerSecondMultiplier;
         var userFacingTargetFramesPerSecond = (int)Math.Round(
             resolvedTargetFramesPerSecond,
             MidpointRounding.AwayFromZero);
-        var requiresInterpolation = ShouldInterpolate(video.FramesPerSecond, resolvedTargetFramesPerSecond);
-        VideoIntent videoIntent = requiresInterpolation
-            ? new EncodeVideoIntent(
-                TargetVideoCodec: "h264",
-                PreferredBackend: "gpu",
-                CompatibilityProfile: H264OutputProfile.H264High,
-                TargetFramesPerSecond: resolvedTargetFramesPerSecond,
-                UseFrameInterpolation: true,
-                EncoderPreset: "p6")
-            : new CopyVideoIntent();
+        VideoIntent videoIntent = new EncodeVideoIntent(
+            TargetVideoCodec: "h264",
+            PreferredBackend: "gpu",
+            CompatibilityProfile: H264OutputProfile.H264High,
+            TargetFramesPerSecond: resolvedTargetFramesPerSecond,
+            UseFrameInterpolation: true,
+            VideoSettings: Request.VideoSettings,
+            EncoderPreset: "p6");
 
         return new ToH264RifeDecision(
             targetContainer: targetContainer,
             video: videoIntent,
             audio: new CopyAudioIntent(),
             keepSource: Request.KeepSource,
-            outputPath: ResolveOutputPath(video, targetContainer, requiresInterpolation, userFacingTargetFramesPerSecond),
+            outputPath: ResolveOutputPath(video, targetContainer, userFacingTargetFramesPerSecond),
+            interpolationQualityProfile: Request.InterpolationQualityProfile,
+            interpolationModelName: interpolationModelName,
+            resolvedVideoSettings: resolvedVideoSettings,
             resolvedTargetFramesPerSecond: resolvedTargetFramesPerSecond,
-            userFacingTargetFramesPerSecond: userFacingTargetFramesPerSecond);
+            userFacingTargetFramesPerSecond: userFacingTargetFramesPerSecond,
+            framesPerSecondMultiplier: Request.FramesPerSecondMultiplier);
     }
 
     protected override string FormatInfoCore(SourceVideo video)
@@ -80,7 +83,9 @@ public sealed class ToH264RifeScenario : TranscodeScenario
 
     private static ToH264RifeTool CreateDefaultTool()
     {
-        return new ToH264RifeTool("ffmpeg", "rife-ncnn-vulkan", NullLogger<ToH264RifeTool>.Instance);
+        return new ToH264RifeTool(
+            "media-transcode-rife-trt",
+            NullLogger<ToH264RifeTool>.Instance);
     }
 
     private string ResolveTargetContainer(SourceVideo video)
@@ -96,39 +101,9 @@ public sealed class ToH264RifeScenario : TranscodeScenario
             : "mp4";
     }
 
-    private double ResolveTargetFramesPerSecond(SourceVideo video)
-    {
-        if (Request.TargetFramesPerSecond.HasValue)
-        {
-            return Request.TargetFramesPerSecond.Value == 60 && UsesNtscCadence(video.FramesPerSecond)
-                ? Ntcs60FramesPerSecond
-                : Request.TargetFramesPerSecond.Value;
-        }
-
-        return video.FramesPerSecond * 2d;
-    }
-
-    private static bool UsesNtscCadence(double framesPerSecond)
-    {
-        return Math.Abs(framesPerSecond - Ntcs24FramesPerSecond) <= FrameRateNormalizationTolerance ||
-               Math.Abs(framesPerSecond - Ntcs30FramesPerSecond) <= FrameRateNormalizationTolerance ||
-               Math.Abs(framesPerSecond - Ntcs60FramesPerSecond) <= FrameRateNormalizationTolerance;
-    }
-
-    private static bool ShouldInterpolate(double sourceFramesPerSecond, double targetFramesPerSecond)
-    {
-        if (sourceFramesPerSecond >= targetFramesPerSecond)
-        {
-            return false;
-        }
-
-        return Math.Abs(sourceFramesPerSecond - targetFramesPerSecond) > SkipToleranceFramesPerSecond;
-    }
-
     private string ResolveOutputPath(
         SourceVideo video,
         string targetContainer,
-        bool requiresInterpolation,
         int userFacingTargetFramesPerSecond)
     {
         var directory = Path.GetDirectoryName(video.FilePath);
@@ -144,14 +119,9 @@ public sealed class ToH264RifeScenario : TranscodeScenario
             return outputPath;
         }
 
-        if (requiresInterpolation)
-        {
-            return Path.Combine(
-                directory,
-                $"{FormatKeepSourceInterpolationFileName(video.FileNameWithoutExtension, userFacingTargetFramesPerSecond)}.{targetContainer}");
-        }
-
-        return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.{targetContainer}");
+        return Path.Combine(
+            directory,
+            $"{FormatKeepSourceInterpolationFileName(video.FileNameWithoutExtension, userFacingTargetFramesPerSecond)}.{targetContainer}");
     }
 
     private static string FormatKeepSourceInterpolationFileName(string fileNameWithoutExtension, int userFacingTargetFramesPerSecond)

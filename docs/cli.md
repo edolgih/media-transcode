@@ -82,10 +82,22 @@ Command generation for `toh264rife`:
 dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.mkv"
 ```
 
-`toh264rife` with explicit `60` FPS target:
+`toh264rife` with explicit `x3` multiplier:
 
 ```bash
-dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.mkv" --target-fps 60 --keep-source
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.mkv" --fps-multiplier 3 --keep-source
+```
+
+`toh264rife` with explicit interpolation model quality:
+
+```bash
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.mkv" --interp-quality high
+```
+
+`toh264rife` with explicit encode profiles:
+
+```bash
+dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\\Src\\clip.mkv" --content-profile anime --quality-profile high
 ```
 
 `toh264rife` with explicit output container:
@@ -147,17 +159,23 @@ Quality-oriented video settings:
 `toh264rife` options:
 
 - `--keep-source`; default: off
-- `--target-fps <50|60>`; default: 2x with scenario-side normalization to exact cadence
+- `--fps-multiplier <2|3>`; default: `2`
+- `--interp-quality <low|default|high>`; default: `default`
+- `--content-profile <anime|mult|film>`; default: `film`
+- `--quality-profile <high|default|low>`; default: `default`
 - `--container <mp4|mkv>`; default: keep source container when it is mp4 or mkv; otherwise mp4
+
+`toh264rife` resolves interpolation model quality separately from the final NVENC encode. Interpolation defaults to the medium path (`default`), while the final encode still resolves from shared profile defaults and currently does not use autosample in this scenario.
 
 ## Requirements
 
 - `.NET SDK` `9.0.x`
-- `ffprobe` with JSON output
-- `ffmpeg` with required filters and encoders such as `h264_nvenc` and `scale_cuda`
-- `rife-ncnn-vulkan` for `toh264rife`
+- `ffprobe` with JSON output on the host
+- `ffmpeg` with required filters and encoders on the host
+- `docker` with GPU access for `toh264rife`
+- a locally built `media-transcode-rife-trt` image from `tools/docker/rife-trt`
 
-The CLI resolves binary paths from standard host configuration sources such as `appsettings.json` and environment variables. `Scenarios:ToH264Rife:RifeNcnnPath` is required only for `toh264rife` and defaults to the repo-local `tools/third_party` layout. A minimal `appsettings.json` looks like this:
+The CLI resolves binary paths from standard host configuration sources such as `appsettings.json` and environment variables. `toh264rife` uses a Docker backend. A minimal `appsettings.json` looks like this:
 
 ```json
 {
@@ -167,8 +185,10 @@ The CLI resolves binary paths from standard host configuration sources such as `
   },
   "Scenarios": {
     "ToH264Rife": {
-      "RifeNcnnPath": "tools/third_party/rife-ncnn-vulkan/rife-ncnn-vulkan/rife-ncnn-vulkan-20221029-windows/rife-ncnn-vulkan.exe"
+      "DockerImage": "media-transcode-rife-trt"
     }
   }
 }
 ```
+
+The `toh264rife` backend uses built-in Docker named volumes for TensorRT and source caches. They are not user-facing configuration keys.

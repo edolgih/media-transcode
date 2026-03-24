@@ -11,26 +11,25 @@ namespace Transcode.Scenarios.ToH264Rife.Core;
 /// </summary>
 public sealed class ToH264RifeTool
 {
-    private const string BatchFramePattern = "%%08d.png";
-    private readonly ILogger<ToH264RifeTool> _logger;
+    private const string TrtCacheVolumeName = "media-transcode-rife-trt-cache";
+    private const string SourceCacheVolumeName = "media-transcode-rife-src-cache";
+    private const string DockerCommandName = "docker";
 
-    public ToH264RifeTool(string ffmpegPath, string? rifeNcnnPath, ILogger<ToH264RifeTool> logger)
+    public ToH264RifeTool(
+        string dockerImage,
+        ILogger<ToH264RifeTool> logger)
     {
-        FfmpegPath = ffmpegPath ?? throw new ArgumentNullException(nameof(ffmpegPath));
-        RifeNcnnPath = rifeNcnnPath;
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        DockerImage = dockerImage ?? throw new ArgumentNullException(nameof(dockerImage));
+        _ = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public string FfmpegPath { get; }
-
-    public string? RifeNcnnPath { get; }
+    public string DockerImage { get; }
 
     internal ScenarioExecution BuildExecution(SourceVideo video, ToH264RifeDecision decision)
     {
         ArgumentNullException.ThrowIfNull(video);
         ArgumentNullException.ThrowIfNull(decision);
 
-        var sourceContainer = video.FileExtension.TrimStart('.');
         var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(decision.OutputPath);
         var workingOutputPath = FfmpegExecutionLayout.ResolveWorkingOutputPath(
             video.FilePath,
@@ -38,126 +37,46 @@ public sealed class ToH264RifeTool
             decision.KeepSource,
             finalOutputPath);
 
-        if (!decision.RequiresInterpolation &&
-            sourceContainer.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase))
+        var commands = new List<string>
         {
-            return new ScenarioExecution(Array.Empty<string>());
-        }
+            BuildDockerCommand(video, decision, workingOutputPath)
+        };
 
-        var commands = new List<string>();
-        if (!decision.RequiresInterpolation)
-        {
-            commands.Add(BuildRemuxCommand(video, decision, workingOutputPath));
-            FfmpegExecutionLayout.AppendPostOperations(commands, video.FilePath, decision.KeepSource, workingOutputPath, finalOutputPath);
-            return new ScenarioExecution(commands);
-        }
-
-        if (string.IsNullOrWhiteSpace(RifeNcnnPath))
-        {
-            throw new InvalidOperationException($"{Cli.ToH264RifeCliConfigurationKeys.RifeNcnnPath} must be configured for toh264rife execution.");
-        }
-
-        var inputFramesDirectory = Path.Combine(
-            Path.GetDirectoryName(workingOutputPath) ?? ".",
-            $"{Path.GetFileNameWithoutExtension(workingOutputPath)}_rife_in");
-        var outputFramesDirectory = Path.Combine(
-            Path.GetDirectoryName(workingOutputPath) ?? ".",
-            $"{Path.GetFileNameWithoutExtension(workingOutputPath)}_rife_out");
-
-        commands.Add($"rmdir /s /q {FfmpegExecutionLayout.Quote(inputFramesDirectory)} 2>nul || ver > nul");
-        commands.Add($"rmdir /s /q {FfmpegExecutionLayout.Quote(outputFramesDirectory)} 2>nul || ver > nul");
-        commands.Add($"mkdir {FfmpegExecutionLayout.Quote(inputFramesDirectory)}");
-        commands.Add($"mkdir {FfmpegExecutionLayout.Quote(outputFramesDirectory)}");
-        commands.Add(BuildExtractFramesCommand(video, inputFramesDirectory));
-        commands.Add(BuildRifeCommand(video, decision, inputFramesDirectory, outputFramesDirectory));
-        commands.Add(BuildEncodeCommand(video, decision, outputFramesDirectory, workingOutputPath));
-        commands.Add($"rmdir /s /q {FfmpegExecutionLayout.Quote(inputFramesDirectory)}");
-        commands.Add($"rmdir /s /q {FfmpegExecutionLayout.Quote(outputFramesDirectory)}");
         FfmpegExecutionLayout.AppendPostOperations(commands, video.FilePath, decision.KeepSource, workingOutputPath, finalOutputPath);
         return new ScenarioExecution(commands);
     }
 
-    private string BuildRemuxCommand(SourceVideo video, ToH264RifeDecision decision, string outputPath)
+    private string BuildDockerCommand(SourceVideo video, ToH264RifeDecision decision, string outputPath)
     {
-        var parts = new List<string>
+        var workingDirectory = Path.GetDirectoryName(video.FilePath);
+        if (string.IsNullOrWhiteSpace(workingDirectory))
         {
-            FfmpegExecutionLayout.CommandToken(FfmpegPath),
-            "-hide_banner",
-            "-i",
-            FfmpegExecutionLayout.Quote(video.FilePath),
-            "-map 0:v:0",
-            "-c:v copy",
-            "-map 0:a?",
-            "-c:a copy",
-            "-sn"
-        };
-
-        if (decision.TargetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase))
-        {
-            parts.Add("-movflags +faststart");
+            workingDirectory = ".";
         }
 
-        parts.Add(FfmpegExecutionLayout.Quote(outputPath));
-        return string.Join(" ", parts);
-    }
-
-    private string BuildExtractFramesCommand(SourceVideo video, string inputFramesDirectory)
-    {
-        return string.Join(" ",
-            FfmpegExecutionLayout.CommandToken(FfmpegPath),
-            "-hide_banner",
-            "-i",
-            FfmpegExecutionLayout.Quote(video.FilePath),
-            "-map 0:v:0",
-            FfmpegExecutionLayout.Quote(Path.Combine(inputFramesDirectory, BatchFramePattern)));
-    }
-
-    private string BuildRifeCommand(SourceVideo video, ToH264RifeDecision decision, string inputFramesDirectory, string outputFramesDirectory)
-    {
-        var targetFrameCount = Math.Max(
-            2,
-            (int)Math.Round(video.Duration.TotalSeconds * decision.ResolvedTargetFramesPerSecond, MidpointRounding.AwayFromZero));
-
-        return string.Join(" ",
-            FfmpegExecutionLayout.CommandToken(RifeNcnnPath!),
-            "-i",
-            FfmpegExecutionLayout.Quote(inputFramesDirectory),
-            "-o",
-            FfmpegExecutionLayout.Quote(outputFramesDirectory),
-            "-n",
-            targetFrameCount.ToString(CultureInfo.InvariantCulture),
-            "-m rife-v4",
-            $"-f {BatchFramePattern}");
-    }
-
-    private string BuildEncodeCommand(SourceVideo video, ToH264RifeDecision decision, string outputFramesDirectory, string outputPath)
-    {
+        var inputContainerPath = $"/workspace/work/{Path.GetFileName(video.FilePath)}";
+        var outputContainerPath = $"/workspace/work/{Path.GetFileName(outputPath)}";
         var parts = new List<string>
         {
-            FfmpegExecutionLayout.CommandToken(FfmpegPath),
-            "-hide_banner",
-            "-framerate",
-            decision.ResolvedTargetFramesPerSecond.ToString("0.###", CultureInfo.InvariantCulture),
-            "-i",
-            FfmpegExecutionLayout.Quote(Path.Combine(outputFramesDirectory, BatchFramePattern)),
-            "-i",
-            FfmpegExecutionLayout.Quote(video.FilePath),
-            "-map 0:v:0",
-            "-c:v h264_nvenc",
-            "-preset p6",
-            "-pix_fmt yuv420p",
-            "-map 1:a?",
-            "-c:a copy",
-            "-sn",
-            "-max_muxing_queue_size 4096"
+            DockerCommandName,
+            "run --rm --gpus all",
+            "-v",
+            FfmpegExecutionLayout.Quote($"{workingDirectory}:/workspace/work"),
+            "-v",
+            $"{TrtCacheVolumeName}:/workspace/cache/trt",
+            "-v",
+            $"{SourceCacheVolumeName}:/workspace/cache/src",
+            DockerImage,
+            FfmpegExecutionLayout.Quote(inputContainerPath),
+            FfmpegExecutionLayout.Quote(outputContainerPath),
+            decision.FramesPerSecondMultiplier.ToString(),
+            decision.TargetContainer,
+            decision.InterpolationModelName,
+            decision.ResolvedVideoSettings.Cq.ToString(CultureInfo.InvariantCulture),
+            decision.ResolvedVideoSettings.MaxrateKbps.ToString(CultureInfo.InvariantCulture),
+            decision.ResolvedVideoSettings.BufsizeKbps.ToString(CultureInfo.InvariantCulture)
         };
 
-        if (decision.TargetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase))
-        {
-            parts.Add("-movflags +faststart");
-        }
-
-        parts.Add(FfmpegExecutionLayout.Quote(outputPath));
         return string.Join(" ", parts);
     }
 }

@@ -5,6 +5,7 @@ using Transcode.Cli.Core.Parsing;
 using Transcode.Cli.Core.Scenarios;
 using Transcode.Core.Failures;
 using Transcode.Core.Scenarios;
+using Transcode.Core.VideoSettings;
 using Transcode.Scenarios.ToH264Rife.Core;
 
 namespace Transcode.Scenarios.ToH264Rife.Cli;
@@ -30,7 +31,10 @@ public sealed class ToH264RifeCliScenarioHandler : ICliScenarioHandler
     public IReadOnlyList<CliHelpOption> HelpOptions =>
     [
         new CliHelpOption("--keep-source", "Keep the source file instead of replacing it when output path matches the input. Default: off."),
-        new CliHelpOption($"--target-fps <{CliValueFormatter.FormatAlternatives(ToH264RifeRequest.SupportedTargetFrameRates)}>", "Explicit target FPS. Default: 2x with scenario-side normalization to exact cadence."),
+        new CliHelpOption($"--fps-multiplier <{CliValueFormatter.FormatAlternatives(ToH264RifeRequest.SupportedFramesPerSecondMultipliers)}>", "Frame-rate multiplier for interpolation. Supported values: 2 or 3. Default: 2."),
+        new CliHelpOption($"--interp-quality <{CliValueFormatter.FormatAlternatives(ToH264RifeRequest.SupportedInterpolationQualityProfiles)}>", "Interpolation model quality profile. Default: default."),
+        new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile for the final NVENC encode. Default: film."),
+        new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile for the final NVENC encode. Default: default."),
         new CliHelpOption($"--container <{CliValueFormatter.FormatAlternatives(ToH264RifeRequest.SupportedContainers)}>", "Explicit target container. Default: keep source container when it is mp4 or mkv; otherwise mp4.")
     ];
 
@@ -41,7 +45,8 @@ public sealed class ToH264RifeCliScenarioHandler : ICliScenarioHandler
         return
         [
             $"{exeName} --scenario toh264rife --input C:\\video\\input.mkv",
-            $"{exeName} --scenario toh264rife --input C:\\video\\input.mkv --target-fps 60 --keep-source",
+            $"{exeName} --scenario toh264rife --input C:\\video\\input.mkv --fps-multiplier 3 --keep-source",
+            $"{exeName} --scenario toh264rife --input C:\\video\\input.mkv --interp-quality high --content-profile anime --quality-profile high",
             $"{exeName} --scenario toh264rife --input C:\\video\\input.avi --container mp4"
         ];
     }
@@ -52,7 +57,7 @@ public sealed class ToH264RifeCliScenarioHandler : ICliScenarioHandler
 
         return
         [
-            $"{ToH264RifeCliConfigurationKeys.RifeNcnnPath} current: {CliPathResolver.GetRequiredExecutable(configuration, ToH264RifeCliConfigurationKeys.RifeNcnnPath, Name)}"
+            $"{ToH264RifeCliConfigurationKeys.DockerImage} current: {GetRequiredValue(configuration, ToH264RifeCliConfigurationKeys.DockerImage)}"
         ];
     }
 
@@ -121,5 +126,16 @@ public sealed class ToH264RifeCliScenarioHandler : ICliScenarioHandler
         return request.ScenarioInput as ToH264RifeRequest
                ?? throw new InvalidOperationException(
                    $"CLI request for scenario '{request.ScenarioName}' does not carry a valid toh264rife input.");
+    }
+
+    private static string GetRequiredValue(IConfiguration configuration, string key)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Configuration key '{key}' is required for toh264rife.");
+        }
+
+        return value;
     }
 }

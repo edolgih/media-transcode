@@ -231,7 +231,7 @@ public sealed class ProgramTests
         var configuration = CreateConfiguration(
             ffprobePath: "ffprobe-custom",
             ffmpegPath: "ffmpeg-custom",
-            rifeNcnnPath: "rife-custom");
+            dockerImage: "media-transcode-rife-trt");
 
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -253,7 +253,8 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("--scenario toh264gpu");
             output.ToString().Should().Contain("--scenario toh264rife");
             output.ToString().Should().Contain("--max-fps <50|40|30|24>");
-            output.ToString().Should().Contain("--target-fps <50|60>");
+            output.ToString().Should().Contain("--fps-multiplier <2|3>");
+            output.ToString().Should().Contain("--interp-quality <low|default|high>");
             output.ToString().Should().Contain("--downscale <720|576|480|424>");
             output.ToString().Should().Contain("Default: film.");
             output.ToString().Should().Contain("Default: default.");
@@ -262,7 +263,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Default: profile default; built-in profiles currently bilinear.");
             output.ToString().Should().Contain("Tools:FfprobePath current: ffprobe-custom");
             output.ToString().Should().Contain("Tools:FfmpegPath  current: ffmpeg-custom");
-            output.ToString().Should().Contain("Scenarios:ToH264Rife:RifeNcnnPath current: rife-custom");
+            output.ToString().Should().Contain("Scenarios:ToH264Rife:DockerImage current: media-transcode-rife-trt");
             error.ToString().Should().BeEmpty();
         }
         finally
@@ -410,14 +411,14 @@ public sealed class ProgramTests
     private static IConfiguration CreateConfiguration(
         string ffprobePath = "ffprobe",
         string ffmpegPath = "ffmpeg",
-        string rifeNcnnPath = "rife-ncnn-vulkan")
+        string dockerImage = "media-transcode-rife-trt")
     {
         return new ConfigurationBuilder()
             .AddInMemoryCollection(
             [
                 new KeyValuePair<string, string?>("Tools:FfprobePath", ffprobePath),
                 new KeyValuePair<string, string?>("Tools:FfmpegPath", ffmpegPath),
-                new KeyValuePair<string, string?>("Scenarios:ToH264Rife:RifeNcnnPath", rifeNcnnPath)
+                new KeyValuePair<string, string?>("Scenarios:ToH264Rife:DockerImage", dockerImage)
             ])
             .Build();
     }
