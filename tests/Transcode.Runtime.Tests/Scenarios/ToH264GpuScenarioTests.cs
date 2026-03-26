@@ -291,9 +291,9 @@ public sealed class ToH264GpuScenarioTests
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
         actual.SynchronizeAudio.Should().BeTrue();
-        spec.VideoCq.Should().Be(23);
-        spec.VideoMaxrateKbps.Should().Be(3000);
-        spec.VideoBufferSizeKbps.Should().Be(6000);
+        spec.VideoCq.Should().Be(22);
+        spec.VideoMaxrateKbps.Should().Be(3400);
+        spec.VideoBufferSizeKbps.Should().Be(6800);
     }
 
     [Fact]

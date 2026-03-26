@@ -144,9 +144,9 @@ public sealed class ToH264RifeScenarioTests
 
         actual.ResolvedVideoSettings.ContentProfile.Should().Be("mult");
         actual.ResolvedVideoSettings.QualityProfile.Should().Be("default");
-        actual.ResolvedVideoSettings.Cq.Should().Be(27);
-        actual.ResolvedVideoSettings.Maxrate.Should().Be(2.4m);
-        actual.ResolvedVideoSettings.Bufsize.Should().Be(4.8m);
+        actual.ResolvedVideoSettings.Cq.Should().Be(25);
+        actual.ResolvedVideoSettings.Maxrate.Should().Be(2.9m);
+        actual.ResolvedVideoSettings.Bufsize.Should().Be(5.8m);
     }
 
     [Fact]

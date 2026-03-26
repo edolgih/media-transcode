@@ -115,11 +115,37 @@ public sealed class VideoSettingsProfilesTests
 
         var actual = sut.ResolveDefaults(sourceHeight: 1080, CreateSelection(sut, contentProfile: "mult", qualityProfile: "default"));
 
-        actual.Cq.Should().Be(25);
-        actual.CqMin.Should().Be(21);
+        actual.Cq.Should().Be(24);
+        actual.CqMin.Should().Be(20);
         actual.CqMax.Should().Be(29);
         actual.MaxrateMin.Should().Be(2.0m);
-        actual.MaxrateMax.Should().Be(3.6m);
+        actual.MaxrateMax.Should().Be(3.8m);
+    }
+
+    [Fact]
+    public void ResolveRange_When720ProfileUsesEncodeFallbackForMultDefault_ReturnsRetunedGlobalCorridor()
+    {
+        var sut = VideoSettingsProfiles.Default.GetRequiredProfile(720);
+
+        var actual = sut.ResolveRange(sourceHeight: null, CreateSelection(sut, contentProfile: "mult", qualityProfile: "default"));
+
+        actual.Should().NotBeNull();
+        actual!.MinExclusive.Should().Be(36.0m);
+        actual.MaxInclusive.Should().Be(58.0m);
+    }
+
+    [Fact]
+    public void ResolveDefaults_When1080ProfileUsesMultHigh_ReturnsRetunedQualityBaseline()
+    {
+        var sut = VideoSettingsProfiles.Default.GetRequiredProfile(1080);
+
+        var actual = sut.ResolveDefaults(CreateSelection(sut, contentProfile: "mult", qualityProfile: "high"));
+
+        actual.Cq.Should().Be(19);
+        actual.Maxrate.Should().Be(4.0m);
+        actual.Bufsize.Should().Be(8.0m);
+        actual.CqMin.Should().Be(16);
+        actual.MaxrateMax.Should().Be(5.0m);
     }
 
     [Fact]
