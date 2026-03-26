@@ -221,6 +221,85 @@ public sealed class FfprobeVideoProbeTests
     }
 
     [Fact]
+    public void Probe_WhenStreamBitrateIsMissingAndTagsContainBps_UsesTagBitrate()
+    {
+        var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
+            ExitCode: 0,
+            StandardOutput: """
+                            {
+                              "format": {
+                                "format_name": "matroska,webm",
+                                "duration": "90.5",
+                                "bit_rate": "900000"
+                              },
+                              "streams": [
+                                {
+                                  "codec_type": "video",
+                                  "codec_name": "h264",
+                                  "width": 1280,
+                                  "height": 720,
+                                  "r_frame_rate": "25/1"
+                                },
+                                {
+                                  "codec_type": "audio",
+                                  "codec_name": "aac",
+                                  "sample_rate": "48000",
+                                  "channels": 2,
+                                  "tags": {
+                                    "BPS": "448000"
+                                  }
+                                }
+                              ]
+                            }
+                            """,
+            StandardError: string.Empty));
+
+        var actual = sut.Probe(@"C:\video\input.mkv");
+
+        actual.streams[1].bitrate.Should().Be(448000);
+    }
+
+    [Fact]
+    public void Probe_WhenStreamBitrateAndTagBpsAreMissing_EstimatesBitrateFromTagBytesAndDuration()
+    {
+        var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
+            ExitCode: 0,
+            StandardOutput: """
+                            {
+                              "format": {
+                                "format_name": "matroska,webm",
+                                "duration": "90.5",
+                                "bit_rate": "900000"
+                              },
+                              "streams": [
+                                {
+                                  "codec_type": "video",
+                                  "codec_name": "h264",
+                                  "width": 1280,
+                                  "height": 720,
+                                  "r_frame_rate": "25/1"
+                                },
+                                {
+                                  "codec_type": "audio",
+                                  "codec_name": "aac",
+                                  "sample_rate": "48000",
+                                  "channels": 2,
+                                  "tags": {
+                                    "NUMBER_OF_BYTES": "560000",
+                                    "DURATION": "00:00:10.000000000"
+                                  }
+                                }
+                              ]
+                            }
+                            """,
+            StandardError: string.Empty));
+
+        var actual = sut.Probe(@"C:\video\input.mkv");
+
+        actual.streams[1].bitrate.Should().Be(448000);
+    }
+
+    [Fact]
     public void Probe_WhenRawFrameRateIsMissing_UsesAverageFrameRate()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(

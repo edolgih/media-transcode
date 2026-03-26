@@ -93,7 +93,7 @@ public sealed class FfprobeVideoProbe : IVideoProbe
                 width: TryGetInt(streamElement, "width"),
                 height: TryGetInt(streamElement, "height"),
                 framesPerSecond: framesPerSecond,
-                bitrate: TryGetLong(streamElement, "bit_rate"),
+                bitrate: ResolveStreamBitrate(streamElement),
                 rawFramesPerSecond: rawFramesPerSecond,
                 averageFramesPerSecond: averageFramesPerSecond,
                 sampleRate: TryGetInt(streamElement, "sample_rate"),
@@ -240,6 +240,67 @@ public sealed class FfprobeVideoProbe : IVideoProbe
         return long.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : null;
+    }
+
+    private static long? ResolveStreamBitrate(JsonElement streamElement)
+    {
+        var directBitrate = TryGetLong(streamElement, "bit_rate");
+        if (directBitrate.HasValue && directBitrate.Value > 0)
+        {
+            return directBitrate.Value;
+        }
+
+        if (!streamElement.TryGetProperty("tags", out var tagsElement) ||
+            tagsElement.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var taggedBitrate = TryGetLong(tagsElement, "BPS");
+        if (taggedBitrate.HasValue && taggedBitrate.Value > 0)
+        {
+            return taggedBitrate.Value;
+        }
+
+        var taggedBytes = TryGetLong(tagsElement, "NUMBER_OF_BYTES");
+        var taggedDuration = TryParseDurationTag(TryGetString(tagsElement, "DURATION"));
+        if (!taggedBytes.HasValue ||
+            taggedBytes.Value <= 0 ||
+            !taggedDuration.HasValue ||
+            taggedDuration.Value <= TimeSpan.Zero)
+        {
+            return null;
+        }
+
+        var estimatedBitsPerSecond = Math.Round(
+            (taggedBytes.Value * 8m) / (decimal)taggedDuration.Value.TotalSeconds,
+            MidpointRounding.AwayFromZero);
+        return estimatedBitsPerSecond > 0m && estimatedBitsPerSecond <= long.MaxValue
+            ? (long)estimatedBitsPerSecond
+            : null;
+    }
+
+    private static TimeSpan? TryParseDurationTag(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        var normalizedToken = token.Trim();
+        if (TimeSpan.TryParse(normalizedToken, CultureInfo.InvariantCulture, out var parsedDuration) &&
+            parsedDuration > TimeSpan.Zero)
+        {
+            return parsedDuration;
+        }
+
+        if (double.TryParse(normalizedToken, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) &&
+            seconds > 0)
+        {
+            return TimeSpan.FromSeconds(seconds);
+        }
+
+        return null;
     }
 
     private static double? ParseFrameRate(string? token)
