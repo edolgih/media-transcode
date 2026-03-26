@@ -424,6 +424,29 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenEncodeUsesProbeTotalBitrateWithKnownAudio_ResolvesVideoOnlySourceBitrate()
+    {
+        var sut = new ToMkvGpuScenario(
+            new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")),
+            VideoSettingsProfiles.Default,
+            (_, _, _, _) => 42m);
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "av1",
+            filePath: @"C:\video\input.mp4",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 10_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
+
+        actual.SourceBitrate.Should().NotBeNull();
+        var sourceBitrate = actual.SourceBitrate!;
+        sourceBitrate.Bitrate.Should().Be(9_000_000);
+        sourceBitrate.Origin.Should().Be("probe_minus_audio");
+    }
+
+    [Fact]
     public void BuildDecision_WhenAccurateAutosampleIsRequested_UsesSampleBackedResolution()
     {
         var sut = new ToMkvGpuScenario(
@@ -556,7 +579,8 @@ public sealed class ToMkvGpuScenarioTests
         int height = 1080,
         double framesPerSecond = 29.97,
         string filePath = @"C:\video\input.mkv",
-        long? bitrate = null)
+        long? bitrate = null,
+        long? primaryAudioBitrate = null)
     {
         return new SourceVideo(
             filePath: filePath,
@@ -567,7 +591,8 @@ public sealed class ToMkvGpuScenarioTests
             height: height,
             framesPerSecond: framesPerSecond,
             duration: TimeSpan.FromMinutes(10),
-            bitrate: bitrate);
+            bitrate: bitrate,
+            primaryAudioBitrate: primaryAudioBitrate);
     }
 
     private static VideoSettingsDefaults[] CreateDefaults()

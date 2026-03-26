@@ -165,7 +165,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--quality-profile <high|default|low>`; по умолчанию `default`
 - `--container <mp4|mkv>`; по умолчанию сохраняет source container, если это mp4 или mkv; иначе mp4
 
-`toh264rife` отдельно резолвит качество interpolation model и отдельно финальный NVENC encode. По умолчанию interpolation идёт через средний путь (`default`), а финальный encode по-прежнему берётся из общих profile defaults и сейчас не использует autosample в этом сценарии.
+`toh264rife` отдельно резолвит качество interpolation model и отдельно финальный NVENC encode. По умолчанию interpolation идёт через средний путь (`default`), а финальный encode теперь использует общий profile resolver с оценкой source-video bitrate и затем применяет interpolation-specific uplift для maxrate и bufsize.
 
 ## Требования
 

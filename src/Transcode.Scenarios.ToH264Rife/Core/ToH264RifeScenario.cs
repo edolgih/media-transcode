@@ -12,6 +12,10 @@ namespace Transcode.Scenarios.ToH264Rife.Core;
 /// </summary>
 public sealed class ToH264RifeScenario : TranscodeScenario
 {
+    private const decimal X2InterpolationMaxrateUplift = 0.4m;
+    private const decimal X3InterpolationMaxrateUplift = 0.8m;
+
+    private static readonly VideoSettingsResolver VideoSettingsResolver = new(VideoSettingsProfiles.Default);
     private static readonly ToH264RifeInfoFormatter InfoFormatter = new();
     private readonly ToH264RifeTool _tool;
 
@@ -39,10 +43,11 @@ public sealed class ToH264RifeScenario : TranscodeScenario
         ArgumentNullException.ThrowIfNull(video);
 
         var targetContainer = ResolveTargetContainer(video);
-        var resolvedVideoSettings = VideoSettingsDefaultsResolver.ResolveEncodeDefaults(
-            outputHeight: video.Height,
-            sourceHeight: video.Height,
-            request: Request.VideoSettings);
+        var baseResolvedVideoSettings = ResolveVideoSettings(video, Request.VideoSettings);
+        var resolvedVideoSettings = ApplyInterpolationRateUplift(
+            baseResolvedVideoSettings,
+            Request.VideoSettings,
+            Request.FramesPerSecondMultiplier);
         var interpolationModelName = ToH264RifeRequest.ResolveInterpolationModelName(Request.InterpolationQualityProfile);
         var resolvedTargetFramesPerSecond = video.FramesPerSecond * Request.FramesPerSecondMultiplier;
         var userFacingTargetFramesPerSecond = (int)Math.Round(
@@ -69,6 +74,78 @@ public sealed class ToH264RifeScenario : TranscodeScenario
             resolvedTargetFramesPerSecond: resolvedTargetFramesPerSecond,
             userFacingTargetFramesPerSecond: userFacingTargetFramesPerSecond,
             framesPerSecondMultiplier: Request.FramesPerSecondMultiplier);
+    }
+
+    private static ResolvedVideoSettingsDefaults ResolveVideoSettings(SourceVideo video, VideoSettingsRequest? request)
+    {
+        var resolution = VideoSettingsResolver.ResolveForEncode(
+            request: request,
+            outputHeight: Math.Max(1, video.Height),
+            duration: video.Duration,
+            sourceBitrate: ResolveSourceBitrate(video),
+            hasAudio: video.HasAudio,
+            defaultAutoSampleMode: "hybrid");
+
+        return new ResolvedVideoSettingsDefaults(
+            ContentProfile: resolution.EffectiveSelection.ContentProfile,
+            QualityProfile: resolution.EffectiveSelection.QualityProfile,
+            Cq: resolution.Settings.Cq,
+            Maxrate: resolution.Settings.Maxrate,
+            Bufsize: resolution.Settings.Bufsize);
+    }
+
+    private static long? ResolveSourceBitrate(SourceVideo video)
+    {
+        var resolvedMetadataBitrate = SourceVideoBitrateResolver.ResolveVideoBitrateHint(video);
+        if (resolvedMetadataBitrate.HasValue && resolvedMetadataBitrate.Value > 0)
+        {
+            return resolvedMetadataBitrate.Value;
+        }
+
+        if (video.Duration <= TimeSpan.FromSeconds(0.1) ||
+            string.IsNullOrWhiteSpace(video.FilePath) ||
+            !File.Exists(video.FilePath))
+        {
+            return null;
+        }
+
+        var fileSizeBits = new FileInfo(video.FilePath).Length * 8m;
+        if (fileSizeBits <= 0m)
+        {
+            return null;
+        }
+
+        var totalBitrate = Math.Round(fileSizeBits / (decimal)video.Duration.TotalSeconds, MidpointRounding.AwayFromZero);
+        return totalBitrate > 0m && totalBitrate <= long.MaxValue
+            ? SourceVideoBitrateResolver.ResolveVideoBitrateFromTotal((long)totalBitrate, video)
+            : null;
+    }
+
+    private static ResolvedVideoSettingsDefaults ApplyInterpolationRateUplift(
+        ResolvedVideoSettingsDefaults baseSettings,
+        VideoSettingsRequest? request,
+        int framesPerSecondMultiplier)
+    {
+        if (request?.Maxrate.HasValue == true || request?.Bufsize.HasValue == true)
+        {
+            return baseSettings;
+        }
+
+        var maxrateUplift = framesPerSecondMultiplier switch
+        {
+            >= 3 => X3InterpolationMaxrateUplift,
+            >= 2 => X2InterpolationMaxrateUplift,
+            _ => 0m
+        };
+
+        if (maxrateUplift <= 0m)
+        {
+            return baseSettings;
+        }
+
+        var maxrate = baseSettings.Maxrate + maxrateUplift;
+        var bufsize = baseSettings.Bufsize + (maxrateUplift * 2m);
+        return baseSettings with { Maxrate = maxrate, Bufsize = bufsize };
     }
 
     protected override string FormatInfoCore(SourceVideo video)

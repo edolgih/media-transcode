@@ -27,6 +27,7 @@ public sealed record SourceVideo
     /// <param name="primaryAudioBitrate">Optional primary audio bitrate in bits per second.</param>
     /// <param name="primaryAudioSampleRate">Optional primary audio sample rate in hertz.</param>
     /// <param name="primaryAudioChannels">Optional primary audio channel count.</param>
+    /// <param name="primaryVideoBitrate">Optional primary video-stream bitrate in bits per second.</param>
     public SourceVideo(
         string filePath,
         string container,
@@ -42,7 +43,8 @@ public sealed record SourceVideo
         double? averageFramesPerSecond = null,
         long? primaryAudioBitrate = null,
         int? primaryAudioSampleRate = null,
-        int? primaryAudioChannels = null)
+        int? primaryAudioChannels = null,
+        long? primaryVideoBitrate = null)
     {
         FilePath = NormalizeFilePath(filePath);
         Container = NormalizeToken(container, nameof(container));
@@ -71,6 +73,9 @@ public sealed record SourceVideo
             : throw new ArgumentOutOfRangeException(nameof(primaryAudioBitrate), primaryAudioBitrate, "Primary audio bitrate must not be negative.");
         PrimaryAudioSampleRate = NormalizeOptionalPositiveInt(primaryAudioSampleRate, nameof(primaryAudioSampleRate));
         PrimaryAudioChannels = NormalizeOptionalPositiveInt(primaryAudioChannels, nameof(primaryAudioChannels));
+        PrimaryVideoBitrate = primaryVideoBitrate is null || primaryVideoBitrate >= 0
+            ? primaryVideoBitrate
+            : throw new ArgumentOutOfRangeException(nameof(primaryVideoBitrate), primaryVideoBitrate, "Primary video bitrate must not be negative.");
     }
 
     /// <summary>
@@ -137,6 +142,11 @@ public sealed record SourceVideo
     /// Gets the bitrate of the primary audio stream in bits per second when available.
     /// </summary>
     public long? PrimaryAudioBitrate { get; }
+
+    /// <summary>
+    /// Gets the bitrate of the primary video stream in bits per second when available.
+    /// </summary>
+    public long? PrimaryVideoBitrate { get; }
 
     /// <summary>
     /// Gets the sample rate of the primary audio stream in hertz when available.

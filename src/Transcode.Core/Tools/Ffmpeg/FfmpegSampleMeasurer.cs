@@ -88,8 +88,8 @@ public sealed class FfmpegSampleMeasurer
             "-t", window.DurationSeconds.ToString(CultureInfo.InvariantCulture),
             "-i", inputPath,
             "-map", "0:v:0",
-            "-map", "0:a?",
             "-c", "copy",
+            "-an",
             "-sn",
             samplePath
         };
@@ -142,12 +142,7 @@ public sealed class FfmpegSampleMeasurer
             "-profile:v", "high",
             "-level:v", "4.1",
             "-g", "48",
-            "-map", "0:a?",
-            "-c:a", "aac",
-            "-ar", "48000",
-            "-ac", "2",
-            "-b:a", "192k",
-            "-af", "aresample=async=1:first_pts=0",
+            "-an",
             "-sn",
             "-max_muxing_queue_size", "4096",
             outputPath

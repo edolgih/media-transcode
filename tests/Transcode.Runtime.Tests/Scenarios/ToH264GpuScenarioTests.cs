@@ -269,6 +269,34 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenSynchronizeAudioForcesEncode_ResolvesVideoAutosampleFromVideoOnlySourceBitrate()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            synchronizeAudio: true,
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "mult",
+                qualityProfile: "default")));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 6_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        actual.CopyVideo.Should().BeFalse();
+        actual.CopyAudio.Should().BeFalse();
+        actual.SynchronizeAudio.Should().BeTrue();
+        spec.VideoCq.Should().Be(23);
+        spec.VideoMaxrateKbps.Should().Be(3000);
+        spec.VideoBufferSizeKbps.Should().Be(6000);
+    }
+
+    [Fact]
     public void BuildDecision_WhenKeepSourceIsRequestedAndTargetPathMatchesSource_ReturnsDistinctOutputPath()
     {
         var sut = CreateSut(keepSource: true);

@@ -94,7 +94,8 @@ public sealed class VideoInspector
             averageFramesPerSecond: videoStream.averageFramesPerSecond,
             primaryAudioBitrate: primaryAudioStream?.bitrate,
             primaryAudioSampleRate: primaryAudioStream?.sampleRate,
-            primaryAudioChannels: primaryAudioStream?.channels);
+            primaryAudioChannels: primaryAudioStream?.channels,
+            primaryVideoBitrate: videoStream.bitrate);
     }
 
     private static long? ResolveBitrate(VideoProbeSnapshot snapshot)

@@ -317,9 +317,17 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
 
     private static ToMkvGpuResolvedSourceBitrate ResolveSourceBitrate(SourceVideo video)
     {
-        if (video.Bitrate.HasValue)
+        if (video.PrimaryVideoBitrate.HasValue && video.PrimaryVideoBitrate.Value > 0)
         {
-            return new ToMkvGpuResolvedSourceBitrate(video.Bitrate.Value, "probe");
+            return new ToMkvGpuResolvedSourceBitrate(video.PrimaryVideoBitrate.Value, "probe_video");
+        }
+
+        if (video.Bitrate.HasValue && video.Bitrate.Value > 0)
+        {
+            var resolved = SourceVideoBitrateResolver.ResolveVideoBitrateFromTotal(video.Bitrate.Value, video);
+            return new ToMkvGpuResolvedSourceBitrate(
+                resolved,
+                resolved != video.Bitrate.Value ? "probe_minus_audio" : "probe");
         }
 
         if (video.Duration <= TimeSpan.Zero || string.IsNullOrWhiteSpace(video.FilePath) || !File.Exists(video.FilePath))
@@ -339,7 +347,11 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             return new ToMkvGpuResolvedSourceBitrate(null, "missing");
         }
 
-        return new ToMkvGpuResolvedSourceBitrate((long)estimatedBitsPerSecond, "file_size_estimate");
+        var estimated = (long)estimatedBitsPerSecond;
+        var resolvedEstimate = SourceVideoBitrateResolver.ResolveVideoBitrateFromTotal(estimated, video);
+        return new ToMkvGpuResolvedSourceBitrate(
+            resolvedEstimate,
+            resolvedEstimate != estimated ? "file_size_estimate_minus_audio" : "file_size_estimate");
     }
 
     private static decimal? NoSampleReduction(

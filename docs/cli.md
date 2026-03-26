@@ -165,7 +165,7 @@ Quality-oriented video settings:
 - `--quality-profile <high|default|low>`; default: `default`
 - `--container <mp4|mkv>`; default: keep source container when it is mp4 or mkv; otherwise mp4
 
-`toh264rife` resolves interpolation model quality separately from the final NVENC encode. Interpolation defaults to the medium path (`default`), while the final encode still resolves from shared profile defaults and currently does not use autosample in this scenario.
+`toh264rife` resolves interpolation model quality separately from the final NVENC encode. Interpolation defaults to the medium path (`default`), while the final encode now uses the shared profile resolver with source-video bitrate estimation and then applies an interpolation-specific uplift to maxrate and bufsize.
 
 ## Requirements
 

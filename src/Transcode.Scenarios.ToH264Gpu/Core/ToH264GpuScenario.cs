@@ -268,7 +268,11 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             : null;
     }
 
-    private VideoSettingsDefaults ResolveVideoSettings(SourceVideo video, bool useDownscale, DownscaleRequest? downscaleRequest, VideoSettingsRequest? request)
+    private VideoSettingsDefaults ResolveVideoSettings(
+        SourceVideo video,
+        bool useDownscale,
+        DownscaleRequest? downscaleRequest,
+        VideoSettingsRequest? request)
     {
         var sampleHeight = useDownscale
             ? downscaleRequest?.TargetHeight ?? 0
@@ -318,9 +322,10 @@ public sealed class ToH264GpuScenario : TranscodeScenario
 
     private static long? ResolveSourceBitrate(SourceVideo video)
     {
-        if (video.Bitrate.HasValue)
+        var resolvedMetadataBitrate = SourceVideoBitrateResolver.ResolveVideoBitrateHint(video);
+        if (resolvedMetadataBitrate.HasValue && resolvedMetadataBitrate.Value > 0)
         {
-            return video.Bitrate.Value;
+            return resolvedMetadataBitrate.Value;
         }
 
         if (video.Duration <= TimeSpan.FromSeconds(0.1) ||
@@ -338,7 +343,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
 
         var totalBitrate = Math.Round(fileSizeBits / (decimal)video.Duration.TotalSeconds, MidpointRounding.AwayFromZero);
         return totalBitrate > 0m && totalBitrate <= long.MaxValue
-            ? (long)totalBitrate
+            ? SourceVideoBitrateResolver.ResolveVideoBitrateFromTotal((long)totalBitrate, video)
             : null;
     }
 
