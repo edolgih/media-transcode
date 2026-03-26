@@ -385,8 +385,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         }
 
         var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.{targetContainer}");
-        if (!Request.KeepSource ||
-            !outputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase))
+        if (!Request.KeepSource)
         {
             return outputPath;
         }

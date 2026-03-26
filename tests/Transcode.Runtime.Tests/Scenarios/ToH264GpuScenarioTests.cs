@@ -314,6 +314,23 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenKeepSourceIsRequestedAndContainerChanges_ReturnsOutSuffixOutputPath()
+    {
+        var sut = CreateSut(keepSource: true);
+        var video = CreateVideo(
+            filePath: @"C:\video\input.ts",
+            container: "ts",
+            formatName: "mpegts",
+            videoCodec: "h264",
+            audioCodecs: ["aac"]);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.OutputPath.Should().Be(@"C:\video\input_out.mp4");
+    }
+
+    [Fact]
     public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_UsesTargetHeightInOutputPath()
     {
         var sut = CreateSut(keepSource: true, downscaleTarget: 720);
@@ -331,6 +348,26 @@ public sealed class ToH264GpuScenarioTests
         actual.CopyVideo.Should().BeFalse();
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(720);
         actual.OutputPath.Should().Be(@"C:\video\input (720p).mp4");
+    }
+
+    [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequestedAndContainerChanges_UsesTargetHeightInOutputPath()
+    {
+        var sut = CreateSut(keepSource: true, downscaleTarget: 424);
+        var video = CreateVideo(
+            filePath: @"C:\video\input.ts",
+            container: "ts",
+            formatName: "mpegts",
+            videoCodec: "h264",
+            height: 1080,
+            audioCodecs: ["aac"]);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
+        actual.OutputPath.Should().Be(@"C:\video\input (424p).mp4");
     }
 
     [Fact]
