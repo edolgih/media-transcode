@@ -98,6 +98,32 @@ public sealed class ToMkvGpuScenarioTests
         actual.OutputPath.Should().Be(@"C:\video\input (2012, 720p).mkv");
     }
 
+    [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_ReplacesExistingHeightMarkerInsideParentheses()
+    {
+        var sut = CreateSut(keepSource: true, downscaleTarget: 576);
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", filePath: @"C:\video\input (2012, 720p).mkv", height: 1080);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        actual.OutputPath.Should().Be(@"C:\video\input (2012, 576p).mkv");
+    }
+
+    [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_PreservesNonHeightMarkersInsideParentheses()
+    {
+        var sut = CreateSut(keepSource: true, downscaleTarget: 576);
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", filePath: @"C:\video\input (59fps, 720p).mkv", height: 1080);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        actual.OutputPath.Should().Be(@"C:\video\input (59fps, 576p).mkv");
+    }
+
     [Theory]
     [InlineData(@"C:\video\input.wmv")]
     [InlineData(@"C:\video\input.asf")]

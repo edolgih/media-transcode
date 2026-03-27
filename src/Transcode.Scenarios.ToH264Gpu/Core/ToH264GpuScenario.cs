@@ -3,6 +3,7 @@ using Transcode.Core.MediaIntent;
 using Transcode.Core.Scenarios;
 using Transcode.Core.Videos;
 using Transcode.Core.VideoSettings;
+using System.Globalization;
 
 namespace Transcode.Scenarios.ToH264Gpu.Core;
 
@@ -365,13 +366,55 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     private static string FormatKeepSourceDownscaleFileName(string fileNameWithoutExtension, int targetHeight)
     {
         var suffix = $"{targetHeight}p";
-        if (fileNameWithoutExtension.EndsWith(")", StringComparison.Ordinal) &&
-            fileNameWithoutExtension.LastIndexOf('(') >= 0)
+        if (TryParseTrailingParenthesizedTokens(fileNameWithoutExtension, out var prefix, out var tokens))
         {
-            return string.Concat(fileNameWithoutExtension.AsSpan(0, fileNameWithoutExtension.Length - 1), ", ", suffix, ")");
+            tokens.RemoveAll(IsHeightSuffixToken);
+            tokens.Add(suffix);
+            return $"{prefix} ({string.Join(", ", tokens)})";
         }
 
         return $"{fileNameWithoutExtension} ({suffix})";
+    }
+
+    private static bool TryParseTrailingParenthesizedTokens(
+        string fileNameWithoutExtension,
+        out string prefix,
+        out List<string> tokens)
+    {
+        prefix = fileNameWithoutExtension;
+        tokens = [];
+
+        if (!fileNameWithoutExtension.EndsWith(")", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var openParenthesis = fileNameWithoutExtension.LastIndexOf('(');
+        if (openParenthesis <= 0)
+        {
+            return false;
+        }
+
+        prefix = fileNameWithoutExtension[..openParenthesis].TrimEnd();
+        var tokenPayload = fileNameWithoutExtension.Substring(
+            openParenthesis + 1,
+            fileNameWithoutExtension.Length - openParenthesis - 2);
+        tokens = tokenPayload
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+        return true;
+    }
+
+    private static bool IsHeightSuffixToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || !token.EndsWith("p", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var numericPart = token[..^1];
+        return int.TryParse(numericPart, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) &&
+               parsed > 0;
     }
 
     private static ToH264GpuFfmpegTool CreateDefaultTool()

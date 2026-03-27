@@ -391,6 +391,46 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_ReplacesExistingHeightMarkerInsideParentheses()
+    {
+        var sut = CreateSut(keepSource: true, downscaleTarget: 424);
+        var video = CreateVideo(
+            filePath: @"C:\video\input (2012, 720p).mp4",
+            container: "mp4",
+            formatName: "mov,mp4,m4a,3gp,3g2,mj2",
+            videoCodec: "h264",
+            height: 1080,
+            audioCodecs: ["aac"]);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
+        actual.OutputPath.Should().Be(@"C:\video\input (2012, 424p).mp4");
+    }
+
+    [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_PreservesNonHeightMarkersInsideParentheses()
+    {
+        var sut = CreateSut(keepSource: true, downscaleTarget: 576);
+        var video = CreateVideo(
+            filePath: @"C:\video\input (59fps, 720p).mp4",
+            container: "mp4",
+            formatName: "mov,mp4,m4a,3gp,3g2,mj2",
+            videoCodec: "h264",
+            height: 1080,
+            audioCodecs: ["aac"]);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(576);
+        actual.OutputPath.Should().Be(@"C:\video\input (59fps, 576p).mp4");
+    }
+
+    [Fact]
     public void BuildDecision_WhenEncodePresetIsNotSpecified_UsesP6Preset()
     {
         var sut = CreateSut();
