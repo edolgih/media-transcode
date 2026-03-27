@@ -71,9 +71,41 @@ fi
 echo "MTE_RIFE_SOURCE_CACHE files=$src_cache_count dir=$src_cache_dir"
 
 script_path="$(mktemp /tmp/media-transcode-rife-XXXXXX.vpy)"
-cleanup() {
-    rm -f "$script_path"
+pipe_dir="$(mktemp -d /tmp/media-transcode-rife-pipe-XXXXXX)"
+pipe_path="$pipe_dir/video.y4m"
+mkfifo "$pipe_path"
+
+vspipe_pid=""
+ffmpeg_pid=""
+
+terminate_children() {
+    local pid
+    for pid in "$ffmpeg_pid" "$vspipe_pid"; do
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+
+    for pid in "$ffmpeg_pid" "$vspipe_pid"; do
+        if [[ -n "$pid" ]]; then
+            wait "$pid" 2>/dev/null || true
+        fi
+    done
 }
+
+cleanup() {
+    terminate_children
+    rm -f "$script_path"
+    rm -f "$pipe_path"
+    rmdir "$pipe_dir" 2>/dev/null || true
+}
+
+on_interrupt() {
+    echo "Interrupted: stopping RIFE pipeline..." >&2
+    terminate_children
+    exit 130
+}
+trap on_interrupt INT TERM
 trap cleanup EXIT
 
 cat >"$script_path" <<EOF
@@ -129,7 +161,26 @@ if [[ "${container_name,,}" == "mp4" ]]; then
     ffmpeg_args+=(-movflags +faststart)
 fi
 
-vspipe -c y4m "$script_path" - | ffmpeg "${ffmpeg_args[@]}" "$output_path"
+vspipe -c y4m "$script_path" - >"$pipe_path" &
+vspipe_pid="$!"
+
+ffmpeg "${ffmpeg_args[@]}" "$output_path" <"$pipe_path" &
+ffmpeg_pid="$!"
+
+set +e
+wait "$ffmpeg_pid"
+ffmpeg_status=$?
+wait "$vspipe_pid"
+vspipe_status=$?
+set -e
+
+if (( ffmpeg_status != 0 )); then
+    exit "$ffmpeg_status"
+fi
+
+if (( vspipe_status != 0 )); then
+    exit "$vspipe_status"
+fi
 
 echo "MTE_RIFE_TRT_CACHE_FILES_BEGIN"
 find "$trt_cache_dir" -maxdepth 1 -type f -printf '%f\t%s\n' | sort
