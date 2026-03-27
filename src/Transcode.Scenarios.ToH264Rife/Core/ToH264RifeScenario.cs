@@ -200,19 +200,12 @@ public sealed class ToH264RifeScenario : TranscodeScenario
             directory = ".";
         }
 
-        var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.{targetContainer}");
-        if (!Request.KeepSource ||
-            !outputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase))
-        {
-            return outputPath;
-        }
-
         return Path.Combine(
             directory,
-            $"{FormatKeepSourceInterpolationFileName(video.FileNameWithoutExtension, userFacingTargetFramesPerSecond)}.{targetContainer}");
+            $"{FormatInterpolationFileName(video.FileNameWithoutExtension, userFacingTargetFramesPerSecond)}.{targetContainer}");
     }
 
-    private static string FormatKeepSourceInterpolationFileName(string fileNameWithoutExtension, int userFacingTargetFramesPerSecond)
+    private static string FormatInterpolationFileName(string fileNameWithoutExtension, int userFacingTargetFramesPerSecond)
     {
         var suffix = $"{userFacingTargetFramesPerSecond.ToString(CultureInfo.InvariantCulture)}fps";
         if (fileNameWithoutExtension.EndsWith(")", StringComparison.Ordinal) &&

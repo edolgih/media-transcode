@@ -67,6 +67,17 @@ public sealed class ToH264RifeScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenKeepSourceIsDisabledAndInterpolationIsRequested_UsesRoundedFpsInOutputPath()
+    {
+        var sut = CreateSut(keepSource: false, framesPerSecondMultiplier: 3);
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", framesPerSecond: 24000d / 1001d);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.OutputPath.Should().Be(@"C:\video\input (72fps).mkv");
+    }
+
+    [Fact]
     public void BuildDecision_WhenKeepSourceAndInterpolationAreRequested_UsesRoundedFpsInOutputPath()
     {
         var sut = CreateSut(keepSource: true, framesPerSecondMultiplier: 3);
@@ -98,13 +109,14 @@ public sealed class ToH264RifeScenarioTests
         var actual = sut.BuildExecution(video);
 
         actual.IsEmpty.Should().BeFalse();
-        actual.Commands.Should().HaveCount(3);
+        actual.Commands.Should().HaveCount(2);
         actual.Commands[0].Should().Contain("docker run --rm --gpus all");
         actual.Commands[0].Should().Contain("media-transcode-rife-trt");
         actual.Commands[0].Should().Contain("\"C:\\video:/workspace/work\"");
         actual.Commands[0].Should().Contain("\"/workspace/work/input.mkv\"");
-        actual.Commands[0].Should().Contain("\"/workspace/work/input_temp.mkv\"");
+        actual.Commands[0].Should().Contain("\"/workspace/work/input (72fps).mkv\"");
         actual.Commands[0].Should().Contain(" 3 mkv 4.25 22 5672 11344");
+        actual.Commands[1].Should().Be("del \"C:\\video\\input.mkv\"");
         actual.Commands.Should().NotContain(command => command.Contains(".png", StringComparison.OrdinalIgnoreCase));
         actual.Commands.Should().NotContain(command => command.Contains("rife-ncnn-vulkan", StringComparison.OrdinalIgnoreCase));
     }
@@ -177,7 +189,7 @@ public sealed class ToH264RifeScenarioTests
     }
 
     [Fact]
-    public void BuildExecution_WhenKeepSourceIsDisabledAndOutputMatchesSource_AppendsDeleteAndRename()
+    public void BuildExecution_WhenKeepSourceIsDisabled_DeletesSourceAfterWritingFpsSuffixedOutput()
     {
         var tool = CreateTool();
         var sut = new ToH264RifeScenario(new ToH264RifeRequest(), tool);
@@ -185,9 +197,9 @@ public sealed class ToH264RifeScenarioTests
 
         var actual = sut.BuildExecution(video);
 
-        actual.Commands.Should().HaveCount(3);
+        actual.Commands.Should().HaveCount(2);
+        actual.Commands[0].Should().Contain("\"/workspace/work/input (50fps).mkv\"");
         actual.Commands[1].Should().Be("del \"C:\\video\\input.mkv\"");
-        actual.Commands[2].Should().Be("ren \"C:\\video\\input_temp.mkv\" \"input.mkv\"");
     }
 
     private static ToH264RifeScenario CreateSut(
