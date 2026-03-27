@@ -59,3 +59,5 @@ dotnet run --project src/Transcode.Cli -- --scenario toh264rife --input "D:\Src\
 - Для каждого файла запускается отдельный `docker run --rm`.
 - TRT cache и source cache живут в Docker named volumes и переиспользуются между запусками.
 - Первый cold run может быть долгим, повторные warm run обычно заметно быстрее.
+- После обновления Docker image первый запуск обычно снова компилирует TRT engines.
+- При необходимости полного сброса кэшей: `docker volume rm media-transcode-rife-trt-cache media-transcode-rife-src-cache`.
