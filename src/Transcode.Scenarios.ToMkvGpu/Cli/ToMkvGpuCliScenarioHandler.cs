@@ -21,7 +21,6 @@ namespace Transcode.Scenarios.ToMkvGpu.Cli;
 public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
 {
     private readonly ToMkvGpuInfoFormatter _infoFormatter;
-    private readonly FfmpegSampleMeasurer? _sampleMeasurer;
     private readonly ToMkvGpuFfmpegTool _ffmpegTool;
 
     /// <summary>
@@ -31,23 +30,7 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     public ToMkvGpuCliScenarioHandler(ToMkvGpuInfoFormatter infoFormatter)
         : this(
             infoFormatter,
-            new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance),
-            sampleMeasurer: null)
-    {
-    }
-
-    /// <summary>
-    /// Initializes the CLI handler for the <c>tomkvgpu</c> scenario.
-    /// </summary>
-    /// <param name="infoFormatter">Formatter used for info-mode output.</param>
-    /// <param name="sampleMeasurer">Explicit sample measurer used for accurate autosample paths.</param>
-    public ToMkvGpuCliScenarioHandler(
-        ToMkvGpuInfoFormatter infoFormatter,
-        FfmpegSampleMeasurer? sampleMeasurer)
-        : this(
-            infoFormatter,
-            new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance),
-            sampleMeasurer)
+            new ToMkvGpuFfmpegTool("ffmpeg", NullLogger<ToMkvGpuFfmpegTool>.Instance))
     {
     }
 
@@ -56,15 +39,12 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     /// </summary>
     /// <param name="infoFormatter">Formatter used for failure markers.</param>
     /// <param name="ffmpegTool">Concrete ffmpeg renderer passed into created scenarios.</param>
-    /// <param name="sampleMeasurer">Explicit sample measurer used for accurate autosample paths.</param>
     public ToMkvGpuCliScenarioHandler(
         ToMkvGpuInfoFormatter infoFormatter,
-        ToMkvGpuFfmpegTool ffmpegTool,
-        FfmpegSampleMeasurer? sampleMeasurer)
+        ToMkvGpuFfmpegTool ffmpegTool)
     {
         _infoFormatter = infoFormatter ?? throw new ArgumentNullException(nameof(infoFormatter));
         _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
-        _sampleMeasurer = sampleMeasurer;
     }
 
     public string Name => "tomkvgpu";
@@ -80,7 +60,6 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--sync-audio", "Force sync-safe audio path. Default: off."),
         new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
         new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile. Default: default."),
-        new CliHelpOption($"--autosample-mode <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedAutoSampleModes)}>", "Autosample mode. Default: hybrid for encode and explicit downscale."),
         new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Explicit downscale algorithm override. Default: profile default; built-in profiles currently bilinear."),
         new CliHelpOption("--cq <int>", "Explicit NVENC CQ override. Default: resolved profile value."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s. Default: resolved profile value."),
@@ -136,9 +115,7 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     public TranscodeScenario CreateScenario(CliTranscodeRequest request)
     {
         var runtimeRequest = GetRuntimeRequest(request);
-        return _sampleMeasurer is null
-            ? new ToMkvGpuScenario(runtimeRequest, _ffmpegTool)
-            : new ToMkvGpuScenario(runtimeRequest, _sampleMeasurer, _ffmpegTool);
+        return new ToMkvGpuScenario(runtimeRequest, _ffmpegTool);
     }
 
     /// <summary>

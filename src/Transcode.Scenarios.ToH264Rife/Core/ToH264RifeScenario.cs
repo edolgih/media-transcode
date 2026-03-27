@@ -81,17 +81,28 @@ public sealed class ToH264RifeScenario : TranscodeScenario
         var resolution = VideoSettingsResolver.ResolveForEncode(
             request: request,
             outputHeight: Math.Max(1, video.Height),
-            duration: video.Duration,
-            sourceBitrate: ResolveSourceBitrate(video),
-            hasAudio: video.HasAudio,
-            defaultAutoSampleMode: "hybrid");
+            sourceHeight: video.Height);
+        var sourceBitrate = ResolveSourceBitrate(video);
+        var useFixedBucketQuality = FixedBucketVideoSettingsPolicy.ShouldUseFixedBucketQuality(
+            VideoSettingsProfiles.Default,
+            useDownscale: false,
+            downscaleRequest: null,
+            videoHeight: video.Height,
+            request: request);
+        var settings = useFixedBucketQuality
+            ? FixedBucketVideoSettingsPolicy.ApplySourceBitrateCap(
+                resolution.Settings,
+                sourceBitrate,
+                request,
+                resolution.Profile.RateModel.BufsizeMultiplier)
+            : resolution.Settings;
 
         return new ResolvedVideoSettingsDefaults(
             ContentProfile: resolution.EffectiveSelection.ContentProfile,
             QualityProfile: resolution.EffectiveSelection.QualityProfile,
-            Cq: resolution.Settings.Cq,
-            Maxrate: resolution.Settings.Maxrate,
-            Bufsize: resolution.Settings.Bufsize);
+            Cq: settings.Cq,
+            Maxrate: settings.Maxrate,
+            Bufsize: settings.Bufsize);
     }
 
     private static long? ResolveSourceBitrate(SourceVideo video)

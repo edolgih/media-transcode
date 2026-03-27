@@ -190,7 +190,7 @@ public sealed class ProgramTests
         try
         {
             var exitCode = Program.RunCli(
-                ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale", "576", "--autosample-mode", "fast"],
+                ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale", "576"],
                 logger,
                 services,
                 configuration,
@@ -204,7 +204,7 @@ public sealed class ProgramTests
                                                       Equals(entry.Properties["Scenario"], "tomkvgpu") &&
                                                       Equals(entry.Properties["Info"], false) &&
                                                       Equals(entry.Properties["InputCount"], 1) &&
-                                                      Equals(entry.Properties["ScenarioArgCount"], 4));
+                                                      Equals(entry.Properties["ScenarioArgCount"], 2));
             provider.Entries.Should().Contain(entry => entry.Level == LogLevel.Information &&
                                                       entry.Message.Contains("CLI input processing started.", StringComparison.Ordinal) &&
                                                       Equals(entry.Properties["InputPath"], @"C:\video\a.mp4"));
@@ -258,7 +258,6 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("--downscale <720|576|480|424>");
             output.ToString().Should().Contain("Default: film.");
             output.ToString().Should().Contain("Default: default.");
-            output.ToString().Should().Contain("Default: hybrid for encode and explicit downscale.");
             output.ToString().Should().Contain("Default: p6.");
             output.ToString().Should().Contain("Default: profile default; built-in profiles currently bilinear.");
             output.ToString().Should().Contain("Tools:FfprobePath current: ffprobe-custom");
@@ -394,7 +393,6 @@ public sealed class ProgramTests
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
-        services.AddSingleton(new FfmpegSampleMeasurer("ffmpeg"));
         services.AddToMkvGpuCliScenario(configuration);
         services.AddToH264GpuCliScenario(configuration);
         services.AddToH264RifeCliScenario(configuration);

@@ -61,8 +61,6 @@ public static class Program
 				new FfprobeVideoProbe(ffprobePath));
 			builder.Services.AddSingleton<VideoInspector>(static services =>
 				new VideoInspector(services.GetRequiredService<IVideoProbe>()));
-			builder.Services.AddSingleton(services =>
-				new FfmpegSampleMeasurer(ffmpegPath));
 			builder.Services.AddToMkvGpuCliScenario(builder.Configuration);
 			builder.Services.AddToH264GpuCliScenario(builder.Configuration);
 			builder.Services.AddToH264RifeCliScenario(builder.Configuration);

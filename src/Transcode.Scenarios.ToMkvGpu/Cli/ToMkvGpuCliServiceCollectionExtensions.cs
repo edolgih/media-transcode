@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Scenarios;
-using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Scenarios.ToMkvGpu.Core;
 
 namespace Transcode.Scenarios.ToMkvGpu.Cli;
@@ -29,8 +28,7 @@ public static class ToMkvGpuCliServiceCollectionExtensions
         services.AddSingleton<ICliScenarioHandler>(static services =>
             new ToMkvGpuCliScenarioHandler(
                 services.GetRequiredService<ToMkvGpuInfoFormatter>(),
-                services.GetRequiredService<ToMkvGpuFfmpegTool>(),
-                services.GetRequiredService<FfmpegSampleMeasurer>()));
+                services.GetRequiredService<ToMkvGpuFfmpegTool>()));
 
         return services;
     }

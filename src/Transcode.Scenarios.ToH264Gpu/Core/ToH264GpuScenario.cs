@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Core.MediaIntent;
 using Transcode.Core.Scenarios;
-using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.Videos;
 using Transcode.Core.VideoSettings;
 
@@ -24,14 +23,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     private const int MaxAudioBitrateKbps = 320;
     private static readonly VideoSettingsResolver VideoSettingsResolver = new(VideoSettingsProfiles.Default);
     private static readonly ToH264GpuInfoFormatter InfoFormatter = new();
-    private readonly Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?> _sampleReductionProvider;
     private readonly ToH264GpuFfmpegTool _ffmpegTool;
 
     /// <summary>
     /// Initializes a ToH264Gpu scenario with scenario-specific directives.
     /// </summary>
     public ToH264GpuScenario()
-        : this(new ToH264GpuRequest(), sampleReductionProvider: null, CreateDefaultTool())
+        : this(new ToH264GpuRequest(), CreateDefaultTool())
     {
     }
 
@@ -39,7 +37,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// Initializes a ToH264Gpu scenario with scenario-specific directives.
     /// </summary>
     public ToH264GpuScenario(ToH264GpuRequest request)
-        : this(request, sampleReductionProvider: null, CreateDefaultTool())
+        : this(request, CreateDefaultTool())
     {
     }
 
@@ -49,48 +47,9 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// <param name="request">Scenario-specific directives for the ToH264Gpu workflow.</param>
     /// <param name="ffmpegTool">Concrete ffmpeg renderer used by this scenario.</param>
     public ToH264GpuScenario(ToH264GpuRequest request, ToH264GpuFfmpegTool ffmpegTool)
-        : this(request, sampleReductionProvider: null, ffmpegTool)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a ToH264Gpu scenario with an explicit sample measurer for sample-backed autosample resolution.
-    /// </summary>
-    /// <param name="request">Scenario-specific directives for the ToH264Gpu workflow.</param>
-    /// <param name="sampleMeasurer">Measurer used for sample-backed autosample resolution.</param>
-    public ToH264GpuScenario(ToH264GpuRequest request, FfmpegSampleMeasurer sampleMeasurer)
-        : this(
-            request,
-            (sampleMeasurer ?? throw new ArgumentNullException(nameof(sampleMeasurer))).MeasureAverageReduction,
-            CreateDefaultTool())
-    {
-    }
-
-    /// <summary>
-    /// Initializes a ToH264Gpu scenario with an explicit sample measurer and a concrete ffmpeg renderer.
-    /// </summary>
-    /// <param name="request">Scenario-specific directives for the ToH264Gpu workflow.</param>
-    /// <param name="sampleMeasurer">Measurer used for sample-backed autosample resolution.</param>
-    /// <param name="ffmpegTool">Concrete ffmpeg renderer used by this scenario.</param>
-    public ToH264GpuScenario(
-        ToH264GpuRequest request,
-        FfmpegSampleMeasurer sampleMeasurer,
-        ToH264GpuFfmpegTool ffmpegTool)
-        : this(
-            request,
-            (sampleMeasurer ?? throw new ArgumentNullException(nameof(sampleMeasurer))).MeasureAverageReduction,
-            ffmpegTool)
-    {
-    }
-
-    internal ToH264GpuScenario(
-        ToH264GpuRequest request,
-        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider,
-        ToH264GpuFfmpegTool ffmpegTool)
         : base("toh264gpu")
     {
         Request = request ?? throw new ArgumentNullException(nameof(request));
-        _sampleReductionProvider = sampleReductionProvider ?? NoSampleReduction;
         _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
@@ -274,34 +233,37 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         DownscaleRequest? downscaleRequest,
         VideoSettingsRequest? request)
     {
-        var sampleHeight = useDownscale
-            ? downscaleRequest?.TargetHeight ?? 0
-            : Math.Max(1, video.Height);
-        Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider = sampleHeight > 0
-            ? (settings, windows) => _sampleReductionProvider(video.FilePath, sampleHeight, settings, windows)
-            : null;
+        var sourceBitrate = ResolveSourceBitrate(video);
+        var useFixedBucketQuality = FixedBucketVideoSettingsPolicy.ShouldUseFixedBucketQuality(
+            VideoSettingsProfiles.Default,
+            useDownscale,
+            downscaleRequest,
+            video.Height,
+            request);
+        ProfileDrivenVideoSettingsResolution resolution;
 
         if (useDownscale)
         {
-            return VideoSettingsResolver.ResolveForDownscale(
+            resolution = VideoSettingsResolver.ResolveForDownscale(
                 downscaleRequest ?? throw new InvalidOperationException("Downscale request is required when downscale mode is active."),
                 videoSettings: request,
-                sourceHeight: video.Height,
-                duration: video.Duration,
-                sourceBitrate: ResolveSourceBitrate(video),
-                hasAudio: video.HasAudio,
-                defaultAutoSampleMode: "hybrid",
-                accurateReductionProvider: accurateReductionProvider).Settings;
+                sourceHeight: video.Height);
+        }
+        else
+        {
+            resolution = VideoSettingsResolver.ResolveForEncode(
+                request: request,
+                outputHeight: Math.Max(1, video.Height),
+                sourceHeight: video.Height);
         }
 
-        return VideoSettingsResolver.ResolveForEncode(
-            request: request,
-            outputHeight: Math.Max(1, video.Height),
-            duration: video.Duration,
-            sourceBitrate: ResolveSourceBitrate(video),
-            hasAudio: video.HasAudio,
-            defaultAutoSampleMode: "hybrid",
-            accurateReductionProvider: accurateReductionProvider).Settings;
+        return useFixedBucketQuality
+            ? FixedBucketVideoSettingsPolicy.ApplySourceBitrateCap(
+                resolution.Settings,
+                sourceBitrate,
+                request,
+                resolution.Profile.RateModel.BufsizeMultiplier)
+            : resolution.Settings;
     }
 
     private static int ResolveAudioBitrateKbps(SourceVideo video)
@@ -415,14 +377,5 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     private static ToH264GpuFfmpegTool CreateDefaultTool()
     {
         return new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance);
-    }
-
-    private static decimal? NoSampleReduction(
-        string inputPath,
-        int outputHeight,
-        VideoSettingsDefaults settings,
-        IReadOnlyList<VideoSettingsSampleWindow> windows)
-    {
-        return null;
     }
 }

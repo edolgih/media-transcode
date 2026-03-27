@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Scenarios;
-using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Scenarios.ToH264Gpu.Core;
 
 namespace Transcode.Scenarios.ToH264Gpu.Cli;
@@ -29,8 +28,7 @@ public static class ToH264GpuCliServiceCollectionExtensions
         services.AddSingleton<ICliScenarioHandler>(static services =>
             new ToH264GpuCliScenarioHandler(
                 services.GetRequiredService<ToH264GpuInfoFormatter>(),
-                services.GetRequiredService<ToH264GpuFfmpegTool>(),
-                services.GetRequiredService<FfmpegSampleMeasurer>()));
+                services.GetRequiredService<ToH264GpuFfmpegTool>()));
 
         return services;
     }

@@ -339,53 +339,18 @@ public sealed class ToMkvGpuScenarioTests
             defaultContentProfile: "film",
             defaultQualityProfile: "default",
             rateModel: new VideoSettingsRateModel(0.4m, 2.0m),
-            autoSampling: CreateAutoSampling(),
             sourceBuckets:
             [
                 new SourceHeightBucket(
                     "fhd_1080",
                     MinHeight: 1000,
-                    MaxHeight: 1300,
-                    Ranges: CreateCompleteRanges())
+                    MaxHeight: 1300)
             ],
-            defaults: CreateDefaults(),
-            globalContentRanges: [],
-            globalQualityRanges: []);
+            defaults: CreateDefaults());
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(downscale: new DownscaleRequest(576)),
             VideoSettingsProfiles.Create(profile));
         var video = CreateVideo(container: "mp4", height: 900, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
-
-        var action = () => sut.BuildDecision(video);
-
-        action.Should().Throw<RuntimeFailureException>()
-            .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
-    }
-
-    [Fact]
-    public void BuildDecision_WhenDownscale576BucketRangesAreIncomplete_ThrowsInformativeError()
-    {
-        var profile = new VideoSettingsProfile(
-            targetHeight: 576,
-            defaultContentProfile: "film",
-            defaultQualityProfile: "default",
-            rateModel: new VideoSettingsRateModel(0.4m, 2.0m),
-            autoSampling: CreateAutoSampling(),
-            sourceBuckets:
-            [
-                new SourceHeightBucket(
-                    "fhd_1080",
-                    MinHeight: 1000,
-                    MaxHeight: 1300,
-                    Ranges: CreateCompleteRanges().Where(static range => !(range.ContentProfile == "mult" && range.QualityProfile == "low")).ToArray())
-            ],
-            defaults: CreateDefaults(),
-            globalContentRanges: [],
-            globalQualityRanges: []);
-        var sut = new ToMkvGpuScenario(
-            new ToMkvGpuRequest(downscale: new DownscaleRequest(576)),
-            VideoSettingsProfiles.Create(profile));
-        var video = CreateVideo(container: "mp4", height: 1080, videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
 
         var action = () => sut.BuildDecision(video);
 
@@ -408,8 +373,7 @@ public sealed class ToMkvGpuScenarioTests
     {
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")),
-            VideoSettingsProfiles.Default,
-            (_, _, _, _) => 42m);
+            VideoSettingsProfiles.Default);
         var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", bitrate: 10_000_000);
         var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
 
@@ -428,8 +392,7 @@ public sealed class ToMkvGpuScenarioTests
     {
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")),
-            VideoSettingsProfiles.Default,
-            (_, _, _, _) => 42m);
+            VideoSettingsProfiles.Default);
         var video = CreateVideo(
             container: "mp4",
             videoCodec: "av1",
@@ -447,32 +410,79 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildDecision_WhenAccurateAutosampleIsRequested_UsesSampleBackedResolution()
+    public void BuildDecision_WhenFilmAccurateAutosampleIsRequested_UsesFixedBucketDefaults()
     {
         var sut = new ToMkvGpuScenario(
-            new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default", autoSampleMode: "accurate")),
-            VideoSettingsProfiles.Default,
-            (_, _, _, _) => 42m);
+            new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")),
+            VideoSettingsProfiles.Default);
         var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", bitrate: 10_000_000);
         var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
 
         actual.VideoResolution.Should().NotBeNull();
         var videoResolution = actual.VideoResolution!;
 
-        videoResolution.AutoSample.Mode.Should().Be("accurate");
-        videoResolution.AutoSample.Path.Should().Be("sample");
+        videoResolution.Settings.Cq.Should().Be(20);
+        videoResolution.Settings.Maxrate.Should().Be(5.8m);
+        videoResolution.Settings.Bufsize.Should().Be(11.6m);
     }
 
     [Fact]
-    public void FormatInfo_WhenEncodeDecisionIsNeeded_DoesNotInvokeSampleReductionProvider()
+    public void BuildDecision_WhenFilmProfileSourceBitrateIsLowerThanBucketMaxrate_CapsRateControlToVideoOnlySourceBitrate()
     {
-        // Arrange
+        var sut = new ToMkvGpuScenario(
+            new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")),
+            VideoSettingsProfiles.Default);
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "av1",
+            filePath: @"C:\video\input.mp4",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 3_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
+        actual.VideoResolution.Should().NotBeNull();
+        var settings = actual.VideoResolution!.Settings;
+
+        settings.Cq.Should().Be(20);
+        settings.Maxrate.Should().Be(2.0m);
+        settings.Bufsize.Should().Be(4.0m);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenFilmProfileHasManualRateOverrides_DoesNotApplySourceBitrateCap()
+    {
+        var sut = new ToMkvGpuScenario(
+            new ToMkvGpuRequest(videoSettings: new VideoSettingsRequest(
+                contentProfile: "film",
+                qualityProfile: "default",
+                maxrate: 6.5m,
+                bufsize: 13.0m)),
+            VideoSettingsProfiles.Default);
+        var video = CreateVideo(
+            container: "mp4",
+            videoCodec: "av1",
+            filePath: @"C:\video\input.mp4",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 3_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
+        actual.VideoResolution.Should().NotBeNull();
+        var settings = actual.VideoResolution!.Settings;
+
+        settings.Maxrate.Should().Be(6.5m);
+        settings.Bufsize.Should().Be(13.0m);
+    }
+
+    [Fact]
+    public void FormatInfo_WhenEncodeDecisionIsNeeded_RendersInfoWithoutExecutionPayload()
+    {
         var sut = new ToMkvGpuScenario(
             new ToMkvGpuRequest(
                 downscale: new DownscaleRequest(576),
-                videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default", autoSampleMode: "accurate")),
-            VideoSettingsProfiles.Default,
-            (_, _, _, _) => throw new InvalidOperationException("sample provider must not run in info mode"));
+                videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")),
+            VideoSettingsProfiles.Default);
         var video = CreateVideo(
             container: "mp4",
             videoCodec: "av1",
@@ -480,10 +490,8 @@ public sealed class ToMkvGpuScenarioTests
             height: 1080,
             bitrate: 10_000_000);
 
-        // Act
         var actual = sut.FormatInfo(video);
 
-        // Assert
         actual.Should().Contain("vcodec av1");
         actual.Should().Contain("1920x1080 fps 29.97");
     }
@@ -611,35 +619,4 @@ public sealed class ToMkvGpuScenarioTests
         ];
     }
 
-    private static VideoSettingsRange[] CreateCompleteRanges()
-    {
-        return
-        [
-            new VideoSettingsRange("anime", "high", MinInclusive: 30.0m, MaxInclusive: 45.0m),
-            new VideoSettingsRange("anime", "default", MinInclusive: 45.0m, MaxInclusive: 60.0m),
-            new VideoSettingsRange("anime", "low", MinInclusive: 60.0m, MaxInclusive: 80.0m),
-            new VideoSettingsRange("mult", "high", MinInclusive: 28.0m, MaxInclusive: 42.0m),
-            new VideoSettingsRange("mult", "default", MinInclusive: 42.0m, MaxInclusive: 57.0m),
-            new VideoSettingsRange("mult", "low", MinInclusive: 57.0m, MaxInclusive: 77.0m),
-            new VideoSettingsRange("film", "high", MinInclusive: 20.0m, MaxInclusive: 35.0m),
-            new VideoSettingsRange("film", "default", MinInclusive: 35.0m, MaxInclusive: 50.0m),
-            new VideoSettingsRange("film", "low", MinInclusive: 50.0m, MaxInclusive: 70.0m)
-        ];
-    }
-
-    private static VideoSettingsAutoSampling CreateAutoSampling()
-    {
-        return new VideoSettingsAutoSampling(
-            ModeDefault: "accurate",
-            MaxIterations: 8,
-            LongMinDuration: TimeSpan.FromMinutes(8),
-            LongWindowCount: 3,
-            LongWindowAnchors: [0.20, 0.50, 0.80],
-            MediumMinDuration: TimeSpan.FromMinutes(3),
-            MediumWindowCount: 2,
-            MediumWindowAnchors: [0.35, 0.65],
-            ShortWindowCount: 1,
-            SampleWindowDuration: TimeSpan.FromSeconds(15),
-            ShortWindowAnchors: [0.50]);
-    }
 }

@@ -21,7 +21,6 @@ internal static class ToMkvGpuCliRequestParser
     private const string SynchronizeAudioOptionName = "--sync-audio";
     private const string ContentProfileOptionName = "--content-profile";
     private const string QualityProfileOptionName = "--quality-profile";
-    private const string AutoSampleModeOptionName = "--autosample-mode";
     private const string DownscaleAlgorithmOptionName = "--downscale-algo";
     private const string CqOptionName = "--cq";
     private const string MaxrateOptionName = "--maxrate";
@@ -46,7 +45,6 @@ internal static class ToMkvGpuCliRequestParser
         decimal? bufsize = null;
         string? contentProfile = null;
         string? qualityProfile = null;
-        string? autoSampleMode = null;
         string? algorithm = null;
         string? nvencPreset = null;
 
@@ -141,16 +139,6 @@ internal static class ToMkvGpuCliRequestParser
                 continue;
             }
 
-            if (string.Equals(token, AutoSampleModeOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out autoSampleMode, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
             if (string.Equals(token, DownscaleAlgorithmOptionName, StringComparison.OrdinalIgnoreCase))
             {
                 if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out algorithm, out errorText))
@@ -188,7 +176,6 @@ internal static class ToMkvGpuCliRequestParser
             var videoSettingsRequest = VideoSettingsRequest.CreateOrNull(
                 contentProfile: contentProfile,
                 qualityProfile: qualityProfile,
-                autoSampleMode: autoSampleMode,
                 cq: cq,
                 maxrate: maxrate,
                 bufsize: bufsize);
@@ -220,7 +207,6 @@ internal static class ToMkvGpuCliRequestParser
                 "maxFramesPerSecond" => $"--max-fps must be one of: {CliValueFormatter.FormatList(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}.",
                 "contentProfile" => $"--content-profile must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedContentProfiles)}.",
                 "qualityProfile" => $"--quality-profile must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedQualityProfiles)}.",
-                "autoSampleMode" => $"--autosample-mode must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedAutoSampleModes)}.",
                 "nvencPreset" => $"--nvenc-preset must be one of: {CliValueFormatter.FormatList(NvencPresetOptions.SupportedPresets)}.",
                 _ => exception.Message
             };

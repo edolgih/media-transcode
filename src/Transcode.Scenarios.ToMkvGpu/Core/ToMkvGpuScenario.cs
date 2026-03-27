@@ -31,7 +31,6 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
 
     private readonly VideoSettingsProfiles _videoSettingsProfiles;
     private readonly VideoSettingsResolver _videoSettingsResolver;
-    private readonly Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?> _sampleReductionProvider;
     private readonly ToMkvGpuFfmpegTool _ffmpegTool;
     private static readonly ToMkvGpuInfoFormatter InfoFormatter = new();
 
@@ -39,7 +38,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// Initializes a ToMkvGpu scenario with scenario-specific directives.
     /// </summary>
     public ToMkvGpuScenario()
-        : this(new ToMkvGpuRequest(), VideoSettingsProfiles.Default, sampleReductionProvider: null, CreateDefaultTool())
+        : this(new ToMkvGpuRequest(), VideoSettingsProfiles.Default, CreateDefaultTool())
     {
     }
 
@@ -48,7 +47,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// </summary>
     /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
     public ToMkvGpuScenario(ToMkvGpuRequest request)
-        : this(request, VideoSettingsProfiles.Default, sampleReductionProvider: null, CreateDefaultTool())
+        : this(request, VideoSettingsProfiles.Default, CreateDefaultTool())
     {
     }
 
@@ -58,66 +57,24 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
     /// <param name="ffmpegTool">Concrete ffmpeg renderer used by this scenario.</param>
     public ToMkvGpuScenario(ToMkvGpuRequest request, ToMkvGpuFfmpegTool ffmpegTool)
-        : this(request, VideoSettingsProfiles.Default, sampleReductionProvider: null, ffmpegTool)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a ToMkvGpu scenario with an explicit sample measurer for scenario-local execution payloads.
-    /// </summary>
-    /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
-    /// <param name="sampleMeasurer">Measurer used for sample-backed autosample resolution.</param>
-    public ToMkvGpuScenario(ToMkvGpuRequest request, FfmpegSampleMeasurer sampleMeasurer)
-        : this(
-            request,
-            VideoSettingsProfiles.Default,
-            (sampleMeasurer ?? throw new ArgumentNullException(nameof(sampleMeasurer))).MeasureAverageReduction,
-            CreateDefaultTool())
-    {
-    }
-
-    /// <summary>
-    /// Initializes a ToMkvGpu scenario with an explicit sample measurer and a concrete ffmpeg renderer.
-    /// </summary>
-    /// <param name="request">Scenario-specific directives for the ToMkvGpu workflow.</param>
-    /// <param name="sampleMeasurer">Measurer used for sample-backed autosample resolution.</param>
-    /// <param name="ffmpegTool">Concrete ffmpeg renderer used by this scenario.</param>
-    public ToMkvGpuScenario(
-        ToMkvGpuRequest request,
-        FfmpegSampleMeasurer sampleMeasurer,
-        ToMkvGpuFfmpegTool ffmpegTool)
-        : this(
-            request,
-            VideoSettingsProfiles.Default,
-            (sampleMeasurer ?? throw new ArgumentNullException(nameof(sampleMeasurer))).MeasureAverageReduction,
-            ffmpegTool)
+        : this(request, VideoSettingsProfiles.Default, ffmpegTool)
     {
     }
 
     internal ToMkvGpuScenario(ToMkvGpuRequest request, VideoSettingsProfiles videoSettingsProfiles)
-        : this(request, videoSettingsProfiles, sampleReductionProvider: null, CreateDefaultTool())
+        : this(request, videoSettingsProfiles, CreateDefaultTool())
     {
     }
 
     internal ToMkvGpuScenario(
         ToMkvGpuRequest request,
         VideoSettingsProfiles videoSettingsProfiles,
-        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider)
-        : this(request, videoSettingsProfiles, sampleReductionProvider, CreateDefaultTool())
-    {
-    }
-
-    internal ToMkvGpuScenario(
-        ToMkvGpuRequest request,
-        VideoSettingsProfiles videoSettingsProfiles,
-        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider,
         ToMkvGpuFfmpegTool ffmpegTool)
         : base("tomkvgpu")
     {
         Request = request ?? throw new ArgumentNullException(nameof(request));
         _videoSettingsProfiles = videoSettingsProfiles ?? throw new ArgumentNullException(nameof(videoSettingsProfiles));
         _videoSettingsResolver = new VideoSettingsResolver(_videoSettingsProfiles);
-        _sampleReductionProvider = sampleReductionProvider ?? NoSampleReduction;
         _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
@@ -178,29 +135,34 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         if (includeExecutionPayload && videoIntent is EncodeVideoIntent encodeVideo)
         {
             var outputHeight = ResolveOutputHeight(video, videoIntent, Request.OverlayBackground, encodeVideo.Downscale);
-            var actualSampleHeight = encodeVideo.Downscale?.TargetHeight ?? outputHeight;
             sourceBitrate = ResolveSourceBitrate(video);
-            Func<VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? accurateReductionProvider = actualSampleHeight > 0
-                ? (settings, windows) => _sampleReductionProvider(video.FilePath, actualSampleHeight, settings, windows)
-                : null;
+            var useFixedBucketQuality = FixedBucketVideoSettingsPolicy.ShouldUseFixedBucketQuality(
+                _videoSettingsProfiles,
+                encodeVideo.Downscale is not null,
+                encodeVideo.Downscale,
+                outputHeight,
+                encodeVideo.VideoSettings);
             videoResolution = encodeVideo.Downscale is not null
                 ? _videoSettingsResolver.ResolveForDownscale(
                     request: encodeVideo.Downscale,
                     videoSettings: encodeVideo.VideoSettings,
-                    sourceHeight: video.Height,
-                    duration: video.Duration,
-                    sourceBitrate: sourceBitrate.Bitrate,
-                    hasAudio: video.HasAudio,
-                    defaultAutoSampleMode: "hybrid",
-                    accurateReductionProvider: accurateReductionProvider)
+                    sourceHeight: video.Height)
                 : _videoSettingsResolver.ResolveForEncode(
                     request: encodeVideo.VideoSettings,
                     outputHeight: outputHeight,
-                    duration: video.Duration,
-                    sourceBitrate: sourceBitrate.Bitrate,
-                    hasAudio: video.HasAudio,
-                    defaultAutoSampleMode: "hybrid",
-                    accurateReductionProvider: accurateReductionProvider);
+                    sourceHeight: video.Height);
+
+            if (useFixedBucketQuality)
+            {
+                videoResolution = videoResolution with
+                {
+                    Settings = FixedBucketVideoSettingsPolicy.ApplySourceBitrateCap(
+                        videoResolution.Settings,
+                        sourceBitrate.Bitrate,
+                        encodeVideo.VideoSettings,
+                        videoResolution.Profile.RateModel.BufsizeMultiplier)
+                };
+            }
         }
 
         return new ToMkvGpuDecision(
@@ -352,15 +314,6 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         return new ToMkvGpuResolvedSourceBitrate(
             resolvedEstimate,
             resolvedEstimate != estimated ? "file_size_estimate_minus_audio" : "file_size_estimate");
-    }
-
-    private static decimal? NoSampleReduction(
-        string inputPath,
-        int outputHeight,
-        VideoSettingsDefaults settings,
-        IReadOnlyList<VideoSettingsSampleWindow> windows)
-    {
-        return null;
     }
 
     private static ToMkvGpuFfmpegTool CreateDefaultTool()

@@ -14,7 +14,6 @@ public sealed class VideoSettingsRequest
         [.. VideoSettingsProfiles.Default.GetSupportedContentProfiles()];
     private static readonly string[] SupportedQualityProfilesValues =
         [.. VideoSettingsProfiles.Default.GetSupportedQualityProfiles()];
-    private static readonly string[] SupportedAutoSampleModesValues = ["accurate", "fast", "hybrid"];
 
     /// <summary>
     /// Gets content-profile values supported by the core profile catalog.
@@ -27,16 +26,10 @@ public sealed class VideoSettingsRequest
     public static IReadOnlyList<string> SupportedQualityProfiles => SupportedQualityProfilesValues;
 
     /// <summary>
-    /// Gets autosample mode values supported by the core profile catalog.
-    /// </summary>
-    public static IReadOnlyList<string> SupportedAutoSampleModes => SupportedAutoSampleModesValues;
-
-    /// <summary>
     /// Initializes reusable video-settings directives.
     /// </summary>
     /// <param name="contentProfile">Requested content profile for profile-driven video settings.</param>
     /// <param name="qualityProfile">Requested quality profile for profile-driven video settings.</param>
-    /// <param name="autoSampleMode">Requested autosample mode.</param>
     /// <param name="cq">Explicit CQ override.</param>
     /// <param name="maxrate">Explicit maxrate override in Mbit/s.</param>
     /// <param name="bufsize">Explicit bufsize override in Mbit/s.</param>
@@ -44,7 +37,6 @@ public sealed class VideoSettingsRequest
     public VideoSettingsRequest(
         string? contentProfile = null,
         string? qualityProfile = null,
-        string? autoSampleMode = null,
         int? cq = null,
         decimal? maxrate = null,
         decimal? bufsize = null)
@@ -74,16 +66,11 @@ public sealed class VideoSettingsRequest
             nameof(qualityProfile),
             SupportedQualityProfilesValues,
             GetSupportedValuesDisplay(SupportedQualityProfilesValues));
-        AutoSampleMode = NormalizeSupportedValue(
-            autoSampleMode,
-            nameof(autoSampleMode),
-            SupportedAutoSampleModesValues,
-            GetSupportedValuesDisplay(SupportedAutoSampleModesValues));
         Cq = cq;
         Maxrate = maxrate;
         Bufsize = bufsize;
 
-        if (!HasAnyValue(ContentProfile, QualityProfile, AutoSampleMode, Cq, Maxrate, Bufsize))
+        if (!HasAnyValue(ContentProfile, QualityProfile, Cq, Maxrate, Bufsize))
         {
             throw new ArgumentException("At least one video settings override is required.");
         }
@@ -98,11 +85,6 @@ public sealed class VideoSettingsRequest
     /// Gets the requested quality profile.
     /// </summary>
     public string? QualityProfile { get; }
-
-    /// <summary>
-    /// Gets the requested autosample mode.
-    /// </summary>
-    public string? AutoSampleMode { get; }
 
     /// <summary>
     /// Gets the explicit CQ override.
@@ -125,13 +107,12 @@ public sealed class VideoSettingsRequest
     public static VideoSettingsRequest? CreateOrNull(
         string? contentProfile = null,
         string? qualityProfile = null,
-        string? autoSampleMode = null,
         int? cq = null,
         decimal? maxrate = null,
         decimal? bufsize = null)
     {
-        return HasAnyValue(contentProfile, qualityProfile, autoSampleMode, cq, maxrate, bufsize)
-            ? new VideoSettingsRequest(contentProfile, qualityProfile, autoSampleMode, cq, maxrate, bufsize)
+        return HasAnyValue(contentProfile, qualityProfile, cq, maxrate, bufsize)
+            ? new VideoSettingsRequest(contentProfile, qualityProfile, cq, maxrate, bufsize)
             : null;
     }
 
@@ -149,14 +130,6 @@ public sealed class VideoSettingsRequest
     public static bool IsSupportedQualityProfile(string? value)
     {
         return IsSupportedValue(value, SupportedQualityProfilesValues);
-    }
-
-    /// <summary>
-    /// Determines whether the supplied autosample mode value is supported.
-    /// </summary>
-    public static bool IsSupportedAutoSampleMode(string? value)
-    {
-        return IsSupportedValue(value, SupportedAutoSampleModesValues);
     }
 
     private static string? NormalizeName(string? value)
@@ -207,14 +180,12 @@ public sealed class VideoSettingsRequest
     private static bool HasAnyValue(
         string? contentProfile,
         string? qualityProfile,
-        string? autoSampleMode,
         int? cq,
         decimal? maxrate,
         decimal? bufsize)
     {
         return !string.IsNullOrWhiteSpace(contentProfile) ||
                !string.IsNullOrWhiteSpace(qualityProfile) ||
-               !string.IsNullOrWhiteSpace(autoSampleMode) ||
                cq.HasValue ||
                maxrate.HasValue ||
                bufsize.HasValue;

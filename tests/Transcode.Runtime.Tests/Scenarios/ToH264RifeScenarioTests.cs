@@ -26,9 +26,9 @@ public sealed class ToH264RifeScenarioTests
         actual.InterpolationModelName.Should().Be("4.25");
         actual.ResolvedVideoSettings.ContentProfile.Should().Be("film");
         actual.ResolvedVideoSettings.QualityProfile.Should().Be("default");
-        actual.ResolvedVideoSettings.Cq.Should().Be(27);
-        actual.ResolvedVideoSettings.Maxrate.Should().Be(3.3m);
-        actual.ResolvedVideoSettings.Bufsize.Should().Be(6.6m);
+        actual.ResolvedVideoSettings.Cq.Should().Be(22);
+        actual.ResolvedVideoSettings.Maxrate.Should().Be(5.272m);
+        actual.ResolvedVideoSettings.Bufsize.Should().Be(10.544m);
         encodeVideo.UseFrameInterpolation.Should().BeTrue();
         encodeVideo.TargetFramesPerSecond.Should().BeApproximately(48000d / 1001d, 0.0001);
     }
@@ -61,9 +61,9 @@ public sealed class ToH264RifeScenarioTests
         actual.Should().Contain("target 71.928");
         actual.Should().Contain("interp default/4.25");
         actual.Should().Contain("profile film/default");
-        actual.Should().Contain("cq 27");
-        actual.Should().Contain("maxrate 3.7M");
-        actual.Should().Contain("bufsize 7.4M");
+        actual.Should().Contain("cq 22");
+        actual.Should().Contain("maxrate 5.672M");
+        actual.Should().Contain("bufsize 11.344M");
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class ToH264RifeScenarioTests
         actual.Commands[0].Should().Contain("\"C:\\video:/workspace/work\"");
         actual.Commands[0].Should().Contain("\"/workspace/work/input.mkv\"");
         actual.Commands[0].Should().Contain("\"/workspace/work/input_temp.mkv\"");
-        actual.Commands[0].Should().Contain(" 3 mkv 4.25 27 3700 7400");
+        actual.Commands[0].Should().Contain(" 3 mkv 4.25 22 5672 11344");
         actual.Commands.Should().NotContain(command => command.Contains(".png", StringComparison.OrdinalIgnoreCase));
         actual.Commands.Should().NotContain(command => command.Contains("rife-ncnn-vulkan", StringComparison.OrdinalIgnoreCase));
     }
@@ -144,9 +144,9 @@ public sealed class ToH264RifeScenarioTests
 
         actual.ResolvedVideoSettings.ContentProfile.Should().Be("mult");
         actual.ResolvedVideoSettings.QualityProfile.Should().Be("default");
-        actual.ResolvedVideoSettings.Cq.Should().Be(25);
-        actual.ResolvedVideoSettings.Maxrate.Should().Be(2.9m);
-        actual.ResolvedVideoSettings.Bufsize.Should().Be(5.8m);
+        actual.ResolvedVideoSettings.Cq.Should().Be(23);
+        actual.ResolvedVideoSettings.Maxrate.Should().Be(4.4m);
+        actual.ResolvedVideoSettings.Bufsize.Should().Be(8.8m);
     }
 
     [Fact]

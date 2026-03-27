@@ -1,7 +1,7 @@
 namespace Transcode.Core.VideoSettings;
 
 /// <summary>
-/// Represents resolved profile-driven video settings defaults without autosample adjustments.
+/// Represents resolved profile-driven video settings defaults.
 /// </summary>
 public sealed record ResolvedVideoSettingsDefaults(
     string ContentProfile,

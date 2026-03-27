@@ -221,9 +221,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
-        spec.VideoCq.Should().Be(21);
-        spec.VideoMaxrateKbps.Should().Be(5200);
-        spec.VideoBufferSizeKbps.Should().Be(10400);
+        spec.VideoCq.Should().Be(20);
+        spec.VideoMaxrateKbps.Should().Be(5800);
+        spec.VideoBufferSizeKbps.Should().Be(11600);
     }
 
     [Fact]
@@ -242,12 +242,12 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         spec.VideoCq.Should().Be(19);
-        spec.VideoMaxrateKbps.Should().Be(6000);
-        spec.VideoBufferSizeKbps.Should().Be(12000);
+        spec.VideoMaxrateKbps.Should().Be(6200);
+        spec.VideoBufferSizeKbps.Should().Be(12400);
     }
 
     [Fact]
-    public void BuildDecision_WhenOrdinaryEncodeUsesProfileOnlyRequest_UsesFastAutosampleDefaults()
+    public void BuildDecision_WhenOrdinaryAnimeEncodeUsesProfileOnlyRequest_UsesFixedBucketDefaults()
     {
         var sut = CreateSut(new ToH264GpuRequest(
             videoSettings: new VideoSettingsRequest(
@@ -263,9 +263,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(23);
-        spec.VideoMaxrateKbps.Should().Be(2600);
-        spec.VideoBufferSizeKbps.Should().Be(5200);
+        spec.VideoCq.Should().Be(21);
+        spec.VideoMaxrateKbps.Should().Be(3400);
+        spec.VideoBufferSizeKbps.Should().Be(6800);
     }
 
     [Fact]
@@ -291,9 +291,9 @@ public sealed class ToH264GpuScenarioTests
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
         actual.SynchronizeAudio.Should().BeTrue();
-        spec.VideoCq.Should().Be(22);
-        spec.VideoMaxrateKbps.Should().Be(3400);
-        spec.VideoBufferSizeKbps.Should().Be(6800);
+        spec.VideoCq.Should().Be(21);
+        spec.VideoMaxrateKbps.Should().Be(4600);
+        spec.VideoBufferSizeKbps.Should().Be(9200);
     }
 
     [Fact]
@@ -528,21 +528,19 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(480);
-        spec.VideoCq.Should().Be(27);
-        spec.VideoMaxrateKbps.Should().Be(2600);
-        spec.VideoBufferSizeKbps.Should().Be(5200);
+        spec.VideoCq.Should().Be(23);
+        spec.VideoMaxrateKbps.Should().Be(3100);
+        spec.VideoBufferSizeKbps.Should().Be(6200);
     }
 
     [Fact]
-    public void BuildDecision_WhenAccurateAutosampleIsRequested_UsesSampleBackedResolution()
+    public void BuildDecision_WhenFilmAccurateAutosampleIsRequested_UsesFixedBucketDefaultsWithoutSampleProvider()
     {
         var sut = CreateSut(
             new ToH264GpuRequest(
                 videoSettings: new VideoSettingsRequest(
                     contentProfile: "film",
-                    qualityProfile: "default",
-                    autoSampleMode: "accurate")),
-            (_, _, _, _) => 20m);
+                    qualityProfile: "default")));
         var video = CreateVideo(
             filePath: @"C:\video\input.mkv",
             container: "mkv",
@@ -555,13 +553,210 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
-        spec.VideoCq.Should().Be(29);
-        spec.VideoMaxrateKbps.Should().Be(2400);
-        spec.VideoBufferSizeKbps.Should().Be(4800);
+        spec.VideoCq.Should().Be(20);
+        spec.VideoMaxrateKbps.Should().Be(5800);
+        spec.VideoBufferSizeKbps.Should().Be(11600);
     }
 
     [Fact]
-    public void BuildDecision_WhenDownscale424UsesProfileOnlyRequest_UsesFastAutosampleDefaults()
+    public void BuildDecision_WhenFilmProfileSourceBitrateIsLowerThanBucketMaxrate_CapsRateControlToVideoOnlySourceBitrate()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "film",
+                qualityProfile: "default")));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 6_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoCq.Should().Be(20);
+        spec.VideoMaxrateKbps.Should().Be(5000);
+        spec.VideoBufferSizeKbps.Should().Be(10000);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenFilmProfileHasManualRateOverrides_DoesNotApplySourceBitrateCap()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "film",
+                qualityProfile: "default",
+                maxrate: 6.5m,
+                bufsize: 13.0m)));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 6_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoMaxrateKbps.Should().Be(6500);
+        spec.VideoBufferSizeKbps.Should().Be(13000);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenMultAccurateAutosampleIsRequested_UsesFixedBucketDefaultsWithoutSampleProvider()
+    {
+        var sut = CreateSut(
+            new ToH264GpuRequest(
+                videoSettings: new VideoSettingsRequest(
+                    contentProfile: "mult",
+                    qualityProfile: "default")));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["ac3"],
+            bitrate: 10_000_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        actual.CopyVideo.Should().BeFalse();
+        spec.VideoCq.Should().Be(21);
+        spec.VideoMaxrateKbps.Should().Be(4600);
+        spec.VideoBufferSizeKbps.Should().Be(9200);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenMultProfileSourceBitrateIsLowerThanBucketMaxrate_CapsRateControlToVideoOnlySourceBitrate()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "mult",
+                qualityProfile: "default")));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 3_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoCq.Should().Be(21);
+        spec.VideoMaxrateKbps.Should().Be(2000);
+        spec.VideoBufferSizeKbps.Should().Be(4000);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenMultProfileHasManualRateOverrides_DoesNotApplySourceBitrateCap()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "mult",
+                qualityProfile: "default",
+                maxrate: 6.5m,
+                bufsize: 13.0m)));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 3_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoMaxrateKbps.Should().Be(6500);
+        spec.VideoBufferSizeKbps.Should().Be(13000);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenAnimeAccurateAutosampleIsRequested_UsesFixedBucketDefaultsWithoutSampleProvider()
+    {
+        var sut = CreateSut(
+            new ToH264GpuRequest(
+                videoSettings: new VideoSettingsRequest(
+                    contentProfile: "anime",
+                    qualityProfile: "default")));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["ac3"],
+            bitrate: 10_000_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        actual.CopyVideo.Should().BeFalse();
+        spec.VideoCq.Should().Be(21);
+        spec.VideoMaxrateKbps.Should().Be(3400);
+        spec.VideoBufferSizeKbps.Should().Be(6800);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenAnimeProfileSourceBitrateIsLowerThanBucketMaxrate_CapsRateControlToVideoOnlySourceBitrate()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "anime",
+                qualityProfile: "default")));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 3_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoCq.Should().Be(21);
+        spec.VideoMaxrateKbps.Should().Be(2000);
+        spec.VideoBufferSizeKbps.Should().Be(4000);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenAnimeProfileHasManualRateOverrides_DoesNotApplySourceBitrateCap()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "anime",
+                qualityProfile: "default",
+                maxrate: 6.5m,
+                bufsize: 13.0m)));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["aac", "aac"],
+            bitrate: 3_000_000,
+            primaryAudioBitrate: 500_000);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoMaxrateKbps.Should().Be(6500);
+        spec.VideoBufferSizeKbps.Should().Be(13000);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenDownscale424UsesProfileOnlyRequest_UsesFixedBucketDefaults()
     {
         var sut = CreateSut(new ToH264GpuRequest(
             downscale: new DownscaleRequest(424),
@@ -580,7 +775,7 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
-        spec.VideoCq.Should().Be(26);
+        spec.VideoCq.Should().Be(24);
         spec.VideoMaxrateKbps.Should().Be(2900);
         spec.VideoBufferSizeKbps.Should().Be(5800);
     }
@@ -591,8 +786,7 @@ public sealed class ToH264GpuScenarioTests
         var sut = CreateSut(
             new ToH264GpuRequest(
                 downscale: new DownscaleRequest(576),
-                videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default", autoSampleMode: "accurate")),
-            (_, _, _, _) => throw new InvalidOperationException("sample provider must not run in info mode"));
+                videoSettings: new VideoSettingsRequest(contentProfile: "film", qualityProfile: "default")));
         var video = CreateVideo(
             filePath: @"C:\video\input.mkv",
             container: "mkv",
@@ -815,8 +1009,7 @@ public sealed class ToH264GpuScenarioTests
         string? nvencPreset = null,
         bool denoise = false,
         bool synchronizeAudio = false,
-        bool outputMkv = false,
-        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider = null)
+        bool outputMkv = false)
     {
         return CreateSut(
             new ToH264GpuRequest(
@@ -827,22 +1020,14 @@ public sealed class ToH264GpuScenarioTests
                 nvencPreset: nvencPreset,
                 denoise: denoise,
                 synchronizeAudio: synchronizeAudio,
-                outputMkv: outputMkv),
-            sampleReductionProvider);
+                outputMkv: outputMkv));
     }
 
-    private static ToH264GpuScenario CreateSut(
-        ToH264GpuRequest? request,
-        Func<string, int, VideoSettingsDefaults, IReadOnlyList<VideoSettingsSampleWindow>, decimal?>? sampleReductionProvider = null)
+    private static ToH264GpuScenario CreateSut(ToH264GpuRequest? request)
     {
-        return sampleReductionProvider is null
-            ? request is null
-                ? new ToH264GpuScenario()
-                : new ToH264GpuScenario(request)
-            : new ToH264GpuScenario(
-                request ?? new ToH264GpuRequest(),
-                sampleReductionProvider,
-                new ToH264GpuFfmpegTool("ffmpeg", NullLogger<ToH264GpuFfmpegTool>.Instance));
+        return request is null
+            ? new ToH264GpuScenario()
+            : new ToH264GpuScenario(request);
     }
 
     private static ToH264GpuFfmpegTool CreateFfmpegTool()

@@ -23,7 +23,6 @@ public sealed class ToMkvGpuRequestTests
             videoSettings: new VideoSettingsRequest(
                 contentProfile: "Film",
                 qualityProfile: "Default",
-                autoSampleMode: "Fast",
                 cq: 24,
                 maxrate: 3.7m,
                 bufsize: 7.4m),
@@ -40,7 +39,6 @@ public sealed class ToMkvGpuRequestTests
         request.VideoSettings.Should().NotBeNull();
         request.VideoSettings!.ContentProfile.Should().Be("film");
         request.VideoSettings.QualityProfile.Should().Be("default");
-        request.VideoSettings.AutoSampleMode.Should().Be("fast");
         request.VideoSettings.Cq.Should().Be(24);
         request.VideoSettings.Maxrate.Should().Be(3.7m);
         request.VideoSettings.Bufsize.Should().Be(7.4m);

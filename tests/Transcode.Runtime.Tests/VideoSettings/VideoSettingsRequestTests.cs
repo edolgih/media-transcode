@@ -20,9 +20,8 @@ public sealed class VideoSettingsRequestTests
     }
 
     [Fact]
-    public void SupportedAutoSampleModes_ExposeCanonicalRuntimeValues()
+    public void SupportedDownscaleAlgorithms_ExposeCanonicalRuntimeValues()
     {
-        VideoSettingsRequest.SupportedAutoSampleModes.Should().Equal("accurate", "fast", "hybrid");
         DownscaleRequest.SupportedAlgorithms.Should().Equal("bilinear", "bicubic", "lanczos");
     }
 

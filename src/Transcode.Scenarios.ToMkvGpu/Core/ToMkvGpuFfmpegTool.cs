@@ -86,10 +86,10 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (decision.VideoResolution is not null && decision.SourceBitrate is not null)
         {
-            LogAutoSampleResolution(
+            LogVideoSettingsResolution(
                 video.FilePath,
                 decision.VideoResolution.BaseSettings,
-                decision.VideoResolution.AutoSample,
+                decision.VideoResolution.Settings,
                 decision.SourceBitrate);
         }
 
@@ -287,28 +287,20 @@ public sealed class ToMkvGpuFfmpegTool
         return $"{value.ToString("0.###", CultureInfo.InvariantCulture)}M";
     }
 
-    private void LogAutoSampleResolution(
+    private void LogVideoSettingsResolution(
         string inputPath,
         VideoSettingsDefaults baseSettings,
-        VideoSettingsAutoSampleResolution resolution,
+        VideoSettingsDefaults resolvedSettings,
         ToMkvGpuResolvedSourceBitrate sourceBitrate)
     {
         _logger.LogInformation(
-            "Video settings autosample resolved. InputPath={InputPath} Profile={Profile} Mode={Mode} Path={Path} Reason={Reason} SourceBitrateOrigin={SourceBitrateOrigin} SourceBitrateMbps={SourceBitrateMbps} Corridor={Corridor} Windows={Windows} Iterations={Iterations} LastReductionPercent={LastReductionPercent} InBounds={InBounds} Base={BaseSettings} Resolved={ResolvedSettings}",
+            "Video settings resolved. InputPath={InputPath} Profile={Profile} SourceBitrateOrigin={SourceBitrateOrigin} SourceBitrateMbps={SourceBitrateMbps} Base={BaseSettings} Resolved={ResolvedSettings}",
             inputPath,
             $"{baseSettings.ContentProfile}/{baseSettings.QualityProfile}",
-            resolution.Mode,
-            resolution.Path,
-            resolution.Reason,
             sourceBitrate.Origin,
             FormatBitrateMbps(sourceBitrate.Bitrate),
-            FormatRange(resolution.Corridor),
-            FormatWindows(resolution.Windows),
-            resolution.IterationCount,
-            resolution.LastReductionPercent,
-            resolution.InBounds,
             FormatSettings(baseSettings),
-            FormatSettings(resolution.Settings));
+            FormatSettings(resolvedSettings));
     }
 
     private static string BuildOverlayFilter(SourceVideo video, int? targetHeight, string downscaleAlgorithm)
@@ -324,33 +316,6 @@ public sealed class ToMkvGpuFfmpegTool
         }
 
         return $"[0:v]scale={outputWidth}:-1,crop={outputWidth}:{outputHeight}[bg];[0:v]scale=-1:{outputHeight}[fg];[bg][fg]overlay=(W-w)/2:0[v]";
-    }
-
-    private static string FormatRange(VideoSettingsRange? range)
-    {
-        if (range is null)
-        {
-            return "-";
-        }
-
-        var min = range.MinInclusive.HasValue
-            ? $">={range.MinInclusive.Value.ToString("0.##", CultureInfo.InvariantCulture)}"
-            : range.MinExclusive.HasValue
-                ? $">{range.MinExclusive.Value.ToString("0.##", CultureInfo.InvariantCulture)}"
-                : "-inf";
-        var max = range.MaxInclusive.HasValue
-            ? $"<={range.MaxInclusive.Value.ToString("0.##", CultureInfo.InvariantCulture)}"
-            : range.MaxExclusive.HasValue
-                ? $"<{range.MaxExclusive.Value.ToString("0.##", CultureInfo.InvariantCulture)}"
-                : "+inf";
-        return $"{min}..{max}";
-    }
-
-    private static string FormatWindows(IReadOnlyList<VideoSettingsSampleWindow> windows)
-    {
-        return windows.Count == 0
-            ? "-"
-            : string.Join(",", windows.Select(static window => $"{window.StartSeconds}+{window.DurationSeconds}"));
     }
 
     private static string FormatSettings(VideoSettingsDefaults settings)

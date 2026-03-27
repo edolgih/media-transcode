@@ -19,7 +19,6 @@ internal static class ToH264GpuCliRequestParser
     private const string KeepFpsOptionName = "--keep-fps";
     private const string ContentProfileOptionName = "--content-profile";
     private const string QualityProfileOptionName = "--quality-profile";
-    private const string AutoSampleModeOptionName = "--autosample-mode";
     private const string DownscaleAlgoOptionName = "--downscale-algo";
     private const string CqOptionName = "--cq";
     private const string MaxrateOptionName = "--maxrate";
@@ -46,7 +45,6 @@ internal static class ToH264GpuCliRequestParser
         decimal? bufsize = null;
         string? contentProfile = null;
         string? qualityProfile = null;
-        string? autoSampleMode = null;
         string? nvencPreset = null;
         var denoise = false;
         var synchronizeAudio = false;
@@ -90,16 +88,6 @@ internal static class ToH264GpuCliRequestParser
             if (string.Equals(token, QualityProfileOptionName, StringComparison.OrdinalIgnoreCase))
             {
                 if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out qualityProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, AutoSampleModeOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out autoSampleMode, out errorText))
                 {
                     return false;
                 }
@@ -190,7 +178,6 @@ internal static class ToH264GpuCliRequestParser
             var videoSettingsRequest = VideoSettingsRequest.CreateOrNull(
                 contentProfile: contentProfile,
                 qualityProfile: qualityProfile,
-                autoSampleMode: autoSampleMode,
                 cq: cq,
                 maxrate: maxrate,
                 bufsize: bufsize);
@@ -222,7 +209,6 @@ internal static class ToH264GpuCliRequestParser
                 "bufsize" => "--bufsize must be greater than zero.",
                 "contentProfile" => $"--content-profile must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedContentProfiles)}.",
                 "qualityProfile" => $"--quality-profile must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedQualityProfiles)}.",
-                "autoSampleMode" => $"--autosample-mode must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedAutoSampleModes)}.",
                 "nvencPreset" => $"--nvenc-preset must be one of: {CliValueFormatter.FormatList(NvencPresetOptions.SupportedPresets)}.",
                 _ => exception.Message
             };

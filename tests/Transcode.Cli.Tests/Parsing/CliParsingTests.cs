@@ -32,7 +32,6 @@ public sealed class CliParsingTests
                 "--downscale", "576",
                 "--content-profile", "Anime",
                 "--quality-profile", "High",
-                "--autosample-mode", "Hybrid",
                 "--downscale-algo", "Lanczos",
                 "--max-fps", "50",
                 "--cq", "23",
@@ -49,7 +48,7 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mp4");
         parsed.Scenario.Should().Be("tomkvgpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgCount.Should().Be(20);
+        parsed.ScenarioArgCount.Should().Be(18);
         var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToMkvGpuRequest>().Subject;
         scenarioInput.Downscale.Should().NotBeNull();
         scenarioInput.VideoSettings.Should().NotBeNull();
@@ -58,7 +57,6 @@ public sealed class CliParsingTests
         downscale.TargetHeight.Should().Be(576);
         videoSettings.ContentProfile.Should().Be("anime");
         videoSettings.QualityProfile.Should().Be("high");
-        videoSettings.AutoSampleMode.Should().Be("hybrid");
         downscale.Algorithm.Should().Be("lanczos");
         videoSettings.Cq.Should().Be(23);
         videoSettings.Maxrate.Should().Be(3.4m);
@@ -80,7 +78,6 @@ public sealed class CliParsingTests
                 "--downscale", "576",
                 "--content-profile", "Film",
                 "--quality-profile", "Default",
-                "--autosample-mode", "Fast",
                 "--downscale-algo", "Bicubic",
                 "--max-fps", "40",
                 "--cq", "24",
@@ -118,7 +115,6 @@ public sealed class CliParsingTests
         scenarioRequest.Downscale!.TargetHeight.Should().Be(576);
         scenarioRequest.VideoSettings.ContentProfile.Should().Be("film");
         scenarioRequest.VideoSettings.QualityProfile.Should().Be("default");
-        scenarioRequest.VideoSettings.AutoSampleMode.Should().Be("fast");
         scenarioRequest.Downscale.Algorithm.Should().Be("bicubic");
         scenarioRequest.VideoSettings.Cq.Should().Be(24);
         scenarioRequest.VideoSettings.Maxrate.Should().Be(3.7m);
@@ -139,7 +135,6 @@ public sealed class CliParsingTests
                 "--keep-fps",
                 "--content-profile", "film",
                 "--quality-profile", "default",
-                "--autosample-mode", "fast",
                 "--downscale-algo", "lanczos",
                 "--cq", "21",
                 "--nvenc-preset", "p6",
@@ -156,7 +151,7 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mkv");
         parsed.Scenario.Should().Be("toh264gpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgCount.Should().Be(19);
+        parsed.ScenarioArgCount.Should().Be(17);
         var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToH264GpuRequest>().Subject;
         scenarioInput.KeepSource.Should().BeTrue();
         scenarioInput.Downscale.Should().NotBeNull();
@@ -164,7 +159,6 @@ public sealed class CliParsingTests
         scenarioInput.KeepFramesPerSecond.Should().BeTrue();
         scenarioInput.VideoSettings!.ContentProfile.Should().Be("film");
         scenarioInput.VideoSettings.QualityProfile.Should().Be("default");
-        scenarioInput.VideoSettings.AutoSampleMode.Should().Be("fast");
         scenarioInput.Downscale.Algorithm.Should().Be("lanczos");
         scenarioInput.VideoSettings.Cq.Should().Be(21);
         scenarioInput.NvencPreset.Should().Be("p6");
@@ -185,7 +179,6 @@ public sealed class CliParsingTests
                 "--keep-fps",
                 "--content-profile", "film",
                 "--quality-profile", "default",
-                "--autosample-mode", "fast",
                 "--downscale-algo", "lanczos",
                 "--cq", "21",
                 "--nvenc-preset", "p6",
@@ -221,7 +214,6 @@ public sealed class CliParsingTests
         scenarioRequest.VideoSettings.Should().NotBeNull();
         scenarioRequest.VideoSettings!.ContentProfile.Should().Be("film");
         scenarioRequest.VideoSettings.QualityProfile.Should().Be("default");
-        scenarioRequest.VideoSettings.AutoSampleMode.Should().Be("fast");
         scenarioRequest.Downscale.Algorithm.Should().Be("lanczos");
         scenarioRequest.VideoSettings.Cq.Should().Be(21);
         scenarioRequest.NvencPreset.Should().Be("p6");

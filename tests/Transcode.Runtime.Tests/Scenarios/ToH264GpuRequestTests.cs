@@ -23,7 +23,6 @@ public sealed class ToH264GpuRequestTests
             videoSettings: new VideoSettingsRequest(
                 contentProfile: "film",
                 qualityProfile: "default",
-                autoSampleMode: "fast",
                 cq: 21,
                 maxrate: 4.2m,
                 bufsize: 8.4m),
@@ -40,7 +39,6 @@ public sealed class ToH264GpuRequestTests
         request.VideoSettings.Should().NotBeNull();
         request.VideoSettings!.ContentProfile.Should().Be("film");
         request.VideoSettings.QualityProfile.Should().Be("default");
-        request.VideoSettings.AutoSampleMode.Should().Be("fast");
         request.VideoSettings.Cq.Should().Be(21);
         request.VideoSettings.Maxrate.Should().Be(4.2m);
         request.VideoSettings.Bufsize.Should().Be(8.4m);
