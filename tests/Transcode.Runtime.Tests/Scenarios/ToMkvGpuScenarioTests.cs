@@ -73,6 +73,19 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenKeepSourceIsDisabledAndDownscaleIsRequested_UsesTargetHeightInOutputPath()
+    {
+        var sut = CreateSut(keepSource: false, downscaleTarget: 720);
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", filePath: @"C:\video\input.mkv", height: 1080);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeFalse();
+        actual.CopyVideo.Should().BeFalse();
+        actual.OutputPath.Should().Be(@"C:\video\input (720p).mkv");
+    }
+
+    [Fact]
     public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_UsesParenthesizedTargetHeightInOutputPath()
     {
         var sut = CreateSut(keepSource: true, downscaleTarget: 720);
@@ -122,6 +135,19 @@ public sealed class ToMkvGpuScenarioTests
         actual.KeepSource.Should().BeTrue();
         actual.CopyVideo.Should().BeFalse();
         actual.OutputPath.Should().Be(@"C:\video\input (59fps, 576p).mkv");
+    }
+
+    [Fact]
+    public void BuildDecision_WhenKeepSourceIsDisabledAndDownscaleIsRequested_ReplacesExistingHeightMarkerInsideParentheses()
+    {
+        var sut = CreateSut(keepSource: false, downscaleTarget: 576);
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", filePath: @"C:\video\input (2012, 720p).mkv", height: 1080);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeFalse();
+        actual.CopyVideo.Should().BeFalse();
+        actual.OutputPath.Should().Be(@"C:\video\input (2012, 576p).mkv");
     }
 
     [Theory]

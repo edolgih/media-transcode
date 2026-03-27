@@ -232,19 +232,19 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             directory = ".";
         }
 
+        var appliedDownscale = Request.Downscale is not null &&
+                               video.Height > Request.Downscale.TargetHeight;
+        if (appliedDownscale)
+        {
+            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, Request.Downscale!.TargetHeight)}.mkv");
+        }
+
         var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.mkv");
         if (!Request.KeepSource ||
             !video.Container.Equals("mkv", StringComparison.OrdinalIgnoreCase) ||
             (copyVideo && copyAudio))
         {
             return outputPath;
-        }
-
-        var appliedDownscale = Request.Downscale is not null &&
-                               video.Height > Request.Downscale.TargetHeight;
-        if (appliedDownscale)
-        {
-            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, Request.Downscale!.TargetHeight)}.mkv");
         }
 
         return Path.Combine(directory, $"{video.FileNameWithoutExtension}_out.mkv");
