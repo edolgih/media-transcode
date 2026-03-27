@@ -21,7 +21,7 @@ The CLI requires an explicit `--scenario <name>` argument. The current public sc
 - `tomkvgpu` is the MKV-first compatibility path. It is aimed at appliance-style playback targets where a conservative MKV output and TV-friendly transcode/remux decisions are preferred.
 - `toh264gpu` is the MP4/H.264-first path. It is aimed at general-purpose playback on full operating systems and web/mobile-friendly environments where H.264 in MP4 is the safer default.
 - `toh264rife` is the interpolation path. It targets H.264 output with `x2` or `x3` frame-rate multiplication, uses the repository Docker image `media-transcode-rife-trt` as the interpolation backend, supports separate interpolation model quality profiles, and resolves the final NVENC encode from shared `content/quality profile` defaults.
-- all three scenarios share the same inspection and profile-driven video-settings core, but they intentionally make different container, remux, audio, and compatibility decisions.
+- all three scenarios share the same inspection and profile-driven quality-first video-settings core (including source-video bitrate cap), but they intentionally make different container, remux, audio, and compatibility decisions.
 
 ## Repository Layout
 
@@ -58,7 +58,5 @@ dotnet test Transcode.sln
 - [README.ru.md](README.ru.md) - Russian overview
 - [docs/cli.md](docs/cli.md) - CLI usage and option reference
 - [docs/cli.ru.md](docs/cli.ru.md) - Russian CLI usage and option reference
-- [docs/toh264rife-setup.md](docs/toh264rife-setup.md) - external stack setup for `toh264rife`
 - [docs/architecture.md](docs/architecture.md) - architecture and timing/sync notes
 - [docs/architecture.ru.md](docs/architecture.ru.md) - Russian architecture and timing/sync notes
-- [docs/reference](docs/reference) - legacy reference data

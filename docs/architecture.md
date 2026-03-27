@@ -49,7 +49,7 @@ CLI flow at a high level:
 - processing loads source facts, asks the handler to create the scenario from the already parsed input, and then calls `scenario.FormatInfo(...)` or `scenario.BuildExecution(...)`;
 - concrete ffmpeg command rendering now stays inside scenario projects; the shared core layer no longer resolves tools and no longer routes execution through a shared `plan/spec/tool` pipeline;
 - in practice, adding a new application scenario should mainly mean adding one new CLI scenario handler plus the scenario request/scenario-local rendering types it uses.
-- ordinary encode and downscale now share the same profile-driven video-settings axis: output-height buckets, content/quality profiles, bucket bounds, and autosample/bitrate-hint adjustment all come from the shared video-settings profile catalog rather than scenario-local hardcoded fallbacks.
+- ordinary encode and downscale now share the same profile-driven video-settings axis: output-height buckets, content/quality profiles, bucket bounds, and source-bitrate cap adjustment all come from the shared video-settings profile catalog rather than scenario-local hardcoded fallbacks.
 - core request/value types no longer know raw `--option` spellings; the CLI layer is the transport adapter and `Core` stays the domain source of truth.
 
 ## Core-CLI Boundary

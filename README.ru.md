@@ -21,7 +21,7 @@
 - `tomkvgpu` - MKV-first compatibility path. Он ориентирован на более консервативный выход в MKV и решения по transcode/remux для appliance-style playback targets вроде телевизоров и похожих устройств.
 - `toh264gpu` - MP4/H.264-first path. Он ориентирован на более общий playback на полноценной ОС и на web/mobile-friendly окружения, где H.264 в MP4 обычно является более безопасным default.
 - `toh264rife` - interpolation path. Он ориентирован на выход в H.264 с умножением кадровой частоты `x2` или `x3`, использует repo-local Docker image `media-transcode-rife-trt` как backend интерполяции, поддерживает отдельные профили качества interpolation model и резолвит финальный NVENC encode из общих `content/quality profile` defaults.
-- все три сценария используют общую inspection и profile-driven video-settings основу, но намеренно принимают разные container, remux, audio и compatibility решения.
+- все три сценария используют общую inspection и profile-driven quality-first video-settings основу (с учетом source-video bitrate cap), но намеренно принимают разные container, remux, audio и compatibility решения.
 
 ## Структура Репозитория
 
@@ -58,7 +58,5 @@ dotnet test Transcode.sln
 - [README.md](README.md) - English overview
 - [docs/cli.md](docs/cli.md) - CLI usage and option reference
 - [docs/cli.ru.md](docs/cli.ru.md) - использование CLI
-- [docs/toh264rife-setup.md](docs/toh264rife-setup.md) - настройка внешнего стека для `toh264rife`
 - [docs/architecture.md](docs/architecture.md) - architecture and timing/sync notes
 - [docs/architecture.ru.md](docs/architecture.ru.md) - архитектура и заметки по таймлайну/синхронизации
-- [docs/reference](docs/reference) - reference-данные из legacy

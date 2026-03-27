@@ -67,7 +67,7 @@ dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\
 `toh264gpu` с явным выбором quality-oriented profile:
 
 ```bash
-dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --content-profile film --quality-profile default --autosample-mode fast
+dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --content-profile film --quality-profile default
 ```
 
 `toh264gpu` с явным audio-sync repair path:
@@ -130,7 +130,6 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--sync-audio`; по умолчанию выключен
 - `--content-profile <anime|mult|film>`; по умолчанию `film`
 - `--quality-profile <high|default|low>`; по умолчанию `default`
-- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `hybrid` и для encode, и для explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию profile default, сейчас во встроенных профилях это `bilinear`
 - `--cq <int>`; по умолчанию resolved profile value
 - `--maxrate <number>`; по умолчанию resolved profile value
@@ -146,7 +145,6 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `--keep-fps`; по умолчанию выключен
 - `--content-profile <anime|mult|film>`; по умолчанию `film`
 - `--quality-profile <high|default|low>`; по умолчанию `default`
-- `--autosample-mode <accurate|fast|hybrid>`; по умолчанию `hybrid` и для encode, и для explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; по умолчанию profile default, сейчас во встроенных профилях это `bilinear`
 - `--cq <1..51>`; по умолчанию resolved profile value
 - `--maxrate <number>`; по умолчанию resolved profile value

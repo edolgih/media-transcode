@@ -67,7 +67,7 @@ dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\
 `toh264gpu` with explicit quality-oriented profile selection:
 
 ```bash
-dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --content-profile film --quality-profile default --autosample-mode fast
+dotnet run --project src/Transcode.Cli -- --scenario toh264gpu --input "D:\\Src\\movie.mkv" --content-profile film --quality-profile default
 ```
 
 `toh264gpu` explicit audio-sync repair path:
@@ -130,7 +130,6 @@ Quality-oriented video settings:
 - `--sync-audio`; default: off
 - `--content-profile <anime|mult|film>`; default: `film`
 - `--quality-profile <high|default|low>`; default: `default`
-- `--autosample-mode <accurate|fast|hybrid>`; default: `hybrid` for encode and explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; default: profile default, currently `bilinear` in built-in profiles
 - `--cq <int>`; default: resolved profile value
 - `--maxrate <number>`; default: resolved profile value
@@ -146,7 +145,6 @@ Quality-oriented video settings:
 - `--keep-fps`; default: off
 - `--content-profile <anime|mult|film>`; default: `film`
 - `--quality-profile <high|default|low>`; default: `default`
-- `--autosample-mode <accurate|fast|hybrid>`; default: `hybrid` for encode and explicit downscale
 - `--downscale-algo <bilinear|bicubic|lanczos>`; default: profile default, currently `bilinear` in built-in profiles
 - `--cq <1..51>`; default: resolved profile value
 - `--maxrate <number>`; default: resolved profile value
