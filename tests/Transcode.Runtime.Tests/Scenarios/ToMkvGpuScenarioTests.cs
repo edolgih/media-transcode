@@ -264,6 +264,21 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenDownscale576RequestedFor640Source_AppliesDownscaleWithoutBucketError()
+    {
+        var sut = CreateSut(downscaleTarget: 576);
+        var video = CreateVideo(height: 640, videoCodec: "h264", audioCodecs: ["aac"]);
+
+        var actual = sut.BuildDecision(video);
+        var encodeVideo = GetRequiredEncodeVideo(actual);
+
+        encodeVideo.Downscale.Should().NotBeNull();
+        encodeVideo.Downscale!.TargetHeight.Should().Be(576);
+        actual.CopyVideo.Should().BeFalse();
+        actual.FixTimestamps.Should().BeFalse();
+    }
+
+    [Fact]
     public void BuildDecision_WhenDownscale576RequestedForSmallerSource_DoesNotApplyDownscale()
     {
         var sut = CreateSut(downscaleTarget: 576);

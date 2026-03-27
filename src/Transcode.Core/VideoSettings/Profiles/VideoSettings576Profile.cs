@@ -22,6 +22,10 @@ internal static class VideoSettings576Profile
             sourceBuckets:
             [
                 new SourceHeightBucket(
+                    "sd_576",
+                    MinHeight: 577,
+                    MaxHeight: 649),
+                new SourceHeightBucket(
                     "hd_720",
                     MinHeight: 650,
                     MaxHeight: 899,
@@ -33,7 +37,7 @@ internal static class VideoSettings576Profile
                     ]),
                 new SourceHeightBucket(
                     "fhd_1080",
-                    MinHeight: 1000,
+                    MinHeight: 900,
                     MaxHeight: 1300,
                     BoundsOverrides:
                     [
