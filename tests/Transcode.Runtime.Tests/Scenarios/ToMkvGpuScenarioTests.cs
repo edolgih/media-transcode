@@ -138,6 +138,19 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_PreservesMarkerOrderWhenHeightComesFirst()
+    {
+        var sut = CreateSut(keepSource: true, downscaleTarget: 576);
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", filePath: @"C:\video\input (720p, 59fps).mkv", height: 1080);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        actual.OutputPath.Should().Be(@"C:\video\input (576p, 59fps).mkv");
+    }
+
+    [Fact]
     public void BuildDecision_WhenKeepSourceIsDisabledAndDownscaleIsRequested_ReplacesExistingHeightMarkerInsideParentheses()
     {
         var sut = CreateSut(keepSource: false, downscaleTarget: 576);

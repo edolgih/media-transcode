@@ -122,6 +122,17 @@ public sealed class ToH264RifeScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenNameContainsMixedMarkersAndFpsComesFirst_PreservesMarkerOrder()
+    {
+        var sut = CreateSut(keepSource: true, framesPerSecondMultiplier: 3);
+        var video = CreateVideo(filePath: @"C:\video\input (59fps, 720p).mkv", framesPerSecond: 24000d / 1001d);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.OutputPath.Should().Be(@"C:\video\input (72fps, 720p).mkv");
+    }
+
+    [Fact]
     public void BuildExecution_WhenInterpolationIsNeeded_BuildsDockerRunCommand()
     {
         var tool = CreateTool();

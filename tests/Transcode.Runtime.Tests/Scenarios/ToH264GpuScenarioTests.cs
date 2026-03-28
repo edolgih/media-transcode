@@ -451,6 +451,26 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenKeepSourceAndDownscaleAreRequested_PreservesMarkerOrderWhenHeightComesFirst()
+    {
+        var sut = CreateSut(keepSource: true, downscaleTarget: 576);
+        var video = CreateVideo(
+            filePath: @"C:\video\input (720p, 59fps).mp4",
+            container: "mp4",
+            formatName: "mov,mp4,m4a,3gp,3g2,mj2",
+            videoCodec: "h264",
+            height: 1080,
+            audioCodecs: ["aac"]);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.KeepSource.Should().BeTrue();
+        actual.CopyVideo.Should().BeFalse();
+        GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(576);
+        actual.OutputPath.Should().Be(@"C:\video\input (576p, 59fps).mp4");
+    }
+
+    [Fact]
     public void BuildDecision_WhenKeepSourceIsDisabledAndDownscaleIsRequested_ReplacesExistingHeightMarkerInsideParentheses()
     {
         var sut = CreateSut(keepSource: false, downscaleTarget: 576);

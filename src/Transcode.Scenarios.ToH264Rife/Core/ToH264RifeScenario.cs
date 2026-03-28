@@ -210,12 +210,24 @@ public sealed class ToH264RifeScenario : TranscodeScenario
         var suffix = $"{userFacingTargetFramesPerSecond.ToString(CultureInfo.InvariantCulture)}fps";
         if (TryParseTrailingParenthesizedTokens(fileNameWithoutExtension, out var prefix, out var tokens))
         {
-            tokens.RemoveAll(IsFramesPerSecondSuffixToken);
-            tokens.Add(suffix);
+            ReplaceTokenPreservingPosition(tokens, IsFramesPerSecondSuffixToken, suffix);
             return $"{prefix} ({string.Join(", ", tokens)})";
         }
 
         return $"{fileNameWithoutExtension} ({suffix})";
+    }
+
+    private static void ReplaceTokenPreservingPosition(List<string> tokens, Predicate<string> match, string replacement)
+    {
+        var insertIndex = tokens.FindIndex(match);
+        tokens.RemoveAll(match);
+        if (insertIndex < 0 || insertIndex > tokens.Count)
+        {
+            tokens.Add(replacement);
+            return;
+        }
+
+        tokens.Insert(insertIndex, replacement);
     }
 
     private static bool TryParseTrailingParenthesizedTokens(
