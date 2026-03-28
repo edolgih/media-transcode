@@ -1,6 +1,12 @@
 # Transcode
 
-Transcode is a `.NET 9` runtime and CLI for inspecting media files and generating scenario-driven transcoding commands.
+Transcode is a quality-first video processing CLI built around practical scenarios.
+
+It helps choose predictable compression settings for each content type - films, cartoons, and anime - so visual quality is preserved where it matters without inflating file size unnecessarily.
+A dedicated interpolation scenario improves motion smoothness and makes the result more visually pleasing while assembling the final GPU-accelerated H.264 output.
+Instead of relying on one generic preset, the tool exposes explicit scenarios (`tomkvgpu`, `toh264gpu`, `toh264rife`) so each task follows a clear and repeatable processing path.
+
+Technically, Transcode is a `.NET 9` runtime and CLI layer for media inspection and scenario-driven transcoding command generation.
 
 Current runtime pipeline:
 
