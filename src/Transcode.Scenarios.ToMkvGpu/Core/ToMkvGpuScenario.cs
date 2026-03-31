@@ -90,12 +90,23 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// <param name="video">Source video facts used by the scenario.</param>
     internal ToMkvGpuDecision BuildDecision(SourceVideo video)
     {
-        return BuildDecision(video, includeExecutionPayload: true);
+        return BuildDecisionForExecution(video);
     }
 
-    private ToMkvGpuDecision BuildDecision(SourceVideo video, bool includeExecutionPayload)
+    private ToMkvGpuDecision BuildDecisionForExecution(SourceVideo video)
+    {
+        return BuildDecisionCore(video, DecisionPayloadMode.Execution);
+    }
+
+    private ToMkvGpuDecision BuildDecisionForInfo(SourceVideo video)
+    {
+        return BuildDecisionCore(video, DecisionPayloadMode.Info);
+    }
+
+    private ToMkvGpuDecision BuildDecisionCore(SourceVideo video, DecisionPayloadMode payloadMode)
     {
         ArgumentNullException.ThrowIfNull(video);
+        var includeExecutionPayload = payloadMode == DecisionPayloadMode.Execution;
 
         var applyDownscale = Request.Downscale is not null &&
                              video.Height > Request.Downscale.TargetHeight;
@@ -180,13 +191,19 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     /// <inheritdoc />
     protected override string FormatInfoCore(SourceVideo video)
     {
-        return InfoFormatter.Format(video, BuildDecision(video, includeExecutionPayload: false));
+        return InfoFormatter.Format(video, BuildDecisionForInfo(video));
     }
 
     /// <inheritdoc />
     protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
     {
-        return _ffmpegTool.BuildExecution(video, BuildDecision(video));
+        return _ffmpegTool.BuildExecution(video, BuildDecisionForExecution(video));
+    }
+
+    private enum DecisionPayloadMode
+    {
+        Info,
+        Execution
     }
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)

@@ -268,6 +268,40 @@ public sealed class CliParsingTests
     }
 
     [Fact]
+    public void TryParse_WhenToH264RifeOptionsAreProvided_BindsScenarioInputOnce()
+    {
+        var actual = CliArgumentParser.TryParse(
+            [
+                "--scenario", "toh264rife",
+                "--input", @"C:\video\a.mkv",
+                "--fps-multiplier", "3",
+                "--interp-quality", "high",
+                "--content-profile", "anime",
+                "--quality-profile", "high",
+                "--container", "mkv",
+                "--keep-source"
+            ],
+            CreateRegistry(),
+            out var parsed,
+            out var errorText);
+
+        actual.Should().BeTrue();
+        errorText.Should().BeNull();
+        parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mkv");
+        parsed.Scenario.Should().Be("toh264rife");
+        parsed.Info.Should().BeFalse();
+        parsed.ScenarioArgCount.Should().Be(11);
+        var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToH264RifeRequest>().Subject;
+        scenarioInput.KeepSource.Should().BeTrue();
+        scenarioInput.FramesPerSecondMultiplier.Should().Be(3);
+        scenarioInput.InterpolationQualityProfile.Should().Be("high");
+        scenarioInput.VideoSettings.Should().NotBeNull();
+        scenarioInput.VideoSettings!.ContentProfile.Should().Be("anime");
+        scenarioInput.VideoSettings.QualityProfile.Should().Be("high");
+        scenarioInput.OutputContainer.Should().Be("mkv");
+    }
+
+    [Fact]
     public void CreateScenario_WhenTomkvgpuUsesSupportedHdDownscale_MapsRuntimeRequest()
     {
         var parsedOk = CliArgumentParser.TryParse(
@@ -436,6 +470,41 @@ public sealed class CliParsingTests
         errorText.Should().Be(expectedError);
     }
 
+    [Theory]
+    [InlineData("--fps-multiplier", "4", "--fps-multiplier must be one of: 2, 3.")]
+    [InlineData("--interp-quality", "ultra", "--interp-quality must be one of: low, default, high.")]
+    [InlineData("--container", "avi", "--container must be one of: mp4, mkv.")]
+    public void TryParse_WhenToH264RifeOptionValueIsUnsupported_ReturnsFalse(
+        string optionName,
+        string value,
+        string expectedError)
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264rife", "--input", @"C:\video\a.mp4", optionName, value],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be(expectedError);
+    }
+
+    [Theory]
+    [InlineData("--fps-multiplier")]
+    [InlineData("--interp-quality")]
+    [InlineData("--container")]
+    public void TryParse_WhenToH264RifeOptionValueIsMissing_ReturnsFalse(string optionName)
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264rife", "--input", @"C:\video\a.mp4", optionName],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be($"{optionName} requires a value.");
+    }
+
     [Fact]
     public void TryParse_WhenMaxFpsIsUnsupported_ReturnsFalse()
     {
@@ -476,6 +545,19 @@ public sealed class CliParsingTests
     }
 
     [Fact]
+    public void TryParse_WhenTomkvgpuDownscaleAlgorithmIsProvidedWithoutDownscale_ReturnsFalse()
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--downscale-algo", "lanczos"],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--downscale-algo requires --downscale.");
+    }
+
+    [Fact]
     public void TryParse_WhenToH264GpuDownscaleAlgorithmIsUnsupported_ReturnsFalse()
     {
         var actual = CliArgumentParser.TryParse(
@@ -486,6 +568,19 @@ public sealed class CliParsingTests
 
         actual.Should().BeFalse();
         errorText.Should().Be("--downscale-algo must be one of: bilinear, bicubic, lanczos.");
+    }
+
+    [Fact]
+    public void TryParse_WhenToH264GpuDownscaleAlgorithmIsProvidedWithoutDownscale_ReturnsFalse()
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--downscale-algo", "lanczos"],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--downscale-algo requires --downscale.");
     }
 
     [Fact]

@@ -34,183 +34,212 @@ internal static class ToMkvGpuCliRequestParser
     {
         request = default!;
         errorText = null;
-
-        var overlayBackground = false;
-        var synchronizeAudio = false;
-        var keepSource = false;
-        int? downscaleTargetHeight = null;
-        int? maxFramesPerSecond = null;
-        int? cq = null;
-        decimal? maxrate = null;
-        decimal? bufsize = null;
-        string? contentProfile = null;
-        string? qualityProfile = null;
-        string? algorithm = null;
-        string? nvencPreset = null;
+        var state = new ParseState();
 
         for (var index = 0; index < args.Count; index++)
         {
             var token = args[index];
-            if (string.Equals(token, KeepSourceOptionName, StringComparison.OrdinalIgnoreCase))
+            if (!TryHandleToken(args, ref index, token, state, out errorText))
             {
-                keepSource = true;
-                continue;
+                return false;
             }
+        }
 
-            if (string.Equals(token, OverlayBackgroundOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                overlayBackground = true;
-                continue;
-            }
-
-            if (string.Equals(token, SynchronizeAudioOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                synchronizeAudio = true;
-                continue;
-            }
-
-            if (string.Equals(token, DownscaleOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadInt(args, ref index, token, "--downscale must be an integer.", out downscaleTargetHeight, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, MaxFramesPerSecondOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadInt(args, ref index, token, "--max-fps must be an integer.", out maxFramesPerSecond, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, CqOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadInt(args, ref index, token, "--cq must be an integer.", out cq, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, MaxrateOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadDecimal(args, ref index, token, "--maxrate must be a number.", out maxrate, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, BufsizeOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadDecimal(args, ref index, token, "--bufsize must be a number.", out bufsize, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, ContentProfileOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out contentProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, QualityProfileOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out qualityProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, DownscaleAlgorithmOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out algorithm, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, NvencPresetOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out nvencPreset, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            errorText = token.StartsWith("-", StringComparison.Ordinal)
-                ? $"Unknown option: {token}"
-                : $"Unexpected argument: {token}";
+        if (!ValidateOptionCombinations(state, out errorText))
+        {
             return false;
         }
 
-        if (downscaleTargetHeight is null && !string.IsNullOrWhiteSpace(algorithm))
+        return TryCreateRequest(state, out request, out errorText);
+    }
+
+    private static bool TryHandleToken(
+        IReadOnlyList<string> args,
+        ref int index,
+        string token,
+        ParseState state,
+        out string? errorText)
+    {
+        var normalizedToken = token.ToLowerInvariant();
+        switch (normalizedToken)
+        {
+            case KeepSourceOptionName:
+                state.KeepSource = true;
+                errorText = null;
+                return true;
+            case OverlayBackgroundOptionName:
+                state.OverlayBackground = true;
+                errorText = null;
+                return true;
+            case SynchronizeAudioOptionName:
+                state.SynchronizeAudio = true;
+                errorText = null;
+                return true;
+            case DownscaleOptionName:
+                if (!CliOptionReader.TryReadInt(
+                    args,
+                    ref index,
+                    token,
+                    "--downscale must be an integer.",
+                    out state.DownscaleTargetHeight,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                return true;
+            case MaxFramesPerSecondOptionName:
+                if (!CliOptionReader.TryReadInt(
+                    args,
+                    ref index,
+                    token,
+                    "--max-fps must be an integer.",
+                    out state.MaxFramesPerSecond,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                return true;
+            case CqOptionName:
+                if (!CliOptionReader.TryReadInt(
+                    args,
+                    ref index,
+                    token,
+                    "--cq must be an integer.",
+                    out state.Cq,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                return true;
+            case MaxrateOptionName:
+                if (!CliOptionReader.TryReadDecimal(
+                    args,
+                    ref index,
+                    token,
+                    "--maxrate must be a number.",
+                    out state.Maxrate,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                return true;
+            case BufsizeOptionName:
+                if (!CliOptionReader.TryReadDecimal(
+                    args,
+                    ref index,
+                    token,
+                    "--bufsize must be a number.",
+                    out state.Bufsize,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                return true;
+            case ContentProfileOptionName:
+                return CliOptionReader.TryReadRequiredValue(args, ref index, token, out state.ContentProfile, out errorText);
+            case QualityProfileOptionName:
+                return CliOptionReader.TryReadRequiredValue(args, ref index, token, out state.QualityProfile, out errorText);
+            case DownscaleAlgorithmOptionName:
+                return CliOptionReader.TryReadRequiredValue(args, ref index, token, out state.Algorithm, out errorText);
+            case NvencPresetOptionName:
+                return CliOptionReader.TryReadRequiredValue(args, ref index, token, out state.NvencPreset, out errorText);
+            default:
+                errorText = token.StartsWith("-", StringComparison.Ordinal)
+                    ? $"Unknown option: {token}"
+                    : $"Unexpected argument: {token}";
+                return false;
+        }
+    }
+
+    private static bool ValidateOptionCombinations(ParseState state, out string? errorText)
+    {
+        errorText = null;
+
+        if (state.DownscaleTargetHeight is null && !string.IsNullOrWhiteSpace(state.Algorithm))
         {
             errorText = "--downscale-algo requires --downscale.";
             return false;
         }
 
+        return true;
+    }
+
+    private static bool TryCreateRequest(ParseState state, out ToMkvGpuRequest request, out string? errorText)
+    {
+        request = default!;
+        errorText = null;
+
         try
         {
             var videoSettingsRequest = VideoSettingsRequest.CreateOrNull(
-                contentProfile: contentProfile,
-                qualityProfile: qualityProfile,
-                cq: cq,
-                maxrate: maxrate,
-                bufsize: bufsize);
-            var downscaleRequest = downscaleTargetHeight.HasValue
-                ? new DownscaleRequest(downscaleTargetHeight.Value, algorithm)
+                contentProfile: state.ContentProfile,
+                qualityProfile: state.QualityProfile,
+                cq: state.Cq,
+                maxrate: state.Maxrate,
+                bufsize: state.Bufsize);
+            var downscaleRequest = state.DownscaleTargetHeight.HasValue
+                ? new DownscaleRequest(state.DownscaleTargetHeight.Value, state.Algorithm)
                 : null;
 
             request = new ToMkvGpuRequest(
-                overlayBackground: overlayBackground,
-                synchronizeAudio: synchronizeAudio,
-                keepSource: keepSource,
+                overlayBackground: state.OverlayBackground,
+                synchronizeAudio: state.SynchronizeAudio,
+                keepSource: state.KeepSource,
                 videoSettings: videoSettingsRequest,
                 downscale: downscaleRequest,
-                nvencPreset: nvencPreset,
-                maxFramesPerSecond: maxFramesPerSecond);
+                nvencPreset: state.NvencPreset,
+                maxFramesPerSecond: state.MaxFramesPerSecond);
             return true;
         }
         catch (ArgumentOutOfRangeException exception)
         {
-            errorText = exception.ParamName switch
-            {
-                "targetHeight" => exception.ActualValue is int actualHeight && actualHeight > 0
-                    ? $"--downscale must be one of: {CliValueFormatter.FormatList(DownscaleRequest.SupportedTargetHeights)}."
-                    : "--downscale must be greater than zero.",
-                "algorithm" => $"--downscale-algo must be one of: {CliValueFormatter.FormatList(DownscaleRequest.SupportedAlgorithms)}.",
-                "cq" => "--cq must be greater than zero.",
-                "maxrate" => "--maxrate must be greater than zero.",
-                "bufsize" => "--bufsize must be greater than zero.",
-                "maxFramesPerSecond" => $"--max-fps must be one of: {CliValueFormatter.FormatList(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}.",
-                "contentProfile" => $"--content-profile must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedContentProfiles)}.",
-                "qualityProfile" => $"--quality-profile must be one of: {CliValueFormatter.FormatList(VideoSettingsRequest.SupportedQualityProfiles)}.",
-                "nvencPreset" => $"--nvenc-preset must be one of: {CliValueFormatter.FormatList(NvencPresetOptions.SupportedPresets)}.",
-                _ => exception.Message
-            };
+            errorText = MapOutOfRangeError(exception);
             return false;
         }
+    }
+
+    private static string MapOutOfRangeError(ArgumentOutOfRangeException exception)
+    {
+        return exception.ParamName switch
+        {
+            "targetHeight" => exception.ActualValue is int actualHeight && actualHeight > 0
+                ? BuildSupportedError("--downscale", DownscaleRequest.SupportedTargetHeights)
+                : "--downscale must be greater than zero.",
+            "algorithm" => BuildSupportedError("--downscale-algo", DownscaleRequest.SupportedAlgorithms),
+            "cq" => "--cq must be greater than zero.",
+            "maxrate" => "--maxrate must be greater than zero.",
+            "bufsize" => "--bufsize must be greater than zero.",
+            "maxFramesPerSecond" => BuildSupportedError("--max-fps", ToMkvGpuRequest.SupportedMaxFramesPerSecond),
+            "contentProfile" => BuildSupportedError("--content-profile", VideoSettingsRequest.SupportedContentProfiles),
+            "qualityProfile" => BuildSupportedError("--quality-profile", VideoSettingsRequest.SupportedQualityProfiles),
+            "nvencPreset" => BuildSupportedError("--nvenc-preset", NvencPresetOptions.SupportedPresets),
+            _ => exception.Message
+        };
+    }
+
+    private static string BuildSupportedError<T>(string optionName, IReadOnlyList<T> supportedValues)
+    {
+        return $"{optionName} must be one of: {CliValueFormatter.FormatList(supportedValues)}.";
+    }
+
+    private sealed class ParseState
+    {
+        public bool OverlayBackground;
+        public bool SynchronizeAudio;
+        public bool KeepSource;
+        public int? DownscaleTargetHeight;
+        public int? MaxFramesPerSecond;
+        public int? Cq;
+        public decimal? Maxrate;
+        public decimal? Bufsize;
+        public string? ContentProfile;
+        public string? QualityProfile;
+        public string? Algorithm;
+        public string? NvencPreset;
     }
 }

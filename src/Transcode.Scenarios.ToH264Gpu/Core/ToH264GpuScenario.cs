@@ -64,12 +64,23 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// </summary>
     internal ToH264GpuDecision BuildDecision(SourceVideo video)
     {
-        return BuildDecision(video, includeExecutionPayload: true);
+        return BuildDecisionForExecution(video);
     }
 
-    private ToH264GpuDecision BuildDecision(SourceVideo video, bool includeExecutionPayload)
+    private ToH264GpuDecision BuildDecisionForExecution(SourceVideo video)
+    {
+        return BuildDecisionCore(video, DecisionPayloadMode.Execution);
+    }
+
+    private ToH264GpuDecision BuildDecisionForInfo(SourceVideo video)
+    {
+        return BuildDecisionCore(video, DecisionPayloadMode.Info);
+    }
+
+    private ToH264GpuDecision BuildDecisionCore(SourceVideo video, DecisionPayloadMode payloadMode)
     {
         ArgumentNullException.ThrowIfNull(video);
+        var includeExecutionPayload = payloadMode == DecisionPayloadMode.Execution;
 
         var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
         var downscaleRequest = Request.Downscale;
@@ -135,13 +146,19 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     /// <inheritdoc />
     protected override string FormatInfoCore(SourceVideo video)
     {
-        return InfoFormatter.Format(video, BuildDecision(video, includeExecutionPayload: false));
+        return InfoFormatter.Format(video, BuildDecisionForInfo(video));
     }
 
     /// <inheritdoc />
     protected override ScenarioExecution BuildExecutionCore(SourceVideo video)
     {
-        return _ffmpegTool.BuildExecution(video, BuildDecision(video));
+        return _ffmpegTool.BuildExecution(video, BuildDecisionForExecution(video));
+    }
+
+    private enum DecisionPayloadMode
+    {
+        Info,
+        Execution
     }
 
     private bool CanCopyVideo(SourceVideo video, bool useDownscale)

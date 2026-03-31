@@ -23,110 +23,132 @@ internal static class ToH264RifeCliRequestParser
     {
         request = default!;
         errorText = null;
-
-        var keepSource = false;
-        var framesPerSecondMultiplier = 2;
-        string? interpolationQualityProfile = null;
-        string? contentProfile = null;
-        string? qualityProfile = null;
-        string? outputContainer = null;
+        var state = new ParseState();
 
         for (var index = 0; index < args.Count; index++)
         {
             var token = args[index];
-            if (string.Equals(token, KeepSourceOptionName, StringComparison.OrdinalIgnoreCase))
+            if (!TryHandleToken(args, ref index, token, state, out errorText))
             {
-                keepSource = true;
-                continue;
+                return false;
             }
-
-            if (string.Equals(token, FpsMultiplierOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                int? parsedMultiplier;
-                if (!CliOptionReader.TryReadInt(
-                        args,
-                        ref index,
-                        token,
-                        $"--fps-multiplier must be one of: {CliValueFormatter.FormatList(ToH264RifeRequest.SupportedFramesPerSecondMultipliers)}.",
-                        out parsedMultiplier,
-                        out errorText))
-                {
-                    return false;
-                }
-
-                framesPerSecondMultiplier = parsedMultiplier ?? framesPerSecondMultiplier;
-                continue;
-            }
-
-            if (string.Equals(token, InterpQualityOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out interpolationQualityProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, ContentProfileOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out contentProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, QualityProfileOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out qualityProfile, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(token, ContainerOptionName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!CliOptionReader.TryReadRequiredValue(args, ref index, token, out outputContainer, out errorText))
-                {
-                    return false;
-                }
-
-                continue;
-            }
-
-            errorText = $"Unexpected argument: {token}";
-            return false;
         }
+
+        return TryCreateRequest(state, out request, out errorText);
+    }
+
+    private static bool TryHandleToken(
+        IReadOnlyList<string> args,
+        ref int index,
+        string token,
+        ParseState state,
+        out string? errorText)
+    {
+        var normalizedToken = token.ToLowerInvariant();
+        switch (normalizedToken)
+        {
+            case KeepSourceOptionName:
+                state.KeepSource = true;
+                errorText = null;
+                return true;
+            case FpsMultiplierOptionName:
+                if (!CliOptionReader.TryReadInt(
+                    args,
+                    ref index,
+                    token,
+                    BuildSupportedError("--fps-multiplier", ToH264RifeRequest.SupportedFramesPerSecondMultipliers),
+                    out var framesPerSecondMultiplier,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                state.FramesPerSecondMultiplier = framesPerSecondMultiplier ?? state.FramesPerSecondMultiplier;
+                return true;
+            case InterpQualityOptionName:
+                return CliOptionReader.TryReadRequiredValue(
+                    args,
+                    ref index,
+                    token,
+                    out state.InterpolationQualityProfile,
+                    out errorText);
+            case ContentProfileOptionName:
+                return CliOptionReader.TryReadRequiredValue(
+                    args,
+                    ref index,
+                    token,
+                    out state.ContentProfile,
+                    out errorText);
+            case QualityProfileOptionName:
+                return CliOptionReader.TryReadRequiredValue(
+                    args,
+                    ref index,
+                    token,
+                    out state.QualityProfile,
+                    out errorText);
+            case ContainerOptionName:
+                return CliOptionReader.TryReadRequiredValue(
+                    args,
+                    ref index,
+                    token,
+                    out state.OutputContainer,
+                    out errorText);
+            default:
+                errorText = $"Unexpected argument: {token}";
+                return false;
+        }
+    }
+
+    private static bool TryCreateRequest(ParseState state, out ToH264RifeRequest request, out string? errorText)
+    {
+        request = default!;
+        errorText = null;
 
         try
         {
             var videoSettings = VideoSettingsRequest.CreateOrNull(
-                contentProfile: contentProfile,
-                qualityProfile: qualityProfile);
+                contentProfile: state.ContentProfile,
+                qualityProfile: state.QualityProfile);
             request = new ToH264RifeRequest(
-                keepSource: keepSource,
-                framesPerSecondMultiplier: framesPerSecondMultiplier,
-                interpolationQualityProfile: interpolationQualityProfile,
-                outputContainer: outputContainer,
+                keepSource: state.KeepSource,
+                framesPerSecondMultiplier: state.FramesPerSecondMultiplier,
+                interpolationQualityProfile: state.InterpolationQualityProfile,
+                outputContainer: state.OutputContainer,
                 videoSettings: videoSettings);
             return true;
         }
         catch (ArgumentOutOfRangeException exception)
         {
-            errorText = exception.ParamName switch
-            {
-                "framesPerSecondMultiplier" => $"--fps-multiplier must be one of: {CliValueFormatter.FormatList(ToH264RifeRequest.SupportedFramesPerSecondMultipliers)}.",
-                "interpolationQualityProfile" => $"--interp-quality must be one of: {CliValueFormatter.FormatList(ToH264RifeRequest.SupportedInterpolationQualityProfiles)}.",
-                "contentProfile" => $"--content-profile must be one of: {CliValueFormatter.FormatList(ToH264RifeRequest.SupportedContentProfiles)}.",
-                "qualityProfile" => $"--quality-profile must be one of: {CliValueFormatter.FormatList(ToH264RifeRequest.SupportedQualityProfiles)}.",
-                "outputContainer" => $"--container must be one of: {CliValueFormatter.FormatList(ToH264RifeRequest.SupportedContainers)}.",
-                _ => exception.Message
-            };
+            errorText = MapOutOfRangeError(exception);
             return false;
         }
+    }
+
+    private static string MapOutOfRangeError(ArgumentOutOfRangeException exception)
+    {
+        return exception.ParamName switch
+        {
+            "framesPerSecondMultiplier" => BuildSupportedError("--fps-multiplier", ToH264RifeRequest.SupportedFramesPerSecondMultipliers),
+            "interpolationQualityProfile" => BuildSupportedError("--interp-quality", ToH264RifeRequest.SupportedInterpolationQualityProfiles),
+            "contentProfile" => BuildSupportedError("--content-profile", ToH264RifeRequest.SupportedContentProfiles),
+            "qualityProfile" => BuildSupportedError("--quality-profile", ToH264RifeRequest.SupportedQualityProfiles),
+            "outputContainer" => BuildSupportedError("--container", ToH264RifeRequest.SupportedContainers),
+            _ => exception.Message
+        };
+    }
+
+    private static string BuildSupportedError<T>(string optionName, IReadOnlyList<T> supportedValues)
+    {
+        return $"{optionName} must be one of: {CliValueFormatter.FormatList(supportedValues)}.";
+    }
+
+    private sealed class ParseState
+    {
+        public bool KeepSource;
+        public int FramesPerSecondMultiplier = 2;
+        public string? InterpolationQualityProfile;
+        public string? ContentProfile;
+        public string? QualityProfile;
+        public string? OutputContainer;
     }
 }
