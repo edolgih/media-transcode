@@ -71,22 +71,4 @@ public static class FfmpegExecutionLayout
     {
         return $"\"{value}\"";
     }
-
-    public static string CommandToken(string value)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value);
-
-        var normalized = value.Trim().Trim('"');
-        return LooksLikePath(normalized)
-            ? Quote(normalized)
-            : normalized;
-    }
-
-    private static bool LooksLikePath(string value)
-    {
-        return value.Contains('\\') ||
-               value.Contains('/') ||
-               value.Contains(':') ||
-               value.Any(char.IsWhiteSpace);
-    }
 }
