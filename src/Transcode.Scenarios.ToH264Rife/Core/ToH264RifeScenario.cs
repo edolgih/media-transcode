@@ -82,7 +82,7 @@ public sealed class ToH264RifeScenario : TranscodeScenario
             request: request,
             outputHeight: Math.Max(1, video.Height),
             sourceHeight: video.Height);
-        var sourceBitrate = ResolveSourceBitrate(video);
+        var sourceBitrate = SourceVideoBitrateResolver.ResolveVideoBitrateHintOrEstimate(video);
         var useFixedBucketQuality = FixedBucketVideoSettingsPolicy.ShouldUseFixedBucketQuality(
             VideoSettingsProfiles.Default,
             useDownscale: false,
@@ -103,33 +103,6 @@ public sealed class ToH264RifeScenario : TranscodeScenario
             Cq: settings.Cq,
             Maxrate: settings.Maxrate,
             Bufsize: settings.Bufsize);
-    }
-
-    private static long? ResolveSourceBitrate(SourceVideo video)
-    {
-        var resolvedMetadataBitrate = SourceVideoBitrateResolver.ResolveVideoBitrateHint(video);
-        if (resolvedMetadataBitrate.HasValue && resolvedMetadataBitrate.Value > 0)
-        {
-            return resolvedMetadataBitrate.Value;
-        }
-
-        if (video.Duration <= TimeSpan.FromSeconds(0.1) ||
-            string.IsNullOrWhiteSpace(video.FilePath) ||
-            !File.Exists(video.FilePath))
-        {
-            return null;
-        }
-
-        var fileSizeBits = new FileInfo(video.FilePath).Length * 8m;
-        if (fileSizeBits <= 0m)
-        {
-            return null;
-        }
-
-        var totalBitrate = Math.Round(fileSizeBits / (decimal)video.Duration.TotalSeconds, MidpointRounding.AwayFromZero);
-        return totalBitrate > 0m && totalBitrate <= long.MaxValue
-            ? SourceVideoBitrateResolver.ResolveVideoBitrateFromTotal((long)totalBitrate, video)
-            : null;
     }
 
     private static ResolvedVideoSettingsDefaults ApplyInterpolationRateUplift(
