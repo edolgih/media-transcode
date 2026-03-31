@@ -108,45 +108,25 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         ArgumentNullException.ThrowIfNull(video);
         var includeExecutionPayload = payloadMode == DecisionPayloadMode.Execution;
 
-        var applyDownscale = Request.Downscale is not null &&
-                             video.Height > Request.Downscale.TargetHeight;
-        ValidateDownscale(video, applyDownscale);
-
-        var applyFrameRateCap = Request.MaxFramesPerSecond.HasValue &&
-                                video.FramesPerSecond > Request.MaxFramesPerSecond.Value;
-        var requiresTimestampFix = TimestampSensitiveExtensions.Contains(video.FileExtension);
-        var copyVideo = VideoCopyCodecs.Contains(video.VideoCodec) &&
-                        !requiresTimestampFix &&
-                        !Request.OverlayBackground &&
-                        !applyDownscale &&
-                        !applyFrameRateCap;
-        var copyAudio = !Request.SynchronizeAudio &&
-                        copyVideo &&
-                        AreAudioStreamsCopyCompatible(video.AudioCodecs);
-        AudioIntent audioIntent = copyAudio
-            ? new CopyAudioIntent()
-            : Request.SynchronizeAudio
-                ? new SynchronizeAudioIntent()
-                : requiresTimestampFix
-                    ? new RepairAudioIntent()
-                    : new EncodeAudioIntent();
-        VideoIntent videoIntent = copyVideo
+        var options = ResolveOptions(video);
+        var audioIntent = BuildAudioIntent(options.AudioMode);
+        VideoIntent videoIntent = options.CopyVideo
             ? new CopyVideoIntent()
             : new EncodeVideoIntent(
                 TargetVideoCodec: "h264",
                 PreferredBackend: "gpu",
                 CompatibilityProfile: H264OutputProfile.H264High,
-                TargetFramesPerSecond: applyFrameRateCap ? Request.MaxFramesPerSecond : null,
+                TargetFramesPerSecond: options.TargetFramesPerSecond,
                 UseFrameInterpolation: false,
-                VideoSettings: Request.VideoSettings,
-                Downscale: applyDownscale ? Request.Downscale : null,
-                EncoderPreset: Request.NvencPreset);
+                VideoSettings: options.VideoSettings,
+                Downscale: options.Downscale,
+                EncoderPreset: options.NvencPreset);
 
         ProfileDrivenVideoSettingsResolution? videoResolution = null;
         ToMkvGpuResolvedSourceBitrate? sourceBitrate = null;
         if (includeExecutionPayload && videoIntent is EncodeVideoIntent encodeVideo)
         {
-            var outputHeight = ResolveOutputHeight(video, videoIntent, Request.OverlayBackground, encodeVideo.Downscale);
+            var outputHeight = ResolveOutputHeight(video, videoIntent, options.ApplyOverlayBackground, encodeVideo.Downscale);
             sourceBitrate = ResolveSourceBitrate(video);
             var useFixedBucketQuality = FixedBucketVideoSettingsPolicy.ShouldUseFixedBucketQuality(
                 _videoSettingsProfiles,
@@ -181,9 +161,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             targetContainer: "mkv",
             video: videoIntent,
             audio: audioIntent,
-            keepSource: Request.KeepSource,
-            outputPath: ResolveOutputPath(video, copyVideo, copyAudio),
-            applyOverlayBackground: Request.OverlayBackground,
+            keepSource: options.KeepSource,
+            outputPath: ResolveOutputPath(video, options.KeepSource, options.CopyVideo, options.CopyAudio, options.Downscale),
+            applyOverlayBackground: options.ApplyOverlayBackground,
             videoResolution: videoResolution,
             sourceBitrate: sourceBitrate);
     }
@@ -204,6 +184,95 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     {
         Info,
         Execution
+    }
+
+    private enum AudioPathMode
+    {
+        Copy,
+        Synchronize,
+        Repair,
+        Encode
+    }
+
+    private sealed record ResolvedScenarioOptions(
+        bool ApplyOverlayBackground,
+        bool KeepSource,
+        bool CopyVideo,
+        AudioPathMode AudioMode,
+        DownscaleRequest? Downscale,
+        double? TargetFramesPerSecond,
+        VideoSettingsRequest? VideoSettings,
+        string NvencPreset)
+    {
+        public bool CopyAudio => AudioMode == AudioPathMode.Copy;
+    }
+
+    private ResolvedScenarioOptions ResolveOptions(SourceVideo video)
+    {
+        var requestedDownscale = Request.Downscale;
+        var applyDownscale = requestedDownscale is not null &&
+                             video.Height > requestedDownscale.TargetHeight;
+        ValidateDownscale(video, applyDownscale);
+
+        var applyFrameRateCap = Request.MaxFramesPerSecond.HasValue &&
+                                video.FramesPerSecond > Request.MaxFramesPerSecond.Value;
+        var requiresTimestampFix = TimestampSensitiveExtensions.Contains(video.FileExtension);
+        var copyVideo = CanCopyVideo(video, requiresTimestampFix, Request.OverlayBackground, applyDownscale, applyFrameRateCap);
+
+        return new ResolvedScenarioOptions(
+            ApplyOverlayBackground: Request.OverlayBackground,
+            KeepSource: Request.KeepSource,
+            CopyVideo: copyVideo,
+            AudioMode: ResolveAudioMode(video, copyVideo, requiresTimestampFix),
+            Downscale: applyDownscale ? requestedDownscale : null,
+            TargetFramesPerSecond: copyVideo
+                ? null
+                : applyFrameRateCap ? Request.MaxFramesPerSecond : null,
+            VideoSettings: copyVideo ? null : Request.VideoSettings,
+            NvencPreset: Request.NvencPreset);
+    }
+
+    private AudioPathMode ResolveAudioMode(SourceVideo video, bool copyVideo, bool requiresTimestampFix)
+    {
+        if (Request.SynchronizeAudio)
+        {
+            return AudioPathMode.Synchronize;
+        }
+
+        if (requiresTimestampFix)
+        {
+            return AudioPathMode.Repair;
+        }
+
+        return copyVideo && AreAudioStreamsCopyCompatible(video.AudioCodecs)
+            ? AudioPathMode.Copy
+            : AudioPathMode.Encode;
+    }
+
+    private static AudioIntent BuildAudioIntent(AudioPathMode audioMode)
+    {
+        return audioMode switch
+        {
+            AudioPathMode.Copy => new CopyAudioIntent(),
+            AudioPathMode.Synchronize => new SynchronizeAudioIntent(),
+            AudioPathMode.Repair => new RepairAudioIntent(),
+            AudioPathMode.Encode => new EncodeAudioIntent(),
+            _ => throw new ArgumentOutOfRangeException(nameof(audioMode), audioMode, "Unsupported audio path mode.")
+        };
+    }
+
+    private static bool CanCopyVideo(
+        SourceVideo video,
+        bool requiresTimestampFix,
+        bool applyOverlayBackground,
+        bool applyDownscale,
+        bool applyFrameRateCap)
+    {
+        return VideoCopyCodecs.Contains(video.VideoCodec) &&
+               !requiresTimestampFix &&
+               !applyOverlayBackground &&
+               !applyDownscale &&
+               !applyFrameRateCap;
     }
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)
@@ -241,7 +310,12 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         return audioCodecs.All(codec => codec.Equals("mp3", StringComparison.OrdinalIgnoreCase));
     }
 
-    private string ResolveOutputPath(SourceVideo video, bool copyVideo, bool copyAudio)
+    private static string ResolveOutputPath(
+        SourceVideo video,
+        bool keepSource,
+        bool copyVideo,
+        bool copyAudio,
+        DownscaleRequest? downscale)
     {
         var directory = Path.GetDirectoryName(video.FilePath);
         if (string.IsNullOrWhiteSpace(directory))
@@ -249,15 +323,13 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             directory = ".";
         }
 
-        var appliedDownscale = Request.Downscale is not null &&
-                               video.Height > Request.Downscale.TargetHeight;
-        if (appliedDownscale)
+        if (downscale is not null)
         {
-            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, Request.Downscale!.TargetHeight)}.mkv");
+            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, downscale.TargetHeight)}.mkv");
         }
 
         var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.mkv");
-        if (!Request.KeepSource ||
+        if (!keepSource ||
             !video.Container.Equals("mkv", StringComparison.OrdinalIgnoreCase) ||
             (copyVideo && copyAudio))
         {

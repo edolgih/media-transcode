@@ -82,62 +82,46 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         ArgumentNullException.ThrowIfNull(video);
         var includeExecutionPayload = payloadMode == DecisionPayloadMode.Execution;
 
-        var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
-        var downscaleRequest = Request.Downscale;
-        var useDownscale = downscaleRequest is not null && video.Height > downscaleRequest.TargetHeight;
-        var synchronizeAudio = Request.SynchronizeAudio || RequiresAutomaticTimestampRepair(video);
-        var videoCopyCompatible = CanCopyVideo(video, useDownscale);
-        var copyVideo = videoCopyCompatible;
-        var copyAudio = !synchronizeAudio && CanCopyAudio(video);
-        AudioIntent audioIntent = copyAudio
-            ? new CopyAudioIntent()
-            : synchronizeAudio
-                ? new SynchronizeAudioIntent()
-                : new EncodeAudioIntent();
-        var videoSettingsRequest = copyVideo
-            ? null
-            : Request.VideoSettings;
-        var targetFramesPerSecond = copyVideo
-            ? (double?)null
-            : ResolveTargetFramesPerSecond(video, useDownscale);
-        var videoSettings = copyVideo
+        var options = ResolveOptions(video);
+        var audioIntent = BuildAudioIntent(options.AudioMode);
+        var videoSettings = options.CopyVideo
             ? null
             : includeExecutionPayload
-                ? ResolveVideoSettings(video, useDownscale, downscaleRequest, videoSettingsRequest)
+                ? ResolveVideoSettings(video, options.UseDownscale, options.Downscale, options.VideoSettings)
                 : null;
-        var resolvedDownscale = useDownscale
+        var resolvedDownscale = options.Downscale is not null
             ? includeExecutionPayload
-                ? downscaleRequest?.WithDefaultAlgorithm(
+                ? options.Downscale.WithDefaultAlgorithm(
                     videoSettings?.Algorithm ?? throw new InvalidOperationException("Downscale algorithm must be resolved for encode path."))
-                : downscaleRequest
+                : options.Downscale
             : null;
-        VideoIntent videoIntent = copyVideo
+        VideoIntent videoIntent = options.CopyVideo
             ? new CopyVideoIntent()
             : new EncodeVideoIntent(
                 TargetVideoCodec: "h264",
                 PreferredBackend: "gpu",
                 CompatibilityProfile: H264OutputProfile.H264High,
-                TargetFramesPerSecond: targetFramesPerSecond,
+                TargetFramesPerSecond: options.TargetFramesPerSecond,
                 UseFrameInterpolation: false,
-                VideoSettings: videoSettingsRequest,
+                VideoSettings: options.VideoSettings,
                 Downscale: resolvedDownscale,
-                EncoderPreset: Request.NvencPreset);
+                EncoderPreset: options.NvencPreset);
         var mux = new ToH264GpuDecision.MuxExecution(
-            optimizeForFastStart: targetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
+            optimizeForFastStart: options.TargetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
             mapPrimaryAudioOnly: true);
-        var videoExecution = !includeExecutionPayload || copyVideo || videoSettings is null
+        var videoExecution = !includeExecutionPayload || options.CopyVideo || videoSettings is null
             ? null
-            : BuildVideoExecution(videoSettings, useDownscale);
-        var audioExecution = !includeExecutionPayload || copyAudio
+            : BuildVideoExecution(videoSettings, options.UseDownscale, options.UseDenoise);
+        var audioExecution = !includeExecutionPayload || options.CopyAudio
             ? null
             : BuildAudioExecution(video, audioIntent);
 
         return new ToH264GpuDecision(
-            targetContainer: targetContainer,
+            targetContainer: options.TargetContainer,
             videoIntent: videoIntent,
             audioIntent: audioIntent,
-            keepSource: Request.KeepSource,
-            outputPath: ResolveOutputPath(video, targetContainer),
+            keepSource: options.KeepSource,
+            outputPath: ResolveOutputPath(video, options.TargetContainer, options.KeepSource, options.Downscale),
             mux: mux,
             videoExecution: videoExecution,
             audioExecution: audioExecution);
@@ -161,9 +145,76 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         Execution
     }
 
-    private bool CanCopyVideo(SourceVideo video, bool useDownscale)
+    private enum AudioPathMode
     {
-        if (Request.Denoise || useDownscale)
+        Copy,
+        Synchronize,
+        Encode
+    }
+
+    private sealed record ResolvedScenarioOptions(
+        string TargetContainer,
+        bool KeepSource,
+        bool CopyVideo,
+        AudioPathMode AudioMode,
+        bool UseDownscale,
+        DownscaleRequest? Downscale,
+        double? TargetFramesPerSecond,
+        VideoSettingsRequest? VideoSettings,
+        string NvencPreset,
+        bool UseDenoise)
+    {
+        public bool CopyAudio => AudioMode == AudioPathMode.Copy;
+    }
+
+    private ResolvedScenarioOptions ResolveOptions(SourceVideo video)
+    {
+        var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
+        var requestedDownscale = Request.Downscale;
+        var useDownscale = requestedDownscale is not null && video.Height > requestedDownscale.TargetHeight;
+        var copyVideo = CanCopyVideo(video, useDownscale, Request.Denoise);
+
+        return new ResolvedScenarioOptions(
+            TargetContainer: targetContainer,
+            KeepSource: Request.KeepSource,
+            CopyVideo: copyVideo,
+            AudioMode: ResolveAudioMode(video),
+            UseDownscale: useDownscale,
+            Downscale: useDownscale ? requestedDownscale : null,
+            TargetFramesPerSecond: copyVideo
+                ? null
+                : ResolveTargetFramesPerSecond(video, useDownscale, Request.KeepFramesPerSecond),
+            VideoSettings: copyVideo ? null : Request.VideoSettings,
+            NvencPreset: Request.NvencPreset,
+            UseDenoise: Request.Denoise && !useDownscale);
+    }
+
+    private AudioPathMode ResolveAudioMode(SourceVideo video)
+    {
+        if (Request.SynchronizeAudio || RequiresAutomaticTimestampRepair(video))
+        {
+            return AudioPathMode.Synchronize;
+        }
+
+        return CanCopyAudio(video)
+            ? AudioPathMode.Copy
+            : AudioPathMode.Encode;
+    }
+
+    private static AudioIntent BuildAudioIntent(AudioPathMode audioMode)
+    {
+        return audioMode switch
+        {
+            AudioPathMode.Copy => new CopyAudioIntent(),
+            AudioPathMode.Synchronize => new SynchronizeAudioIntent(),
+            AudioPathMode.Encode => new EncodeAudioIntent(),
+            _ => throw new ArgumentOutOfRangeException(nameof(audioMode), audioMode, "Unsupported audio path mode.")
+        };
+    }
+
+    private bool CanCopyVideo(SourceVideo video, bool useDownscale, bool useDenoise)
+    {
+        if (useDenoise || useDownscale)
         {
             return false;
         }
@@ -181,7 +232,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return true;
     }
 
-    private bool CanCopyAudio(SourceVideo video)
+    private static bool CanCopyAudio(SourceVideo video)
     {
         if (!video.HasAudio)
         {
@@ -194,10 +245,10 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 codec.Equals("mp3", StringComparison.OrdinalIgnoreCase));
     }
 
-    private double ResolveTargetFramesPerSecond(SourceVideo video, bool useDownscale)
+    private static double ResolveTargetFramesPerSecond(SourceVideo video, bool useDownscale, bool keepFramesPerSecond)
     {
         if (useDownscale &&
-            !Request.KeepFramesPerSecond &&
+            !keepFramesPerSecond &&
             video.FramesPerSecond > 30.0)
         {
             return DownscaleFrameRateCap;
@@ -206,7 +257,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return video.FramesPerSecond;
     }
 
-    private ToH264GpuDecision.VideoExecution BuildVideoExecution(VideoSettingsDefaults videoSettings, bool useDownscale)
+    private static ToH264GpuDecision.VideoExecution BuildVideoExecution(VideoSettingsDefaults videoSettings, bool useDownscale, bool useDenoise)
     {
         return new ToH264GpuDecision.VideoExecution(
             useHardwareDecode: useDownscale,
@@ -215,7 +266,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 maxrateKbps: ToKbps(videoSettings.Maxrate),
                 bufferSizeKbps: ToKbps(videoSettings.Bufsize)),
             adaptiveQuantization: new ToH264GpuDecision.AdaptiveQuantizationExecution(rcLookahead: 32),
-            filter: useDownscale || !Request.Denoise
+            filter: useDownscale || !useDenoise
                 ? null
                 : "hqdn3d=1.2:1.2:6:6",
             pixelFormat: useDownscale ? null : "yuv420p");
@@ -329,7 +380,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 codec.Equals("amrnb", StringComparison.OrdinalIgnoreCase));
     }
 
-    private string ResolveOutputPath(SourceVideo video, string targetContainer)
+    private static string ResolveOutputPath(SourceVideo video, string targetContainer, bool keepSource, DownscaleRequest? downscale)
     {
         var directory = Path.GetDirectoryName(video.FilePath);
         if (string.IsNullOrWhiteSpace(directory))
@@ -337,15 +388,13 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             directory = ".";
         }
 
-        var appliedDownscale = Request.Downscale is not null &&
-                               video.Height > Request.Downscale.TargetHeight;
-        if (appliedDownscale)
+        if (downscale is not null)
         {
-            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, Request.Downscale!.TargetHeight)}.{targetContainer}");
+            return Path.Combine(directory, $"{FormatKeepSourceDownscaleFileName(video.FileNameWithoutExtension, downscale.TargetHeight)}.{targetContainer}");
         }
 
         var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.{targetContainer}");
-        if (!Request.KeepSource)
+        if (!keepSource)
         {
             return outputPath;
         }
