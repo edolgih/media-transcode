@@ -265,6 +265,22 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenForceEncodeIsRequestedOnCopyCompatibleSource_UsesEncodeAtSourceResolution()
+    {
+        var sut = CreateSut(forceEncode: true);
+        var video = CreateVideo(videoCodec: "h264", audioCodecs: ["mp3"], container: "mkv", height: 1080);
+
+        var actual = sut.BuildDecision(video);
+        var encodeVideo = GetRequiredEncodeVideo(actual);
+
+        actual.CopyVideo.Should().BeFalse();
+        actual.CopyAudio.Should().BeFalse();
+        encodeVideo.Downscale.Should().BeNull();
+        actual.VideoResolution.Should().NotBeNull();
+        actual.VideoResolution!.Profile.TargetHeight.Should().Be(1080);
+    }
+
+    [Fact]
     public void Ctor_WhenMaxFpsIsNotSupported_ThrowsArgumentOutOfRangeException()
     {
         Action action = static () => _ = new ToMkvGpuRequest(maxFramesPerSecond: 55);
@@ -607,6 +623,20 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildExecution_WhenForceEncodeIsRequestedOnCopyCompatibleSource_BuildsEncodeCommandWithoutResize()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut(forceEncode: true).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-c:v h264_nvenc");
+        actual.Commands[0].Should().NotContain("scale_cuda=");
+        actual.Commands[0].Should().NotContain("-filter_complex");
+    }
+
+    [Fact]
     public void BuildExecution_WhenOverlayBackgroundIsEnabled_UsesFilterComplex()
     {
         var tool = CreateFfmpegTool();
@@ -639,12 +669,14 @@ public sealed class ToMkvGpuScenarioTests
         int? downscaleTarget = null,
         bool synchronizeAudio = false,
         bool keepSource = false,
+        bool forceEncode = false,
         int? maxFramesPerSecond = null)
     {
         return new ToMkvGpuScenario(new ToMkvGpuRequest(
             overlayBackground: overlayBackground,
             synchronizeAudio: synchronizeAudio,
             keepSource: keepSource,
+            forceEncode: forceEncode,
             downscale: downscaleTarget.HasValue ? new DownscaleRequest(downscaleTarget.Value) : null,
             maxFramesPerSecond: maxFramesPerSecond));
     }

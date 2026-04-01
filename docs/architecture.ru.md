@@ -49,7 +49,7 @@ CLI wiring:
 - затем обработка загружает source facts, просит handler создать сценарий из уже готового parsed input и вызывает `scenario.FormatInfo(...)` или `scenario.BuildExecution(...)`;
 - concrete ffmpeg command rendering теперь живет внутри scenario projects; shared core layer больше не резолвит tools и больше не проводит выполнение через общую `plan/spec/tool`-цепочку;
 - на практике добавление нового application scenario должно в основном означать добавление нового CLI scenario handler плюс scenario request/scenario-local rendering types, которыми он пользуется;
-- ordinary encode и downscale теперь разделяют одну profile-driven video-settings ось: output-height buckets, content/quality profiles, bucket bounds и source-bitrate cap adjustment приходят из shared video-settings profile catalog, а не из scenario-local hardcoded fallback-ов;
+- ordinary encode, explicit force-encode и downscale теперь разделяют одну profile-driven video-settings ось: output-height buckets, content/quality profiles, bucket bounds и source-bitrate cap adjustment приходят из shared video-settings profile catalog, а не из scenario-local hardcoded fallback-ов;
 - core request/value types больше не знают raw spellings вида `--option`; CLI-слой выступает transport adapter-ом, а `Core` остаётся domain source of truth.
 
 ## Core-CLI Boundary
@@ -95,7 +95,7 @@ CLI wiring:
 
 Текущее намерение:
 
-- ordinary downscale/encode path остаётся минимальным;
+- ordinary downscale/encode path, включая explicit force-encode в исходном разрешении, остаётся минимальным;
 - fps-cap path добавляет только те framing controls, которые действительно нужны;
 - `--sync-audio` остаётся явным repair mode.
 

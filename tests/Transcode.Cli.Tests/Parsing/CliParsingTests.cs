@@ -29,6 +29,7 @@ public sealed class CliParsingTests
             [
                 "--scenario", "tomkvgpu",
                 "--input", @"C:\video\a.mp4",
+                "--force-encode",
                 "--downscale", "576",
                 "--content-profile", "Anime",
                 "--quality-profile", "High",
@@ -48,8 +49,9 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mp4");
         parsed.Scenario.Should().Be("tomkvgpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgCount.Should().Be(18);
+        parsed.ScenarioArgCount.Should().Be(19);
         var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToMkvGpuRequest>().Subject;
+        scenarioInput.ForceEncode.Should().BeTrue();
         scenarioInput.Downscale.Should().NotBeNull();
         scenarioInput.VideoSettings.Should().NotBeNull();
         var downscale = scenarioInput.Downscale!;
@@ -73,6 +75,7 @@ public sealed class CliParsingTests
                 "--scenario", "tomkvgpu",
                 "--input", @"C:\video\a.mp4",
                 "--keep-source",
+                "--force-encode",
                 "--overlay-bg",
                 "--sync-audio",
                 "--downscale", "576",
@@ -108,6 +111,7 @@ public sealed class CliParsingTests
 
         request.InputPath.Should().Be(@"C:\video\a.mp4");
         scenarioRequest.KeepSource.Should().BeTrue();
+        scenarioRequest.ForceEncode.Should().BeTrue();
         scenarioRequest.OverlayBackground.Should().BeTrue();
         scenarioRequest.SynchronizeAudio.Should().BeTrue();
         scenarioRequest.VideoSettings.Should().NotBeNull();
@@ -332,6 +336,38 @@ public sealed class CliParsingTests
 
         scenario.Request.Downscale.Should().NotBeNull();
         scenario.Request.Downscale!.TargetHeight.Should().Be(720);
+    }
+
+    [Fact]
+    public void CreateScenario_WhenTomkvgpuUsesForceEncode_MapsRuntimeRequest()
+    {
+        var parsedOk = CliArgumentParser.TryParse(
+            [
+                "--scenario", "tomkvgpu",
+                "--input", @"C:\video\a.mkv",
+                "--force-encode"
+            ],
+            CreateRegistry(),
+            out var parsed,
+            out var errorText);
+
+        parsedOk.Should().BeTrue();
+        errorText.Should().BeNull();
+        parsed.Should().NotBeNull();
+        var request = new CliTranscodeRequest(
+            inputPath: @"C:\video\a.mkv",
+            scenarioName: parsed!.Scenario,
+            info: parsed.Info,
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
+
+        var scenario = new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToMkvGpuScenario>()
+            .Subject;
+
+        scenario.Request.ForceEncode.Should().BeTrue();
     }
 
     [Theory]

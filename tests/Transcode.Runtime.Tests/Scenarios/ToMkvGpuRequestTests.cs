@@ -20,6 +20,7 @@ public sealed class ToMkvGpuRequestTests
             overlayBackground: true,
             synchronizeAudio: true,
             keepSource: true,
+            forceEncode: true,
             videoSettings: new VideoSettingsRequest(
                 contentProfile: "Film",
                 qualityProfile: "Default",
@@ -33,6 +34,7 @@ public sealed class ToMkvGpuRequestTests
         request.KeepSource.Should().BeTrue();
         request.OverlayBackground.Should().BeTrue();
         request.SynchronizeAudio.Should().BeTrue();
+        request.ForceEncode.Should().BeTrue();
         request.Downscale.Should().NotBeNull();
         request.Downscale!.TargetHeight.Should().Be(576);
         request.Downscale.Algorithm.Should().Be("bicubic");

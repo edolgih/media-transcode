@@ -256,6 +256,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("--fps-multiplier <2|3>");
             output.ToString().Should().Contain("--interp-quality <low|default|high>");
             output.ToString().Should().Contain("--downscale <720|576|480|424>");
+            output.ToString().Should().Contain("--force-encode");
             output.ToString().Should().Contain("Default: film.");
             output.ToString().Should().Contain("Default: default.");
             output.ToString().Should().Contain("Default: p6.");

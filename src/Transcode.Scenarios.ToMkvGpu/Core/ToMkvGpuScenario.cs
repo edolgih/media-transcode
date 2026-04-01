@@ -217,7 +217,13 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         var applyFrameRateCap = Request.MaxFramesPerSecond.HasValue &&
                                 video.FramesPerSecond > Request.MaxFramesPerSecond.Value;
         var requiresTimestampFix = TimestampSensitiveExtensions.Contains(video.FileExtension);
-        var copyVideo = CanCopyVideo(video, requiresTimestampFix, Request.OverlayBackground, applyDownscale, applyFrameRateCap);
+        var copyVideo = CanCopyVideo(
+            video,
+            requiresTimestampFix,
+            Request.OverlayBackground,
+            applyDownscale,
+            applyFrameRateCap,
+            Request.ForceEncode);
 
         return new ResolvedScenarioOptions(
             ApplyOverlayBackground: Request.OverlayBackground,
@@ -266,13 +272,15 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         bool requiresTimestampFix,
         bool applyOverlayBackground,
         bool applyDownscale,
-        bool applyFrameRateCap)
+        bool applyFrameRateCap,
+        bool forceEncode)
     {
         return VideoCopyCodecs.Contains(video.VideoCodec) &&
                !requiresTimestampFix &&
                !applyOverlayBackground &&
                !applyDownscale &&
-               !applyFrameRateCap;
+               !applyFrameRateCap &&
+               !forceEncode;
     }
 
     private void ValidateDownscale(SourceVideo video, bool applyDownscale)

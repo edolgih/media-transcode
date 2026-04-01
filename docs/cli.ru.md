@@ -40,6 +40,12 @@ dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\
 dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --downscale 424
 ```
 
+Принудительный encode в исходном разрешении, но с приведением к target caps:
+
+```bash
+dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --force-encode --content-profile film --quality-profile default
+```
+
 Overlay с явным repair mode:
 
 ```bash
@@ -124,6 +130,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 Параметры quality-oriented video settings:
 
 - `--keep-source`; по умолчанию выключен
+- `--force-encode`; по умолчанию выключен
 - `--overlay-bg`; по умолчанию выключен
 - `--downscale <720|576|480|424>`; по умолчанию не применяется
 - `--max-fps <50|40|30|24>`; по умолчанию без cap

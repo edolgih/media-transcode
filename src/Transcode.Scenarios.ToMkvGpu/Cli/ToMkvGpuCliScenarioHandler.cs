@@ -55,6 +55,7 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     [
         new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "Downscale target height. Default: off."),
         new CliHelpOption("--keep-source", "Keep source file and write output to a new path. Default: off."),
+        new CliHelpOption("--force-encode", "Force full encode even for remux-compatible video, keeping the source resolution. Default: off."),
         new CliHelpOption("--overlay-bg", "Apply overlay background path during encode. Default: off."),
         new CliHelpOption($"--max-fps <{CliValueFormatter.FormatAlternatives(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}>", $"Optional frame-rate cap. Default: no cap. Supported values: {CliValueFormatter.FormatList(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}."),
         new CliHelpOption("--sync-audio", "Force sync-safe audio path. Default: off."),
@@ -79,6 +80,7 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
             $"{exeName} --scenario tomkvgpu --input \"C:\\video\\movie.mkv\"",
             $"{exeName} --scenario tomkvgpu --input \"C:\\video\\movie.mkv\" --info",
             $"{exeName} --scenario tomkvgpu --input \"C:\\video\\movie.mkv\" --keep-source --downscale 720",
+            $"{exeName} --scenario tomkvgpu --input \"C:\\video\\movie.mkv\" --force-encode --content-profile film --quality-profile default",
             $"{exeName} --scenario tomkvgpu --input \"C:\\video\\movie.mkv\" --overlay-bg --sync-audio",
             $"{exeName} --scenario tomkvgpu --input \"C:\\video\\movie.mkv\" --max-fps 50",
             $"{exeName} --scenario tomkvgpu --input \"C:\\video\\movie.mkv\" --downscale 720 --content-profile film --quality-profile default",

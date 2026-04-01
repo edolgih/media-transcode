@@ -25,6 +25,7 @@ public sealed class ToMkvGpuRequest
     /// <param name="overlayBackground">Whether background overlay should be applied during encoding.</param>
     /// <param name="synchronizeAudio">Whether the audio sync-safe path should be forced.</param>
     /// <param name="keepSource">Whether the source file should be preserved after execution.</param>
+    /// <param name="forceEncode">Whether remux-compatible sources should still use the encode path at source resolution.</param>
     /// <param name="videoSettings">Reusable video-settings directives.</param>
     /// <param name="downscale">Explicit downscale intent when the scenario requests resized output.</param>
     /// <param name="nvencPreset">Explicit NVENC preset override.</param>
@@ -33,6 +34,7 @@ public sealed class ToMkvGpuRequest
         bool overlayBackground = false,
         bool synchronizeAudio = false,
         bool keepSource = false,
+        bool forceEncode = false,
         VideoSettingsRequest? videoSettings = null,
         DownscaleRequest? downscale = null,
         string? nvencPreset = null,
@@ -58,6 +60,7 @@ public sealed class ToMkvGpuRequest
         OverlayBackground = overlayBackground;
         SynchronizeAudio = synchronizeAudio;
         KeepSource = keepSource;
+        ForceEncode = forceEncode;
         VideoSettings = videoSettings;
         Downscale = downscale;
         NvencPreset = normalizedNvencPreset ?? NvencPresetOptions.DefaultPreset;
@@ -68,6 +71,11 @@ public sealed class ToMkvGpuRequest
     /// Gets a value indicating whether background overlay should be applied during encoding.
     /// </summary>
     public bool OverlayBackground { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether remux-compatible sources should still be rebuilt through the encode path.
+    /// </summary>
+    public bool ForceEncode { get; }
 
     /// <summary>
     /// Gets reusable video-settings directives when the scenario requests them.

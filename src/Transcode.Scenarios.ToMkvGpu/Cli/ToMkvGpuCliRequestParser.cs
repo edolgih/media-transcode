@@ -16,6 +16,7 @@ internal static class ToMkvGpuCliRequestParser
 {
     private const string DownscaleOptionName = "--downscale";
     private const string KeepSourceOptionName = "--keep-source";
+    private const string ForceEncodeOptionName = "--force-encode";
     private const string OverlayBackgroundOptionName = "--overlay-bg";
     private const string MaxFramesPerSecondOptionName = "--max-fps";
     private const string SynchronizeAudioOptionName = "--sync-audio";
@@ -65,6 +66,10 @@ internal static class ToMkvGpuCliRequestParser
         {
             case KeepSourceOptionName:
                 state.KeepSource = true;
+                errorText = null;
+                return true;
+            case ForceEncodeOptionName:
+                state.ForceEncode = true;
                 errorText = null;
                 return true;
             case OverlayBackgroundOptionName:
@@ -190,6 +195,7 @@ internal static class ToMkvGpuCliRequestParser
                 overlayBackground: state.OverlayBackground,
                 synchronizeAudio: state.SynchronizeAudio,
                 keepSource: state.KeepSource,
+                forceEncode: state.ForceEncode,
                 videoSettings: videoSettingsRequest,
                 downscale: downscaleRequest,
                 nvencPreset: state.NvencPreset,
@@ -232,6 +238,7 @@ internal static class ToMkvGpuCliRequestParser
         public bool OverlayBackground;
         public bool SynchronizeAudio;
         public bool KeepSource;
+        public bool ForceEncode;
         public int? DownscaleTargetHeight;
         public int? MaxFramesPerSecond;
         public int? Cq;
