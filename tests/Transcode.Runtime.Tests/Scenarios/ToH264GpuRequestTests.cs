@@ -18,6 +18,7 @@ public sealed class ToH264GpuRequestTests
     {
         var request = new ToH264GpuRequest(
             keepSource: true,
+            forceEncode: true,
             downscale: new DownscaleRequest(576, "lanczos"),
             keepFramesPerSecond: true,
             videoSettings: new VideoSettingsRequest(
@@ -32,6 +33,7 @@ public sealed class ToH264GpuRequestTests
             outputMkv: true);
 
         request.KeepSource.Should().BeTrue();
+        request.ForceEncode.Should().BeTrue();
         request.Downscale.Should().NotBeNull();
         request.Downscale!.TargetHeight.Should().Be(576);
         request.Downscale.Algorithm.Should().Be("lanczos");

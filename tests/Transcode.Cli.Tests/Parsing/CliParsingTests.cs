@@ -135,6 +135,7 @@ public sealed class CliParsingTests
                 "--scenario", "toh264gpu",
                 "--input", @"C:\video\a.mkv",
                 "--keep-source",
+                "--force-encode",
                 "--downscale", "576",
                 "--keep-fps",
                 "--content-profile", "film",
@@ -155,9 +156,10 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mkv");
         parsed.Scenario.Should().Be("toh264gpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgCount.Should().Be(17);
+        parsed.ScenarioArgCount.Should().Be(18);
         var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToH264GpuRequest>().Subject;
         scenarioInput.KeepSource.Should().BeTrue();
+        scenarioInput.ForceEncode.Should().BeTrue();
         scenarioInput.Downscale.Should().NotBeNull();
         scenarioInput.Downscale!.TargetHeight.Should().Be(576);
         scenarioInput.KeepFramesPerSecond.Should().BeTrue();
@@ -179,6 +181,7 @@ public sealed class CliParsingTests
                 "--scenario", "toh264gpu",
                 "--input", @"C:\video\a.mkv",
                 "--keep-source",
+                "--force-encode",
                 "--downscale", "576",
                 "--keep-fps",
                 "--content-profile", "film",
@@ -212,6 +215,7 @@ public sealed class CliParsingTests
         var scenarioRequest = actual.Request;
 
         scenarioRequest.KeepSource.Should().BeTrue();
+        scenarioRequest.ForceEncode.Should().BeTrue();
         scenarioRequest.Downscale.Should().NotBeNull();
         scenarioRequest.Downscale!.TargetHeight.Should().Be(576);
         scenarioRequest.KeepFramesPerSecond.Should().BeTrue();
@@ -224,6 +228,38 @@ public sealed class CliParsingTests
         scenarioRequest.Denoise.Should().BeTrue();
         scenarioRequest.SynchronizeAudio.Should().BeTrue();
         scenarioRequest.OutputMkv.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateScenario_WhenToH264GpuUsesForceEncode_MapsRuntimeRequest()
+    {
+        var parsedOk = CliArgumentParser.TryParse(
+            [
+                "--scenario", "toh264gpu",
+                "--input", @"C:\video\a.mkv",
+                "--force-encode"
+            ],
+            CreateRegistry(),
+            out var parsed,
+            out var errorText);
+
+        parsedOk.Should().BeTrue();
+        errorText.Should().BeNull();
+        parsed.Should().NotBeNull();
+        var request = new CliTranscodeRequest(
+            inputPath: @"C:\video\a.mkv",
+            scenarioName: parsed!.Scenario,
+            info: parsed.Info,
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
+
+        var scenario = new ToH264GpuCliScenarioHandler(new ToH264GpuInfoFormatter())
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToH264GpuScenario>()
+            .Subject;
+
+        scenario.Request.ForceEncode.Should().BeTrue();
     }
 
     [Fact]

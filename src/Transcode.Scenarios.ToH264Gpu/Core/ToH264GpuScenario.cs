@@ -174,7 +174,8 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var requestedDownscale = Request.Downscale;
         var useDownscale = requestedDownscale is not null && video.Height > requestedDownscale.TargetHeight;
         ValidateDownscale(video, useDownscale, requestedDownscale);
-        var copyVideo = CanCopyVideo(video, useDownscale, Request.Denoise);
+        var copyVideo = CanCopyVideo(video, useDownscale, Request.Denoise, Request.ForceEncode);
+        ValidateSourceBucketForEncode(video, useDownscale, copyVideo);
 
         return new ResolvedScenarioOptions(
             TargetContainer: targetContainer,
@@ -214,9 +215,9 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         };
     }
 
-    private bool CanCopyVideo(SourceVideo video, bool useDownscale, bool useDenoise)
+    private bool CanCopyVideo(SourceVideo video, bool useDownscale, bool useDenoise, bool forceEncode)
     {
-        if (useDenoise || useDownscale)
+        if (useDenoise || useDownscale || forceEncode)
         {
             return false;
         }
@@ -232,6 +233,22 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         }
 
         return true;
+    }
+
+    private static void ValidateSourceBucketForEncode(SourceVideo video, bool useDownscale, bool copyVideo)
+    {
+        if (useDownscale || copyVideo || video.Height > 0)
+        {
+            return;
+        }
+
+        var outputHeight = Math.Max(1, video.Height);
+        var profile = VideoSettingsProfiles.Default.ResolveOutputProfile(outputHeight);
+        var issue = profile.ResolveSourceBucketIssue(video.Height);
+        if (!string.IsNullOrWhiteSpace(issue))
+        {
+            throw RuntimeFailures.DownscaleSourceBucketIssue(issue);
+        }
     }
 
     private static bool CanCopyAudio(SourceVideo video)

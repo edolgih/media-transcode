@@ -251,6 +251,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("Scenario: toh264gpu");
             output.ToString().Should().Contain("Scenario: toh264rife");
             output.ToString().Should().Contain("--scenario toh264gpu");
+            output.ToString().Should().Contain("--scenario toh264gpu --input C:\\video\\input.mkv --force-encode --content-profile film --quality-profile default");
             output.ToString().Should().Contain("--scenario toh264rife");
             output.ToString().Should().Contain("--max-fps <50|40|30|24>");
             output.ToString().Should().Contain("--fps-multiplier <2|3>");

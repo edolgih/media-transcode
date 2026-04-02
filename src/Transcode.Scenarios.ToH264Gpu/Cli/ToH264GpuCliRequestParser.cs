@@ -15,6 +15,7 @@ namespace Transcode.Scenarios.ToH264Gpu.Cli;
 internal static class ToH264GpuCliRequestParser
 {
     private const string KeepSourceOptionName = "--keep-source";
+    private const string ForceEncodeOptionName = "--force-encode";
     private const string DownscaleOptionName = "--downscale";
     private const string KeepFpsOptionName = "--keep-fps";
     private const string ContentProfileOptionName = "--content-profile";
@@ -66,6 +67,10 @@ internal static class ToH264GpuCliRequestParser
         {
             case KeepSourceOptionName:
                 state.KeepSource = true;
+                errorText = null;
+                return true;
+            case ForceEncodeOptionName:
+                state.ForceEncode = true;
                 errorText = null;
                 return true;
             case DownscaleOptionName:
@@ -182,6 +187,7 @@ internal static class ToH264GpuCliRequestParser
 
             request = new ToH264GpuRequest(
                 keepSource: state.KeepSource,
+                forceEncode: state.ForceEncode,
                 downscale: downscaleRequest,
                 keepFramesPerSecond: state.KeepFramesPerSecond,
                 videoSettings: videoSettingsRequest,
@@ -224,6 +230,7 @@ internal static class ToH264GpuCliRequestParser
     private sealed class ParseState
     {
         public bool KeepSource;
+        public bool ForceEncode;
         public int? DownscaleTargetHeight;
         public bool KeepFramesPerSecond;
         public string? DownscaleAlgorithm;

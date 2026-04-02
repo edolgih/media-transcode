@@ -17,6 +17,7 @@ public sealed class ToH264GpuRequest
     /// </summary>
     public ToH264GpuRequest(
         bool keepSource = false,
+        bool forceEncode = false,
         DownscaleRequest? downscale = null,
         bool keepFramesPerSecond = false,
         VideoSettingsRequest? videoSettings = null,
@@ -40,6 +41,7 @@ public sealed class ToH264GpuRequest
         }
 
         KeepSource = keepSource;
+        ForceEncode = forceEncode;
         Downscale = downscale;
         KeepFramesPerSecond = keepFramesPerSecond;
         VideoSettings = videoSettings;
@@ -53,6 +55,11 @@ public sealed class ToH264GpuRequest
     /// Gets a value indicating whether the source file should be preserved after execution.
     /// </summary>
     public bool KeepSource { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether remux-compatible sources should still be rebuilt through the encode path.
+    /// </summary>
+    public bool ForceEncode { get; }
 
     /// <summary>
     /// Gets explicit downscale intent when the scenario requests resized output.

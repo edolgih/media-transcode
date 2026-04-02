@@ -43,6 +43,50 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenForceEncodeIsRequestedForCopyCompatibleInput_UsesBucketEncodeWithoutDownscale()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(forceEncode: true));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mp4",
+            container: "mp4",
+            formatName: "mov,mp4,m4a,3gp,3g2,mj2",
+            videoCodec: "h264",
+            audioCodecs: ["aac"],
+            width: 1280,
+            height: 544,
+            framesPerSecond: 24);
+
+        var actual = sut.BuildDecision(video);
+        var encodeVideo = GetRequiredEncodeVideo(actual);
+
+        actual.CopyVideo.Should().BeFalse();
+        actual.CopyAudio.Should().BeTrue();
+        encodeVideo.Downscale.Should().BeNull();
+        encodeVideo.TargetFramesPerSecond.Should().Be(24);
+        actual.VideoCq.Should().Be(23);
+        actual.VideoMaxrateKbps.Should().Be(3800);
+        actual.VideoBufferSizeKbps.Should().Be(7600);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenForceEncodeUsesUnknownSourceHeight_ThrowsBucketHint()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(forceEncode: true));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mp4",
+            container: "mp4",
+            formatName: "mov,mp4,m4a,3gp,3g2,mj2",
+            videoCodec: "h264",
+            audioCodecs: ["aac"],
+            height: 0);
+
+        var action = () => sut.BuildDecision(video);
+
+        action.Should().Throw<RuntimeFailureException>()
+            .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
+    }
+
+    [Fact]
     public void BuildDecision_WhenFrameRateLooksVariable_CreatesEncodePlan()
     {
         var sut = CreateSut();

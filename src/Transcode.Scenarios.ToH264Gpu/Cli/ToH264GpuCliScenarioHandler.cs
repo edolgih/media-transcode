@@ -54,6 +54,7 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     public IReadOnlyList<CliHelpOption> HelpOptions =>
     [
         new CliHelpOption("--keep-source", "Keep the source file instead of replacing it when output path matches the input. Default: off."),
+        new CliHelpOption("--force-encode", "Force full encode even for remux-compatible video, keeping the source resolution. Default: off."),
         new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "GPU downscale when the source is higher than the target. Default: off."),
         new CliHelpOption("--keep-fps", "Keep the source FPS in downscale mode instead of capping to 30000/1001. Default: off."),
         new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
@@ -76,6 +77,7 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         [
             $"{exeName} --scenario toh264gpu --input C:\\video\\input.m4v",
             $"{exeName} --scenario toh264gpu --input C:\\video\\input.mkv --keep-source --sync-audio",
+            $"{exeName} --scenario toh264gpu --input C:\\video\\input.mkv --force-encode --content-profile film --quality-profile default",
             $"{exeName} --scenario toh264gpu --input C:\\video\\input.mkv --content-profile film --quality-profile default"
         ];
     }
