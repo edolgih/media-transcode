@@ -233,6 +233,46 @@ public sealed class PrimaryTranscodeProcessorTests
     }
 
     [Fact]
+    public void Process_WhenToH264GpuDownscale576IsRequestedForZeroHeight_ReturnsLegacyBucketRemLine()
+    {
+        var sut = new PrimaryTranscodeProcessor(
+            CreateInspector(new VideoProbeSnapshot(
+                container: "mkv",
+                streams:
+                [
+                    new VideoProbeStream(streamType: "video", codec: "h264", width: 1920, height: 0, framesPerSecond: 25),
+                    new VideoProbeStream(streamType: "audio", codec: "aac")
+                ],
+                duration: TimeSpan.FromMinutes(10))),
+            CreateScenarioRegistry(),
+            CreateLogger<PrimaryTranscodeProcessor>());
+
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv", "toh264gpu", false, "--downscale", "576"));
+
+        actual.Should().Be("REM 576 source bucket missing: height 0; add SourceBuckets");
+    }
+
+    [Fact]
+    public void Process_WhenToH264GpuInfoModeDownscale576IsRequestedForZeroHeight_ReturnsInfoBucketMarker()
+    {
+        var sut = new PrimaryTranscodeProcessor(
+            CreateInspector(new VideoProbeSnapshot(
+                container: "mkv",
+                streams:
+                [
+                    new VideoProbeStream(streamType: "video", codec: "h264", width: 1920, height: 0, framesPerSecond: 25),
+                    new VideoProbeStream(streamType: "audio", codec: "aac")
+                ],
+                duration: TimeSpan.FromMinutes(10))),
+            CreateScenarioRegistry(),
+            CreateLogger<PrimaryTranscodeProcessor>());
+
+        var actual = sut.Process(CreateRequest(@"C:\video\a.mkv", "toh264gpu", true, "--downscale", "576"));
+
+        actual.Should().Be("a.mkv: [576 source bucket missing: height 0; add SourceBuckets]");
+    }
+
+    [Fact]
     public void Process_WhenInfoModeProbeFails_ReturnsInfoMarker()
     {
         var sut = new PrimaryTranscodeProcessor(

@@ -89,6 +89,18 @@ public sealed class ToH264GpuInfoFormatterTests
         actual.Should().Be("input.mp4: [ffprobe failed]");
     }
 
+    [Fact]
+    public void FormatFailure_WhenDownscaleSourceBucketIssueOccurs_ReturnsIssueMessage()
+    {
+        var sut = CreateSut();
+
+        var actual = sut.FormatFailure(
+            @"C:\nested\folder\input.mp4",
+            RuntimeFailures.DownscaleSourceBucketIssue("576 source bucket missing: height 0; add SourceBuckets"));
+
+        actual.Should().Be("input.mp4: [576 source bucket missing: height 0; add SourceBuckets]");
+    }
+
     private static ToH264GpuInfoFormatter CreateSut()
     {
         return new ToH264GpuInfoFormatter();

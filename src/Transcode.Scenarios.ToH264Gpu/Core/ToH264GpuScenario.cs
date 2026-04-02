@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Transcode.Core.Failures;
 using Transcode.Core.MediaIntent;
 using Transcode.Core.Scenarios;
 using Transcode.Core.Videos;
@@ -172,6 +173,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
         var requestedDownscale = Request.Downscale;
         var useDownscale = requestedDownscale is not null && video.Height > requestedDownscale.TargetHeight;
+        ValidateDownscale(video, useDownscale, requestedDownscale);
         var copyVideo = CanCopyVideo(video, useDownscale, Request.Denoise);
 
         return new ResolvedScenarioOptions(
@@ -243,6 +245,31 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return codec is not null &&
                (codec.Equals("aac", StringComparison.OrdinalIgnoreCase) ||
                 codec.Equals("mp3", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void ValidateDownscale(SourceVideo video, bool useDownscale, DownscaleRequest? requestedDownscale)
+    {
+        var targetHeight = requestedDownscale?.TargetHeight;
+        if (!targetHeight.HasValue)
+        {
+            return;
+        }
+
+        if (!useDownscale && video.Height > 0)
+        {
+            return;
+        }
+
+        if (!VideoSettingsProfiles.Default.TryGetProfile(targetHeight.Value, out var profile))
+        {
+            return;
+        }
+
+        var issue = profile.ResolveSourceBucketIssue(video.Height);
+        if (!string.IsNullOrWhiteSpace(issue))
+        {
+            throw RuntimeFailures.DownscaleSourceBucketIssue(issue);
+        }
     }
 
     private static double ResolveTargetFramesPerSecond(SourceVideo video, bool useDownscale, bool keepFramesPerSecond)

@@ -22,8 +22,14 @@ public sealed class ToH264GpuInfoFormatter
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(exception);
 
-        var marker = exception is RuntimeFailureException runtimeFailure && runtimeFailure.Code == RuntimeFailureCode.NoVideoStream
-            ? "no video stream"
+        var marker = exception is RuntimeFailureException runtimeFailure
+            ? runtimeFailure.Code switch
+            {
+                RuntimeFailureCode.NoVideoStream => "no video stream",
+                RuntimeFailureCode.DownscaleSourceBucketIssue => runtimeFailure.Message,
+                var code when code.IsProbeFailure() => "ffprobe failed",
+                _ => "ffprobe failed"
+            }
             : "ffprobe failed";
         return $"{Path.GetFileName(filePath.Trim())}: [{marker}]";
     }

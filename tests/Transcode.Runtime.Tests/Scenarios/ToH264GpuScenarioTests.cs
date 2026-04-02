@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Transcode.Core.Failures;
 using Transcode.Core.MediaIntent;
 using Transcode.Core.Videos;
 using Transcode.Core.VideoSettings;
@@ -581,6 +582,24 @@ public sealed class ToH264GpuScenarioTests
         encodeVideo.Downscale.Algorithm.Should().Be("bilinear");
         encodeVideo.TargetFramesPerSecond.Should().BeApproximately(30000d / 1001d, 0.0001);
         encodeVideo.VideoSettings.Should().BeNull();
+    }
+
+    [Fact]
+    public void BuildDecision_WhenDownscaleIsRequestedForZeroHeight_ThrowsBucketHint()
+    {
+        var sut = CreateSut(downscaleTarget: 576);
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["ac3"],
+            height: 0);
+
+        var action = () => sut.BuildDecision(video);
+
+        action.Should().Throw<RuntimeFailureException>()
+            .Which.Code.Should().Be(RuntimeFailureCode.DownscaleSourceBucketIssue);
     }
 
     [Fact]

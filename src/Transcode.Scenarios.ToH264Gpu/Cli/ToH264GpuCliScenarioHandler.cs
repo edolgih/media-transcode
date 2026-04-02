@@ -124,6 +124,16 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
                 _infoFormatter.FormatFailure(request.InputPath, exception));
         }
 
+        if (exception is RuntimeFailureException downscaleFailure &&
+            downscaleFailure.Code == RuntimeFailureCode.DownscaleSourceBucketIssue)
+        {
+            return new CliScenarioFailure(
+                LogLevel.Warning,
+                "downscale_source_bucket",
+                $"REM {downscaleFailure.Message}",
+                _infoFormatter.FormatFailure(request.InputPath, exception));
+        }
+
         if (exception is RuntimeFailureException probeFailure &&
             probeFailure.Code.IsProbeFailure())
         {
