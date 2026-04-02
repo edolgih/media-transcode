@@ -1076,6 +1076,8 @@ public sealed class ToH264GpuScenarioTests
         // Assert
         actual.Commands[0].Should().Contain("-map 0:v:0 -c:v copy");
         actual.Commands[0].Should().Contain("-c:a aac");
+        actual.Commands[0].Should().Contain("-q:a 2");
+        actual.Commands[0].Should().NotContain("-b:a ");
         actual.Commands[0].Should().Contain("-movflags +faststart");
         actual.Commands[0].Should().NotContain("-c:v h264_nvenc");
     }
@@ -1130,6 +1132,8 @@ public sealed class ToH264GpuScenarioTests
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands[0].Should().Contain("-c:a aac");
+        actual.Commands[0].Should().Contain("-q:a 2");
+        actual.Commands[0].Should().NotContain("-b:a ");
         actual.Commands[0].Should().Contain("-af \"aresample=async=1:first_pts=0\"");
     }
 

@@ -243,7 +243,7 @@ public sealed class ToH264GpuFfmpegTool
             parts.Add($"-ac {options.Channels.Value}");
         }
 
-        parts.Add($"-b:a {options.BitrateKbps}k");
+        parts.Add("-q:a 2");
 
         if (!string.IsNullOrWhiteSpace(options.Filter))
         {
