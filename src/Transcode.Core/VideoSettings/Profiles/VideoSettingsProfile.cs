@@ -94,20 +94,34 @@ internal sealed class VideoSettingsProfile
         var key = BuildDefaultsKey(selection.ContentProfile, selection.QualityProfile);
         if (_defaultsByProfile.TryGetValue(key, out var defaults))
         {
-            var boundsOverride = ResolveSourceBucketDefinition(sourceHeight)?.ResolveBoundsOverride(selection.ContentProfile, selection.QualityProfile);
-            return boundsOverride is null
-                ? defaults
-                : defaults with
-                {
-                    CqMin = boundsOverride.CqMin ?? defaults.CqMin,
-                    CqMax = boundsOverride.CqMax ?? defaults.CqMax,
-                    MaxrateMin = boundsOverride.MaxrateMin ?? defaults.MaxrateMin,
-                    MaxrateMax = boundsOverride.MaxrateMax ?? defaults.MaxrateMax
-                };
+            return ApplyBoundsOverride(sourceHeight, defaults, selection.ContentProfile, selection.QualityProfile);
         }
 
         throw new InvalidOperationException(
             $"Video settings defaults are not configured for content '{selection.ContentProfile}' and quality '{selection.QualityProfile}'.");
+    }
+
+    public bool TryGetDefaults(string contentProfile, string qualityProfile, out VideoSettingsDefaults defaults)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentProfile);
+        ArgumentException.ThrowIfNullOrWhiteSpace(qualityProfile);
+
+        return _defaultsByProfile.TryGetValue(BuildDefaultsKey(contentProfile, qualityProfile), out defaults!);
+    }
+
+    public bool TryResolveDefaults(int? sourceHeight, string contentProfile, string qualityProfile, out VideoSettingsDefaults defaults)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentProfile);
+        ArgumentException.ThrowIfNullOrWhiteSpace(qualityProfile);
+
+        if (!_defaultsByProfile.TryGetValue(BuildDefaultsKey(contentProfile, qualityProfile), out var baseDefaults))
+        {
+            defaults = default!;
+            return false;
+        }
+
+        defaults = ApplyBoundsOverride(sourceHeight, baseDefaults, contentProfile, qualityProfile);
+        return true;
     }
 
     private SourceHeightBucket? ResolveSourceBucketDefinition(int? sourceHeight)
@@ -122,6 +136,24 @@ internal sealed class VideoSettingsProfile
         }
 
         return SourceBuckets.FirstOrDefault(static bucket => bucket.IsDefault);
+    }
+
+    private VideoSettingsDefaults ApplyBoundsOverride(
+        int? sourceHeight,
+        VideoSettingsDefaults defaults,
+        string contentProfile,
+        string qualityProfile)
+    {
+        var boundsOverride = ResolveSourceBucketDefinition(sourceHeight)?.ResolveBoundsOverride(contentProfile, qualityProfile);
+        return boundsOverride is null
+            ? defaults
+            : defaults with
+            {
+                CqMin = boundsOverride.CqMin ?? defaults.CqMin,
+                CqMax = boundsOverride.CqMax ?? defaults.CqMax,
+                MaxrateMin = boundsOverride.MaxrateMin ?? defaults.MaxrateMin,
+                MaxrateMax = boundsOverride.MaxrateMax ?? defaults.MaxrateMax
+            };
     }
 
     private static string BuildDefaultsKey(string contentProfile, string qualityProfile)

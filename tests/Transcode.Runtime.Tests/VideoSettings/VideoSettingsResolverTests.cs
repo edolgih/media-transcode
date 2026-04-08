@@ -72,6 +72,81 @@ public sealed class VideoSettingsResolverTests
         actual.BaseSettings.QualityProfile.Should().Be("high");
     }
 
+    [Fact]
+    public void ResolveForEncode_WhenManualCqImprovesDefaultQuality_MovesRatePointAndBoundsTowardsBetterNeighbor()
+    {
+        var sut = CreateSut();
+        var request = CreateRequest(contentProfile: "anime", qualityProfile: "default", cq: 20);
+
+        var actual = sut.ResolveForEncode(
+            request: request,
+            outputHeight: 1080,
+            sourceHeight: 1080);
+
+        actual.Settings.Cq.Should().Be(20);
+        actual.Settings.Maxrate.Should().Be(4.2m);
+        actual.Settings.Bufsize.Should().Be(8.4m);
+        actual.Settings.MaxrateMin.Should().Be(2.8m);
+        actual.Settings.MaxrateMax.Should().Be(5.0m);
+    }
+
+    [Fact]
+    public void ResolveForDownscale_WhenManualCqImprovesDefaultQuality_MovesRatePointAndBoundsTowardsBetterNeighbor()
+    {
+        var sut = CreateSut();
+        var downscale = new DownscaleRequest(576);
+        var request = CreateRequest(contentProfile: "film", qualityProfile: "default", cq: 22);
+
+        var actual = sut.ResolveForDownscale(
+            request: downscale,
+            videoSettings: request,
+            sourceHeight: 1080);
+
+        actual.Settings.Cq.Should().Be(22);
+        actual.Settings.Maxrate.Should().Be(4.05m);
+        actual.Settings.Bufsize.Should().Be(8.10m);
+        actual.Settings.MaxrateMin.Should().Be(1.8m);
+        actual.Settings.MaxrateMax.Should().Be(8.0m);
+    }
+
+    [Fact]
+    public void ResolveForDownscale_WhenManualCqWorsensDefaultQuality_MovesRatePointAndBoundsTowardsWorseNeighbor()
+    {
+        var sut = CreateSut();
+        var downscale = new DownscaleRequest(576);
+        var request = CreateRequest(contentProfile: "film", qualityProfile: "default", cq: 24);
+
+        var actual = sut.ResolveForDownscale(
+            request: downscale,
+            videoSettings: request,
+            sourceHeight: 1080);
+
+        actual.Settings.Cq.Should().Be(24);
+        actual.Settings.Maxrate.Should().Be(3.55m);
+        actual.Settings.Bufsize.Should().Be(7.10m);
+        actual.Settings.MaxrateMin.Should().Be(1.5m);
+        actual.Settings.MaxrateMax.Should().Be(7.0m);
+    }
+
+    [Fact]
+    public void ResolveForDownscale_WhenManualCqImprovesAsymmetricAnimeProfile_UsesDirectionalCorridorInsteadOfDefaultClamp()
+    {
+        var sut = CreateSut();
+        var downscale = new DownscaleRequest(424);
+        var request = CreateRequest(contentProfile: "anime", qualityProfile: "default", cq: 24);
+
+        var actual = sut.ResolveForDownscale(
+            request: downscale,
+            videoSettings: request,
+            sourceHeight: 1080);
+
+        actual.Settings.Cq.Should().Be(24);
+        actual.Settings.Maxrate.Should().Be(2.1m);
+        actual.Settings.Bufsize.Should().Be(4.2m);
+        actual.Settings.MaxrateMin.Should().Be(1.6m);
+        actual.Settings.MaxrateMax.Should().Be(2.8m);
+    }
+
     private static VideoSettingsResolver CreateSut(VideoSettingsProfiles? profiles = null)
     {
         return new VideoSettingsResolver(profiles ?? VideoSettingsProfiles.Default);

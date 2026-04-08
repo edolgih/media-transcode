@@ -411,6 +411,33 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenDownscaleUsesManualCqOnAsymmetricAnimeProfile_UsesDirectionalRateCorridor()
+    {
+        var sut = new ToMkvGpuScenario(
+            new ToMkvGpuRequest(
+                downscale: new DownscaleRequest(424),
+                videoSettings: new VideoSettingsRequest(
+                    contentProfile: "anime",
+                    qualityProfile: "default",
+                    cq: 24)),
+            VideoSettingsProfiles.Default);
+        var video = CreateVideo(
+            container: "mp4",
+            height: 1080,
+            videoCodec: "av1",
+            audioCodecs: ["aac"],
+            filePath: @"C:\video\input.mp4");
+
+        var actual = sut.BuildDecision(video).Should().BeOfType<ToMkvGpuDecision>().Subject;
+        actual.VideoResolution.Should().NotBeNull();
+        var settings = actual.VideoResolution!.Settings;
+
+        settings.Cq.Should().Be(24);
+        settings.Maxrate.Should().Be(2.1m);
+        settings.Bufsize.Should().Be(4.2m);
+    }
+
+    [Fact]
     public void BuildDecision_WhenDownscale720RequestedForLargerSource_AppliesDownscaleAndForcesEncode()
     {
         var sut = CreateSut(downscaleTarget: 720);

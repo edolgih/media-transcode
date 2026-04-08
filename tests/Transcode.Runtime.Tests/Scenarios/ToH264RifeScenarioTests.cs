@@ -176,6 +176,27 @@ public sealed class ToH264RifeScenarioTests
     }
 
     [Fact]
+    public void BuildDecision_WhenManualCqImprovesAnimeEncode_UsesDirectionalRateCorridorBeforeInterpolationUplift()
+    {
+        var sut = CreateSut(
+            videoSettings: VideoSettingsRequest.CreateOrNull(
+                contentProfile: "anime",
+                qualityProfile: "default",
+                cq: 20));
+        var video = CreateVideo(height: 1080, width: 1920);
+
+        var actual = sut.BuildDecision(video);
+
+        actual.ResolvedVideoSettings.ContentProfile.Should().Be("anime");
+        actual.ResolvedVideoSettings.QualityProfile.Should().Be("default");
+        actual.ResolvedVideoSettings.Cq.Should().Be(20);
+        actual.ResolvedVideoSettings.Maxrate.Should().Be(4.6m);
+        actual.ResolvedVideoSettings.Bufsize.Should().Be(9.2m);
+        actual.ResolvedVideoSettings.MaxrateKbps.Should().Be(4600);
+        actual.ResolvedVideoSettings.BufsizeKbps.Should().Be(9200);
+    }
+
+    [Fact]
     public void BuildDecision_WhenSourceBitrateContainsMultiAudio_UsesVideoOnlyEstimateBeforeInterpolationUplift()
     {
         var sut = CreateSut(

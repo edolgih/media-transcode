@@ -287,8 +287,57 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         spec.VideoCq.Should().Be(19);
-        spec.VideoMaxrateKbps.Should().Be(6200);
-        spec.VideoBufferSizeKbps.Should().Be(12400);
+        spec.VideoMaxrateKbps.Should().Be(6000);
+        spec.VideoBufferSizeKbps.Should().Be(12000);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenManualCqImprovesAnimeEncode_UsesDirectionalRateCorridor()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "anime",
+                qualityProfile: "default",
+                cq: 20)));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["ac3"],
+            height: 1080);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoCq.Should().Be(20);
+        spec.VideoMaxrateKbps.Should().Be(4200);
+        spec.VideoBufferSizeKbps.Should().Be(8400);
+    }
+
+    [Fact]
+    public void BuildDecision_WhenDownscaleUsesManualCqOnAsymmetricAnimeProfile_UsesDirectionalRateCorridor()
+    {
+        var sut = CreateSut(new ToH264GpuRequest(
+            downscale: new DownscaleRequest(424),
+            videoSettings: new VideoSettingsRequest(
+                contentProfile: "anime",
+                qualityProfile: "default",
+                cq: 24)));
+        var video = CreateVideo(
+            filePath: @"C:\video\input.mkv",
+            container: "mkv",
+            formatName: "matroska,webm",
+            videoCodec: "av1",
+            audioCodecs: ["ac3"],
+            height: 1080);
+
+        var actual = sut.BuildDecision(video);
+        var spec = actual;
+
+        spec.VideoCq.Should().Be(24);
+        spec.VideoMaxrateKbps.Should().Be(2100);
+        spec.VideoBufferSizeKbps.Should().Be(4200);
     }
 
     [Fact]

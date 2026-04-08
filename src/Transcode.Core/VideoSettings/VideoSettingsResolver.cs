@@ -11,6 +11,7 @@ namespace Transcode.Core.VideoSettings;
 /// </summary>
 internal sealed class VideoSettingsResolver
 {
+	private static readonly string[] QualityOrder = ["high", "default", "low"];
 	private readonly VideoSettingsProfiles _profiles;
 
 	/// <summary>
@@ -64,7 +65,7 @@ internal sealed class VideoSettingsResolver
 		int? sourceHeightForDefaults)
 	{
 		var baseSettings = profile.ResolveDefaults(sourceHeightForDefaults, effectiveSelection);
-		var settings = ApplyOverrides(baseSettings, request, profile, algorithmOverride);
+		var settings = ApplyOverrides(baseSettings, effectiveSelection, request, profile, sourceHeightForDefaults, algorithmOverride);
 		return new ProfileDrivenVideoSettingsResolution(profile, effectiveSelection, baseSettings, settings);
 	}
 
@@ -81,20 +82,34 @@ internal sealed class VideoSettingsResolver
 
 	private static VideoSettingsDefaults ApplyOverrides(
 		VideoSettingsDefaults defaults,
+		EffectiveVideoSettingsSelection effectiveSelection,
 		VideoSettingsRequest? request,
 		VideoSettingsProfile profile,
+		int? sourceHeightForDefaults,
 		string? algorithmOverride)
 	{
 		var cq = request?.Cq ?? defaults.Cq;
 		var maxrate = request?.Maxrate;
 		var hasManualCq = request?.Cq.HasValue == true;
 		var hasManualMaxrate = request?.Maxrate.HasValue == true;
+		var resolvedMaxrateMin = defaults.MaxrateMin;
+		var resolvedMaxrateMax = defaults.MaxrateMax;
 
-		if (!maxrate.HasValue && hasManualCq)
+		if (hasManualCq)
 		{
-			var delta = defaults.Cq - cq;
-			var resolved = defaults.Maxrate + (delta * profile.RateModel.CqStepToMaxrateStep);
-			maxrate = Clamp(resolved, defaults.MaxrateMin, defaults.MaxrateMax);
+			var resolvedRateBounds = ResolveDirectionalRateBounds(
+				profile,
+				effectiveSelection,
+				defaults,
+				sourceHeightForDefaults,
+				cq);
+			resolvedMaxrateMin = resolvedRateBounds.MaxrateMin;
+			resolvedMaxrateMax = resolvedRateBounds.MaxrateMax;
+
+			if (!maxrate.HasValue)
+			{
+				maxrate = Clamp(resolvedRateBounds.Maxrate, resolvedMaxrateMin, resolvedMaxrateMax);
+			}
 		}
 
 		maxrate ??= defaults.Maxrate;
@@ -116,8 +131,111 @@ internal sealed class VideoSettingsResolver
 			Algorithm: algorithmOverride ?? defaults.Algorithm,
 			CqMin: defaults.CqMin,
 			CqMax: defaults.CqMax,
-			MaxrateMin: defaults.MaxrateMin,
-			MaxrateMax: defaults.MaxrateMax);
+			MaxrateMin: resolvedMaxrateMin,
+			MaxrateMax: resolvedMaxrateMax);
+	}
+
+	private static DirectionalRateBounds ResolveDirectionalRateBounds(
+		VideoSettingsProfile profile,
+		EffectiveVideoSettingsSelection effectiveSelection,
+		VideoSettingsDefaults defaults,
+		int? sourceHeightForDefaults,
+		int targetCq)
+	{
+		var delta = defaults.Cq - targetCq;
+		if (delta == 0)
+		{
+			return new DirectionalRateBounds(defaults.Maxrate, defaults.MaxrateMin, defaults.MaxrateMax);
+		}
+
+		var rateModel = ResolveDirectionalRateModel(
+			profile,
+			effectiveSelection,
+			defaults,
+			sourceHeightForDefaults,
+			delta > 0);
+		var resolvedMaxrate = defaults.Maxrate + (delta * rateModel.MaxrateStep);
+		var resolvedMaxrateMin = defaults.MaxrateMin + (delta * rateModel.MaxrateMinStep);
+		var resolvedMaxrateMax = defaults.MaxrateMax + (delta * rateModel.MaxrateMaxStep);
+
+		if (resolvedMaxrateMin > resolvedMaxrateMax)
+		{
+			(resolvedMaxrateMin, resolvedMaxrateMax) = (resolvedMaxrateMax, resolvedMaxrateMin);
+		}
+
+		return new DirectionalRateBounds(resolvedMaxrate, resolvedMaxrateMin, resolvedMaxrateMax);
+	}
+
+	private static DirectionalRateModel ResolveDirectionalRateModel(
+		VideoSettingsProfile profile,
+		EffectiveVideoSettingsSelection effectiveSelection,
+		VideoSettingsDefaults defaults,
+		int? sourceHeightForDefaults,
+		bool towardsBetterQuality)
+	{
+		ArgumentNullException.ThrowIfNull(profile);
+		ArgumentNullException.ThrowIfNull(effectiveSelection);
+		ArgumentNullException.ThrowIfNull(defaults);
+
+		var fallbackStep = profile.RateModel.CqStepToMaxrateStep;
+		var fallbackModel = new DirectionalRateModel(
+			MaxrateStep: fallbackStep,
+			MaxrateMinStep: fallbackStep,
+			MaxrateMaxStep: fallbackStep);
+
+		if (!TryResolveNeighborQualityProfile(effectiveSelection.QualityProfile, towardsBetterQuality, out var neighborQualityProfile) ||
+			!profile.TryResolveDefaults(sourceHeightForDefaults, effectiveSelection.ContentProfile, neighborQualityProfile, out var neighborDefaults))
+		{
+			return fallbackModel;
+		}
+
+		var cqDistance = Math.Abs(defaults.Cq - neighborDefaults.Cq);
+		if (cqDistance <= 0)
+		{
+			return fallbackModel;
+		}
+
+		return new DirectionalRateModel(
+			MaxrateStep: ResolveDirectionalStep(defaults.Maxrate, neighborDefaults.Maxrate, cqDistance),
+			MaxrateMinStep: ResolveDirectionalStep(defaults.MaxrateMin, neighborDefaults.MaxrateMin, cqDistance),
+			MaxrateMaxStep: ResolveDirectionalStep(defaults.MaxrateMax, neighborDefaults.MaxrateMax, cqDistance));
+	}
+
+	private static bool TryResolveNeighborQualityProfile(string qualityProfile, bool towardsBetterQuality, out string neighborQualityProfile)
+	{
+		neighborQualityProfile = string.Empty;
+
+		var currentIndex = Array.IndexOf(QualityOrder, qualityProfile);
+		if (currentIndex < 0)
+		{
+			return false;
+		}
+
+		var neighborIndex = towardsBetterQuality
+			? currentIndex - 1
+			: currentIndex + 1;
+		if (neighborIndex < 0 || neighborIndex >= QualityOrder.Length)
+		{
+			neighborIndex = towardsBetterQuality
+				? currentIndex + 1
+				: currentIndex - 1;
+		}
+
+		if (neighborIndex < 0 || neighborIndex >= QualityOrder.Length)
+		{
+			return false;
+		}
+
+		neighborQualityProfile = QualityOrder[neighborIndex];
+		return true;
+	}
+
+	private static decimal ResolveDirectionalStep(decimal currentValue, decimal neighborValue, int cqDistance)
+	{
+		var distance = Math.Abs(currentValue - neighborValue);
+		return distance > 0m
+			? distance / cqDistance
+			: 0m;
 	}
 
 	private static decimal Clamp(decimal value, decimal min, decimal max)
@@ -129,6 +247,10 @@ internal sealed class VideoSettingsResolver
 
 		return value > max ? max : value;
 	}
+
+	private sealed record DirectionalRateBounds(decimal Maxrate, decimal MaxrateMin, decimal MaxrateMax);
+
+	private sealed record DirectionalRateModel(decimal MaxrateStep, decimal MaxrateMinStep, decimal MaxrateMaxStep);
 }
 
 /*
