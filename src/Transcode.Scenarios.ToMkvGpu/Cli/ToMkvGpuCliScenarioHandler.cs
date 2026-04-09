@@ -23,6 +23,9 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     private readonly ToMkvGpuInfoFormatter _infoFormatter;
     private readonly ToMkvGpuFfmpegTool _ffmpegTool;
 
+    /*
+    Это упрощенный конструктор для стандартного ffmpeg-пути.
+    */
     /// <summary>
     /// Initializes the CLI handler for the <c>tomkvgpu</c> scenario.
     /// </summary>
@@ -34,6 +37,9 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
     {
     }
 
+    /*
+    Это полный конструктор CLI-обработчика с явным ffmpeg-tool.
+    */
     /// <summary>
     /// Initializes the CLI handler for the <c>tomkvgpu</c> scenario.
     /// </summary>
@@ -47,10 +53,28 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
+    /*
+    Это каноническое имя сценария для выбора обработчика.
+    */
+    /// <summary>
+    /// Gets the canonical scenario name handled by this CLI adapter.
+    /// </summary>
     public string Name => "tomkvgpu";
 
+    /*
+    Это legacy-командные токены, которые также активируют сценарий.
+    */
+    /// <summary>
+    /// Gets legacy command tokens that map to this scenario.
+    /// </summary>
     public IReadOnlyList<string> LegacyCommandTokens { get; } = ["tomkvgpu"];
 
+    /*
+    Это список поддерживаемых scenario-опций для help-вывода CLI.
+    */
+    /// <summary>
+    /// Gets scenario-specific CLI options displayed in help output.
+    /// </summary>
     public IReadOnlyList<CliHelpOption> HelpOptions { get; } =
     [
         new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "Downscale target height. Default: off."),
@@ -68,6 +92,9 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", $"Explicit NVENC preset override. Default: {NvencPresetOptions.DefaultPreset}.")
     ];
 
+    /*
+    Это примеры команд запуска сценария для help.
+    */
     /// <summary>
     /// Gets command examples for the <c>tomkvgpu</c> scenario.
     /// </summary>
@@ -90,6 +117,9 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         ];
     }
 
+    /*
+    Это попытка разобрать raw args в scenario-specific input.
+    */
     /// <summary>
     /// Parses raw scenario-specific arguments for the <c>tomkvgpu</c> scenario.
     /// </summary>
@@ -109,6 +139,9 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         return false;
     }
 
+    /*
+    Это создание runtime-сценария на основе нормализованного CLI запроса.
+    */
     /// <summary>
     /// Creates the <see cref="ToMkvGpuScenario"/> instance for the supplied CLI request.
     /// </summary>
@@ -120,6 +153,9 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         return new ToMkvGpuScenario(runtimeRequest, _ffmpegTool);
     }
 
+    /*
+    Это классификация исключения в legacy-совместимый формат ошибок CLI.
+    */
     /// <summary>
     /// Maps a processing exception to legacy-compatible CLI failure output for <c>tomkvgpu</c>.
     /// </summary>
@@ -151,6 +187,14 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         return new CliScenarioFailure(failure.Level, failure.LogToken, nonInfoOutput, infoOutput);
     }
 
+    /*
+    Это извлечение strongly-typed scenario request из общего CLI контейнера.
+    */
+    /// <summary>
+    /// Extracts the typed scenario request from generic CLI request payload.
+    /// </summary>
+    /// <param name="request">Per-input CLI transcode request.</param>
+    /// <returns>Typed <see cref="ToMkvGpuRequest"/> payload.</returns>
     private static ToMkvGpuRequest GetRuntimeRequest(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

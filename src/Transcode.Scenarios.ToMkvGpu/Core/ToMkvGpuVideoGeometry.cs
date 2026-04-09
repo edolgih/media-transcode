@@ -8,8 +8,21 @@ namespace Transcode.Scenarios.ToMkvGpu.Core;
 Она нужна и scenario decision, и ffmpeg rendering path, чтобы не дублировать
 overlay/downscale output size rules.
 */
+/// <summary>
+/// Provides shared output-dimension calculations for <c>tomkvgpu</c> overlay and downscale paths.
+/// </summary>
 internal static class ToMkvGpuVideoGeometry
 {
+    /*
+    Это расчет итоговых размеров кадра с учетом overlay/downscale intent.
+    */
+    /// <summary>
+    /// Resolves output dimensions for the supplied video intent and overlay mode.
+    /// </summary>
+    /// <param name="video">Inspected source video facts.</param>
+    /// <param name="videoIntent">Resolved scenario video intent.</param>
+    /// <param name="applyOverlayBackground">Whether overlay-background mode is enabled.</param>
+    /// <returns>Output width and height in pixels.</returns>
     public static (int Width, int Height) ResolveOutputDimensions(SourceVideo video, VideoIntent videoIntent, bool applyOverlayBackground)
     {
         var downscale = videoIntent is EncodeVideoIntent { Downscale: { } explicitDownscale }
@@ -35,6 +48,15 @@ internal static class ToMkvGpuVideoGeometry
         return (MakeEven(outputWidth), MakeEven(downscale.TargetHeight));
     }
 
+    /*
+    Это расчет размеров для overlay-фильтра с гарантией четных сторон.
+    */
+    /// <summary>
+    /// Resolves output dimensions used by overlay rendering paths.
+    /// </summary>
+    /// <param name="video">Inspected source video facts.</param>
+    /// <param name="targetHeight">Optional downscale target height.</param>
+    /// <returns>Overlay output width and height in pixels.</returns>
     public static (int Width, int Height) ResolveOverlayOutputDimensions(SourceVideo video, int? targetHeight)
     {
         var outputWidth = video.Width;

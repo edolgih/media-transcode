@@ -8,6 +8,9 @@ namespace Transcode.Cli.Core.Parsing;
 /// </summary>
 public sealed class CliParseResult
 {
+    /*
+    Это создание и инициализация: the common CLI parse result
+    */
     /// <summary>
     /// Initializes the common CLI parse result.
     /// </summary>
@@ -34,26 +37,41 @@ public sealed class CliParseResult
             : throw new ArgumentOutOfRangeException(nameof(scenarioArgCount), scenarioArgCount, "Scenario arg count must be non-negative.");
     }
 
+    /*
+    Это свойство, которое возвращает parsed input paths
+    */
     /// <summary>
     /// Gets the parsed input paths.
     /// </summary>
     public IReadOnlyList<string> Inputs { get; }
 
+    /*
+    Это свойство, которое возвращает selected scenario name
+    */
     /// <summary>
     /// Gets the selected scenario name.
     /// </summary>
     public string Scenario { get; }
 
+    /*
+    Это флаг, который показывает, info mode is enabled
+    */
     /// <summary>
     /// Gets a value indicating whether info mode is enabled.
     /// </summary>
     public bool Info { get; }
 
+    /*
+    Это свойство, которое возвращает normalized scenario-specific input object
+    */
     /// <summary>
     /// Gets the normalized scenario-specific input object.
     /// </summary>
     public object ScenarioInput { get; }
 
+    /*
+    Это свойство, которое возвращает count of raw scenario-specific CLI tokens
+    */
     /// <summary>
     /// Gets the count of raw scenario-specific CLI tokens.
     /// </summary>
@@ -68,6 +86,9 @@ public sealed class CliParseResult
 /// </summary>
 public sealed class CliHelpOption
 {
+    /*
+    Это создание и инициализация: a CLI help row
+    */
     /// <summary>
     /// Initializes a CLI help row.
     /// </summary>
@@ -83,11 +104,17 @@ public sealed class CliHelpOption
             : helpText;
     }
 
+    /*
+    Это свойство, которое возвращает displayed usage syntax
+    */
     /// <summary>
     /// Gets the displayed usage syntax.
     /// </summary>
     public string Usage { get; }
 
+    /*
+    Это свойство, которое возвращает human-readable help text
+    */
     /// <summary>
     /// Gets the human-readable help text.
     /// </summary>
@@ -108,6 +135,9 @@ public static class CliCommonOptions
     public const string ScenarioOptionName = "--scenario";
     public const string InfoOptionName = "--info";
 
+    /*
+    Это создание: help rows for the shared CLI options
+    */
     /// <summary>
     /// Creates help rows for the shared CLI options.
     /// </summary>

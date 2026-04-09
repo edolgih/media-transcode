@@ -14,6 +14,9 @@ namespace Transcode.Scenarios.ToMkvGpu.Core;
 /// </summary>
 public sealed class ToMkvGpuInfoFormatter
 {
+    /*
+    Это стандартный маркер ошибки probe для info-вывода.
+    */
     /// <summary>
     /// Builds the standard info marker used when probe data could not be loaded.
     /// </summary>
@@ -26,6 +29,9 @@ public sealed class ToMkvGpuInfoFormatter
         return $"{Path.GetFileName(filePath.Trim())}: [ffprobe failed]";
     }
 
+    /*
+    Это формирование краткого маркера ошибки для info/CLI.
+    */
     /// <summary>
     /// Builds a single-line failure summary for known inspection or scenario failures.
     /// </summary>
@@ -41,6 +47,9 @@ public sealed class ToMkvGpuInfoFormatter
         return $"{Path.GetFileName(filePath.Trim())}: [{marker}]";
     }
 
+    /*
+    Это краткая сводка того, какой путь выбрал сценарий для файла.
+    */
     /// <summary>
     /// Builds a single-line summary of the actions requested by ToMkvGpu for the supplied video and plan.
     /// </summary>

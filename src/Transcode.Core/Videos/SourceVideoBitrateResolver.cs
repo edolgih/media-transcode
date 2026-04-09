@@ -9,6 +9,9 @@ namespace Transcode.Core.Videos;
 /// </summary>
 public static class SourceVideoBitrateResolver
 {
+    /*
+    Это резолв: a video-only bitrate hint from source metadata when available
+    */
     /// <summary>
     /// Resolves a video-only bitrate hint from source metadata when available.
     /// </summary>
@@ -31,6 +34,9 @@ public static class SourceVideoBitrateResolver
         return null;
     }
 
+    /*
+    Это резолв: a video-only bitrate hint from source metadata or estimates it from file size when metadata is missing
+    */
     /// <summary>
     /// Resolves a video-only bitrate hint from source metadata or estimates it from file size when metadata is missing.
     /// </summary>
@@ -65,6 +71,9 @@ public static class SourceVideoBitrateResolver
             : null;
     }
 
+    /*
+    Это резолв: video-stream bitrate from a total stream bitrate by subtracting estimated audio bitrate when known
+    */
     /// <summary>
     /// Resolves video-stream bitrate from a total stream bitrate by subtracting estimated audio bitrate when known.
     /// </summary>

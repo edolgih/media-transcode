@@ -11,6 +11,9 @@ Scenario-specific аргументы он не интерпретирует, а 
 /// </summary>
 internal static class CliArgumentParser
 {
+    /*
+    Это разбор: CLI arguments using the supplied scenario registry
+    */
     /// <summary>
     /// Parses CLI arguments using the supplied scenario registry.
     /// </summary>

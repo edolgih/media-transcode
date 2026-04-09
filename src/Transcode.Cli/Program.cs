@@ -28,6 +28,9 @@ namespace Transcode.Cli;
 /// </summary>
 public static class Program
 {
+	/*
+	Это запуск: the CLI application
+	*/
 	/// <summary>
 	/// Runs the CLI application.
 	/// </summary>
@@ -96,6 +99,9 @@ public static class Program
 		}
 	}
 
+	/*
+	Это настройка UTF-8 вывода в stdout/stderr без BOM, чтобы CLI корректно печатал текст.
+	*/
 	/// <summary>
 	/// Configures UTF-8 console writers without a BOM for standard output and error.
 	/// </summary>
@@ -106,6 +112,9 @@ public static class Program
 		Console.SetError(new StreamWriter(Console.OpenStandardError(), utf8) { AutoFlush = true });
 	}
 
+	/*
+	Это резолв: the effective log file path from configuration and the CLI base directory
+	*/
 	/// <summary>
 	/// Resolves the effective log file path from configuration and the CLI base directory.
 	/// </summary>
@@ -127,6 +136,9 @@ public static class Program
 		return Path.GetFullPath(Path.Combine(cliBaseDirectory, configuredPath));
 	}
 
+	/*
+	Это запуск: the CLI using the scenario registry resolved from the service provider
+	*/
 	/// <summary>
 	/// Runs the CLI using the scenario registry resolved from the service provider.
 	/// </summary>
@@ -150,6 +162,9 @@ public static class Program
 			readRedirectedStdIn: true);
 	}
 
+	/*
+	Это запуск: the CLI using the scenario registry resolved from the service provider and explicit stdin behavior
+	*/
 	/// <summary>
 	/// Runs the CLI using the scenario registry resolved from the service provider and explicit stdin behavior.
 	/// </summary>
@@ -175,6 +190,9 @@ public static class Program
 			readRedirectedStdIn);
 	}
 
+	/*
+	Это запуск: the CLI using the supplied scenario registry
+	*/
 	/// <summary>
 	/// Runs the CLI using the supplied scenario registry.
 	/// </summary>

@@ -13,6 +13,20 @@ namespace Transcode.Scenarios.ToMkvGpu.Core;
 /// </summary>
 internal sealed class ToMkvGpuDecision
 {
+    /*
+    Это создание полностью нормализованного решения tomkvgpu для конкретного файла.
+    */
+    /// <summary>
+    /// Initializes a fully resolved <c>tomkvgpu</c> decision.
+    /// </summary>
+    /// <param name="targetContainer">Target container token.</param>
+    /// <param name="video">Resolved video intent.</param>
+    /// <param name="audio">Resolved audio intent.</param>
+    /// <param name="keepSource">Whether the source file must be kept.</param>
+    /// <param name="outputPath">Resolved output path.</param>
+    /// <param name="applyOverlayBackground">Whether overlay-background mode is enabled.</param>
+    /// <param name="videoResolution">Resolved video-settings payload for encode mode.</param>
+    /// <param name="sourceBitrate">Resolved source bitrate metadata for diagnostics.</param>
     public ToMkvGpuDecision(
         string targetContainer,
         VideoIntent video,
@@ -33,32 +47,116 @@ internal sealed class ToMkvGpuDecision
         SourceBitrate = sourceBitrate;
     }
 
+    /*
+    Это нормализованный идентификатор целевого контейнера.
+    */
+    /// <summary>
+    /// Gets the normalized target container identifier.
+    /// </summary>
     public string TargetContainer { get; }
 
+    /*
+    Это выбранный сценарий обработки видеопотока.
+    */
+    /// <summary>
+    /// Gets the resolved video intent.
+    /// </summary>
     public VideoIntent Video { get; }
 
+    /*
+    Это выбранный сценарий обработки аудиопотока.
+    */
+    /// <summary>
+    /// Gets the resolved audio intent.
+    /// </summary>
     public AudioIntent Audio { get; }
 
+    /*
+    Это флаг сохранения исходного файла после выполнения.
+    */
+    /// <summary>
+    /// Gets a value indicating whether the source file should be kept.
+    /// </summary>
     public bool KeepSource { get; }
 
+    /*
+    Это итоговый путь выходного файла, рассчитанный сценарием.
+    */
+    /// <summary>
+    /// Gets the final output path chosen by the scenario.
+    /// </summary>
     public string OutputPath { get; }
 
+    /*
+    Это флаг режима overlay background для encode-пути.
+    */
+    /// <summary>
+    /// Gets a value indicating whether overlay-background mode is enabled.
+    /// </summary>
     public bool ApplyOverlayBackground { get; }
 
+    /*
+    Это resolved payload video-настроек для ffmpeg encode-рендеринга.
+    */
+    /// <summary>
+    /// Gets profile-driven video-settings resolution details for encode mode.
+    /// </summary>
     public ProfileDrivenVideoSettingsResolution? VideoResolution { get; }
 
+    /*
+    Это источник и значение bitrate, использованные при резолве профиля.
+    */
+    /// <summary>
+    /// Gets resolved source bitrate metadata used for profile resolution and diagnostics.
+    /// </summary>
     public ToMkvGpuResolvedSourceBitrate? SourceBitrate { get; }
 
+    /*
+    Это флаг, что видео можно копировать без перекодирования.
+    */
+    /// <summary>
+    /// Gets a value indicating whether the video stream is copied.
+    /// </summary>
     public bool CopyVideo => Video is CopyVideoIntent;
 
+    /*
+    Это флаг, что аудио копируется без перекодирования.
+    */
+    /// <summary>
+    /// Gets a value indicating whether the audio stream is copied.
+    /// </summary>
     public bool CopyAudio => Audio is CopyAudioIntent;
 
+    /*
+    Это флаг, что используется sync-safe путь аудио.
+    */
+    /// <summary>
+    /// Gets a value indicating whether the decision uses audio synchronization mode.
+    /// </summary>
     public bool SynchronizeAudio => Audio is SynchronizeAudioIntent;
 
+    /*
+    Это флаг, что требуется восстановление таймстампов.
+    */
+    /// <summary>
+    /// Gets a value indicating whether timestamp repair is required.
+    /// </summary>
     public bool FixTimestamps => Audio is RepairAudioIntent;
 
+    /*
+    Это флаг, что видео нужно кодировать.
+    */
+    /// <summary>
+    /// Gets a value indicating whether video encoding is required.
+    /// </summary>
     public bool RequiresVideoEncode => !CopyVideo;
 
+    /*
+    Это флаг, что аудио нужно кодировать.
+    */
+    /// <summary>
+    /// Gets a value indicating whether audio encoding is required.
+    /// </summary>
     public bool RequiresAudioEncode => !CopyAudio;
 
     private static string NormalizeRequiredToken(string? value, string paramName)
@@ -98,4 +196,12 @@ internal sealed class ToMkvGpuDecision
     }
 }
 
+/*
+Это служебная запись о resolved bitrate источника и о том, откуда он получен.
+*/
+/// <summary>
+/// Stores resolved source bitrate and its origin label used by <c>tomkvgpu</c>.
+/// </summary>
+/// <param name="Bitrate">Resolved bitrate in bits per second.</param>
+/// <param name="Origin">Origin label describing how bitrate was resolved.</param>
 internal sealed record ToMkvGpuResolvedSourceBitrate(long? Bitrate, string Origin);

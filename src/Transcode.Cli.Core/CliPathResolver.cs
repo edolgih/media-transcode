@@ -2,12 +2,18 @@ using Microsoft.Extensions.Configuration;
 
 namespace Transcode.Cli.Core;
 
+/*
+Это резолв: configured executable paths, keeping bare command names intact and converting
+*/
 /// <summary>
 /// Resolves configured executable paths, keeping bare command names intact and converting
 /// repo-local relative paths to absolute file-system paths when possible.
 /// </summary>
 public static class CliPathResolver
 {
+    /*
+    Это чтение: a required configuration value and resolves it to an effective executable token
+    */
     /// <summary>
     /// Reads a required configuration value and resolves it to an effective executable token.
     /// </summary>

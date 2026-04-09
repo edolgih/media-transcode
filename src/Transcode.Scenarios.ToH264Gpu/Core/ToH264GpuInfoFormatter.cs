@@ -14,6 +14,9 @@ namespace Transcode.Scenarios.ToH264Gpu.Core;
 /// </summary>
 public sealed class ToH264GpuInfoFormatter
 {
+    /*
+    Это формирование краткого маркера ошибки для info/CLI.
+    */
     /// <summary>
     /// Builds a single-line failure summary for known inspection or scenario failures.
     /// </summary>
@@ -34,6 +37,9 @@ public sealed class ToH264GpuInfoFormatter
         return $"{Path.GetFileName(filePath.Trim())}: [{marker}]";
     }
 
+    /*
+    Это краткая сводка того, какой путь выбрал сценарий для файла.
+    */
     /// <summary>
     /// Builds a single-line summary of the actions requested by ToH264Gpu for the supplied video and decision.
     /// </summary>

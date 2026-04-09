@@ -9,11 +9,17 @@ namespace Transcode.Core.MediaIntent;
 /// </summary>
 public enum H264OutputProfile
 {
+    /*
+    Это выбор профиля совместимости H.264 Main.
+    */
     /// <summary>
     /// Uses the H.264 Main profile.
     /// </summary>
     H264Main = 1,
 
+    /*
+    Это выбор профиля совместимости H.264 High.
+    */
     /// <summary>
     /// Uses the H.264 High profile.
     /// </summary>

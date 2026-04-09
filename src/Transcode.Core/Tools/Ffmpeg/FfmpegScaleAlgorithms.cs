@@ -15,11 +15,17 @@ public static class FfmpegScaleAlgorithms
 
     private static readonly string[] SupportedAlgorithmsValues = [Bilinear, Bicubic, Lanczos];
 
+    /*
+    Это свойство, которое возвращает canonical scale algorithm values supported by Core
+    */
     /// <summary>
     /// Gets the canonical scale algorithm values supported by Core.
     /// </summary>
     public static IReadOnlyList<string> SupportedAlgorithms => SupportedAlgorithmsValues;
 
+    /*
+    Это проверка, the supplied scale algorithm value is supported
+    */
     /// <summary>
     /// Determines whether the supplied scale algorithm value is supported.
     /// </summary>

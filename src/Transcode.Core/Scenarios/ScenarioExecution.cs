@@ -9,6 +9,9 @@ namespace Transcode.Core.Scenarios;
 /// </summary>
 public sealed record ScenarioExecution
 {
+    /*
+    Это создание и инициализация: a scenario execution recipe
+    */
     /// <summary>
     /// Initializes a scenario execution recipe.
     /// </summary>
@@ -18,16 +21,25 @@ public sealed record ScenarioExecution
         Commands = NormalizeCommands(commands);
     }
 
+    /*
+    Это свойство, которое возвращает ordered command sequence prepared by the scenario
+    */
     /// <summary>
     /// Gets the ordered command sequence prepared by the scenario.
     /// </summary>
     public IReadOnlyList<string> Commands { get; }
 
+    /*
+    Это флаг, который показывает, the execution recipe contains no commands
+    */
     /// <summary>
     /// Gets a value indicating whether the execution recipe contains no commands.
     /// </summary>
     public bool IsEmpty => Commands.Count == 0;
 
+    /*
+    Это создание: an execution recipe with a single command
+    */
     /// <summary>
     /// Creates an execution recipe with a single command.
     /// </summary>

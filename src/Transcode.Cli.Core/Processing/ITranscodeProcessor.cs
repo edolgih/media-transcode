@@ -9,6 +9,9 @@ namespace Transcode.Cli.Core.Processing;
 /// </summary>
 internal interface ITranscodeProcessor
 {
+    /*
+    Это обработка одного CLI-запроса и возврат итоговой строки вывода.
+    */
     /// <summary>
     /// Processes the supplied CLI request.
     /// </summary>

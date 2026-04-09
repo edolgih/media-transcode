@@ -9,6 +9,9 @@ namespace Transcode.Cli.Core;
 /// </summary>
 public sealed class CliTranscodeRequest
 {
+    /*
+    Это создание и инициализация: a per-input CLI transcode request
+    */
     /// <summary>
     /// Initializes a per-input CLI transcode request.
     /// </summary>
@@ -37,26 +40,41 @@ public sealed class CliTranscodeRequest
             : throw new ArgumentOutOfRangeException(nameof(scenarioArgCount), scenarioArgCount, "Scenario arg count must be non-negative.");
     }
 
+    /*
+    Это свойство, которое возвращает input file path
+    */
     /// <summary>
     /// Gets the input file path.
     /// </summary>
     public string InputPath { get; }
 
+    /*
+    Это свойство, которое возвращает selected scenario name
+    */
     /// <summary>
     /// Gets the selected scenario name.
     /// </summary>
     public string ScenarioName { get; }
 
+    /*
+    Это флаг, который показывает, info mode is enabled
+    */
     /// <summary>
     /// Gets a value indicating whether info mode is enabled.
     /// </summary>
     public bool Info { get; }
 
+    /*
+    Это свойство, которое возвращает normalized scenario-specific input object
+    */
     /// <summary>
     /// Gets the normalized scenario-specific input object.
     /// </summary>
     public object ScenarioInput { get; }
 
+    /*
+    Это свойство, которое возвращает count of raw scenario-specific CLI tokens
+    */
     /// <summary>
     /// Gets the count of raw scenario-specific CLI tokens.
     /// </summary>

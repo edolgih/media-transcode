@@ -11,6 +11,9 @@ namespace Transcode.Core.Scenarios;
 /// </summary>
 public abstract class TranscodeScenario
 {
+    /*
+    Это создание и инициализация: a named scenario
+    */
     /// <summary>
     /// Initializes a named scenario.
     /// </summary>
@@ -21,11 +24,17 @@ public abstract class TranscodeScenario
         Name = name.Trim();
     }
 
+    /*
+    Это свойство, которое возвращает stable scenario name used by callers to select this behavior
+    */
     /// <summary>
     /// Gets the stable scenario name used by callers to select this behavior.
     /// </summary>
     public string Name { get; }
 
+    /*
+    Это построение: the scenario-specific info output for the supplied source video
+    */
     /// <summary>
     /// Builds the scenario-specific info output for the supplied source video.
     /// </summary>
@@ -38,6 +47,9 @@ public abstract class TranscodeScenario
         return FormatInfoCore(video);
     }
 
+    /*
+    Это построение: the scenario-specific execution recipe for the supplied source video
+    */
     /// <summary>
     /// Builds the scenario-specific execution recipe for the supplied source video.
     /// </summary>
@@ -51,6 +63,9 @@ public abstract class TranscodeScenario
         return execution ?? throw new InvalidOperationException($"Scenario '{Name}' returned null execution.");
     }
 
+    /*
+    Это построение: the scenario-specific info output for the supplied source video
+    */
     /// <summary>
     /// Builds the scenario-specific info output for the supplied source video.
     /// </summary>
@@ -61,6 +76,9 @@ public abstract class TranscodeScenario
         return string.Empty;
     }
 
+    /*
+    Это построение: the scenario-specific execution recipe for the supplied source video
+    */
     /// <summary>
     /// Builds the scenario-specific execution recipe for the supplied source video.
     /// </summary>

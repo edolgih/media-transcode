@@ -18,6 +18,9 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
     private readonly CliScenarioRegistry _scenarioRegistry;
     private readonly ILogger<PrimaryTranscodeProcessor> _logger;
 
+    /*
+    Это создание и инициализация: the primary CLI transcode processor
+    */
     /// <summary>
     /// Initializes the primary CLI transcode processor.
     /// </summary>
@@ -38,6 +41,9 @@ internal sealed class PrimaryTranscodeProcessor : ITranscodeProcessor
         _logger = logger;
     }
 
+    /*
+    Это обработка одного входа CLI с возвратом info-строки, диагностического сообщения или команды.
+    */
     /// <summary>
     /// Processes one CLI input and returns either info output, legacy diagnostics, or a generated command line.
     /// </summary>

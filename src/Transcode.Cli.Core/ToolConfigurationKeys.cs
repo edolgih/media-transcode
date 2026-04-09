@@ -1,5 +1,8 @@
 namespace Transcode.Cli.Core;
 
+/*
+Это определение: shared CLI configuration keys for common external tools
+*/
 /// <summary>
 /// Defines shared CLI configuration keys for common external tools.
 /// </summary>

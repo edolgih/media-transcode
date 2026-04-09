@@ -9,6 +9,9 @@ namespace Transcode.Core.Inspection;
 /// </summary>
 public interface IVideoProbe
 {
+    /*
+    Это probe-операция: a video file and returns its raw stream metadata
+    */
     /// <summary>
     /// Probes a video file and returns its raw stream metadata.
     /// </summary>

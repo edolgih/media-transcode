@@ -23,6 +23,9 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     private readonly ToH264GpuInfoFormatter _infoFormatter;
     private readonly ToH264GpuFfmpegTool _ffmpegTool;
 
+    /*
+    Это упрощенный конструктор для стандартного ffmpeg-пути.
+    */
     /// <summary>
     /// Initializes the CLI handler for the <c>toh264gpu</c> scenario.
     /// </summary>
@@ -34,6 +37,9 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
     {
     }
 
+    /*
+    Это полный конструктор CLI-обработчика с явным ffmpeg-tool.
+    */
     /// <summary>
     /// Initializes the CLI handler for the <c>toh264gpu</c> scenario.
     /// </summary>
@@ -47,10 +53,28 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
+    /*
+    Это каноническое имя сценария для выбора обработчика.
+    */
+    /// <summary>
+    /// Gets the canonical scenario name handled by this CLI adapter.
+    /// </summary>
     public string Name => "toh264gpu";
 
+    /*
+    Это legacy-командные токены, которые также активируют сценарий.
+    */
+    /// <summary>
+    /// Gets legacy command tokens that map to this scenario.
+    /// </summary>
     public IReadOnlyList<string> LegacyCommandTokens => ["toh264gpu"];
 
+    /*
+    Это список поддерживаемых scenario-опций для help-вывода CLI.
+    */
+    /// <summary>
+    /// Gets scenario-specific CLI options displayed in help output.
+    /// </summary>
     public IReadOnlyList<CliHelpOption> HelpOptions =>
     [
         new CliHelpOption("--keep-source", "Keep the source file instead of replacing it when output path matches the input. Default: off."),
@@ -69,6 +93,14 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--mkv", "Write MKV instead of MP4. Default: off (MP4).")
     ];
 
+    /*
+    Это примеры команд запуска сценария для help.
+    */
+    /// <summary>
+    /// Builds scenario-specific command examples for help output.
+    /// </summary>
+    /// <param name="exeName">Executable name to use in examples.</param>
+    /// <returns>Example command lines for this scenario.</returns>
     public IReadOnlyList<string> GetHelpExamples(string exeName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(exeName);
@@ -82,6 +114,16 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         ];
     }
 
+    /*
+    Это попытка разобрать raw args в scenario-specific input.
+    */
+    /// <summary>
+    /// Parses raw scenario arguments into normalized scenario input.
+    /// </summary>
+    /// <param name="args">Scenario-specific raw arguments.</param>
+    /// <param name="scenarioInput">Normalized scenario input on success.</param>
+    /// <param name="errorText">Validation or parsing error text.</param>
+    /// <returns><see langword="true"/> when parsing succeeds; otherwise <see langword="false"/>.</returns>
     public bool TryParse(IReadOnlyList<string> args, out object scenarioInput, out string? errorText)
     {
         if (ToH264GpuCliRequestParser.TryParse(args, out var runtimeRequest, out errorText))
@@ -94,6 +136,14 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         return false;
     }
 
+    /*
+    Это создание runtime-сценария на основе нормализованного CLI запроса.
+    */
+    /// <summary>
+    /// Creates a runtime <see cref="ToH264GpuScenario"/> for the supplied CLI request.
+    /// </summary>
+    /// <param name="request">Per-input CLI transcode request.</param>
+    /// <returns>Configured scenario instance.</returns>
     public TranscodeScenario CreateScenario(CliTranscodeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -101,6 +151,15 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         return new ToH264GpuScenario(runtimeRequest, _ffmpegTool);
     }
 
+    /*
+    Это классификация исключения в legacy-совместимый формат ошибок CLI.
+    */
+    /// <summary>
+    /// Maps processing exceptions to scenario-specific CLI failure output.
+    /// </summary>
+    /// <param name="request">Per-input CLI transcode request.</param>
+    /// <param name="exception">Exception raised while processing the input.</param>
+    /// <returns>Scenario-specific CLI failure representation.</returns>
     public CliScenarioFailure DescribeFailure(CliTranscodeRequest request, Exception exception)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -153,6 +212,14 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
             $"{fileName}: [unexpected failure]");
     }
 
+    /*
+    Это извлечение strongly-typed scenario request из общего CLI контейнера.
+    */
+    /// <summary>
+    /// Extracts the typed scenario request from generic CLI request payload.
+    /// </summary>
+    /// <param name="request">Per-input CLI transcode request.</param>
+    /// <returns>Typed <see cref="ToH264GpuRequest"/> payload.</returns>
     private static ToH264GpuRequest GetRuntimeRequest(CliTranscodeRequest request)
     {
         return request.ScenarioInput as ToH264GpuRequest

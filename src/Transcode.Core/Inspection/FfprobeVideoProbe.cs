@@ -17,6 +17,9 @@ public sealed class FfprobeVideoProbe : IVideoProbe
 {
     private readonly Func<string, FfprobeProcessResult> _executeProbe;
 
+    /*
+    Это создание и инициализация: an ffprobe-backed probe adapter
+    */
     /// <summary>
     /// Initializes an ffprobe-backed probe adapter.
     /// </summary>

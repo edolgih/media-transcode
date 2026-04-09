@@ -12,6 +12,9 @@ internal sealed class CliScenarioRegistry
     private readonly IReadOnlyDictionary<string, ICliScenarioHandler> _handlersByName;
     private readonly IReadOnlyDictionary<string, string> _legacyScenarioNamesByToken;
 
+    /*
+    Это создание и инициализация: a registry from the supplied scenario handlers
+    */
     /// <summary>
     /// Initializes a registry from the supplied scenario handlers.
     /// </summary>
@@ -32,6 +35,9 @@ internal sealed class CliScenarioRegistry
         _legacyScenarioNamesByToken = BuildLegacyScenarioNames(handlerList);
     }
 
+    /*
+    Это попытка найти зарегистрированный сценарий по его имени.
+    */
     /// <summary>
     /// Tries to resolve a registered scenario by name.
     /// </summary>
@@ -43,6 +49,9 @@ internal sealed class CliScenarioRegistry
         return _handlersByName.TryGetValue(scenarioName, out handler!);
     }
 
+    /*
+    Это попытка сопоставить legacy-токен команды с именем сценария.
+    */
     /// <summary>
     /// Tries to resolve a legacy command token to its scenario name.
     /// </summary>
@@ -54,6 +63,9 @@ internal sealed class CliScenarioRegistry
         return _legacyScenarioNamesByToken.TryGetValue(token, out scenarioName!);
     }
 
+    /*
+    Это возврат: registered scenario handlers ordered for deterministic help output
+    */
     /// <summary>
     /// Returns registered scenario handlers ordered for deterministic help output.
     /// </summary>
@@ -65,6 +77,9 @@ internal sealed class CliScenarioRegistry
             .ToArray();
     }
 
+    /*
+    Это возврат: the supported scenario names as a display string
+    */
     /// <summary>
     /// Returns the supported scenario names as a display string.
     /// </summary>

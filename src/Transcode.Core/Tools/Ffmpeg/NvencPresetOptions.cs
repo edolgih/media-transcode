@@ -19,16 +19,25 @@ public static class NvencPresetOptions
 
     private static readonly string[] SupportedPresetsValues = [P1, P2, P3, P4, P5, P6, P7];
 
+    /*
+    Это свойство, которое возвращает canonical NVENC preset values supported by Core
+    */
     /// <summary>
     /// Gets the canonical NVENC preset values supported by Core.
     /// </summary>
     public static IReadOnlyList<string> SupportedPresets => SupportedPresetsValues;
 
+    /*
+    Это свойство, которое возвращает default NVENC preset used by Core when the caller did not override it
+    */
     /// <summary>
     /// Gets the default NVENC preset used by Core when the caller did not override it.
     /// </summary>
     public static string DefaultPreset => P6;
 
+    /*
+    Это проверка, the supplied NVENC preset value is supported
+    */
     /// <summary>
     /// Determines whether the supplied NVENC preset value is supported.
     /// </summary>

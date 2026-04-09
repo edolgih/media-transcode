@@ -14,6 +14,9 @@ public sealed class VideoInspector
 {
     private readonly IVideoProbe _videoProbe;
 
+    /*
+    Это создание: an inspector that reads raw metadata from the supplied probe
+    */
     /// <summary>
     /// Creates an inspector that reads raw metadata from the supplied probe.
     /// </summary>
@@ -23,6 +26,9 @@ public sealed class VideoInspector
         _videoProbe = videoProbe ?? throw new ArgumentNullException(nameof(videoProbe));
     }
 
+    /*
+    Это чтение: a video file and returns its normalized metadata representation
+    */
     /// <summary>
     /// Reads a video file and returns its normalized metadata representation.
     /// </summary>

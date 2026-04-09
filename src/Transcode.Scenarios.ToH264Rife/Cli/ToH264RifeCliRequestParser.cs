@@ -4,6 +4,10 @@ using Transcode.Scenarios.ToH264Rife.Core;
 
 namespace Transcode.Scenarios.ToH264Rife.Cli;
 
+/*
+Это scenario-local parser для toh264rife.
+Он знает имена CLI-опций и переводит сырой argv в типизированный request сценария.
+*/
 /// <summary>
 /// Parses <c>toh264rife</c> CLI tokens into a scenario request.
 /// </summary>
@@ -16,6 +20,12 @@ internal static class ToH264RifeCliRequestParser
     private const string QualityProfileOptionName = "--quality-profile";
     private const string ContainerOptionName = "--container";
 
+    /*
+    Это общий вход разбора scenario-специфичных аргументов.
+    */
+    /// <summary>
+    /// Parses scenario-specific CLI arguments into a normalized request object.
+    /// </summary>
     public static bool TryParse(
         IReadOnlyList<string> args,
         out ToH264RifeRequest request,
@@ -37,6 +47,12 @@ internal static class ToH264RifeCliRequestParser
         return TryCreateRequest(state, out request, out errorText);
     }
 
+    /*
+    Это разбор одного токена и обновление состояния парсинга.
+    */
+    /// <summary>
+    /// Parses one CLI token and updates parser state.
+    /// </summary>
     private static bool TryHandleToken(
         IReadOnlyList<string> args,
         ref int index,
@@ -99,6 +115,12 @@ internal static class ToH264RifeCliRequestParser
         }
     }
 
+    /*
+    Это создание итогового request из собранного состояния.
+    */
+    /// <summary>
+    /// Creates a scenario request from parser state.
+    /// </summary>
     private static bool TryCreateRequest(ParseState state, out ToH264RifeRequest request, out string? errorText)
     {
         request = default!;
@@ -124,6 +146,12 @@ internal static class ToH264RifeCliRequestParser
         }
     }
 
+    /*
+    Это преобразование ошибки диапазона в человекочитаемое CLI-сообщение.
+    */
+    /// <summary>
+    /// Maps an out-of-range exception to a CLI-friendly validation message.
+    /// </summary>
     private static string MapOutOfRangeError(ArgumentOutOfRangeException exception)
     {
         return exception.ParamName switch
@@ -137,11 +165,23 @@ internal static class ToH264RifeCliRequestParser
         };
     }
 
+    /*
+    Это helper для единообразного текста "поддерживаемые значения".
+    */
+    /// <summary>
+    /// Builds a standard "supported values" validation message.
+    /// </summary>
     private static string BuildSupportedError<T>(string optionName, IReadOnlyList<T> supportedValues)
     {
         return $"{optionName} must be one of: {CliValueFormatter.FormatList(supportedValues)}.";
     }
 
+    /*
+    Это временное состояние parser-а до создания итогового request.
+    */
+    /// <summary>
+    /// Stores mutable parser state before request creation.
+    /// </summary>
     private sealed class ParseState
     {
         public bool KeepSource;

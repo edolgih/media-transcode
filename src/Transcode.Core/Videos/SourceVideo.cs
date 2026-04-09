@@ -9,6 +9,9 @@ namespace Transcode.Core.Videos;
 /// </summary>
 public sealed record SourceVideo
 {
+    /*
+    Это создание и инициализация: a normalized source video description
+    */
     /// <summary>
     /// Initializes a normalized source video description.
     /// </summary>
@@ -78,106 +81,169 @@ public sealed record SourceVideo
             : throw new ArgumentOutOfRangeException(nameof(primaryVideoBitrate), primaryVideoBitrate, "Primary video bitrate must not be negative.");
     }
 
+    /*
+    Это свойство, которое возвращает normalized full path to the source video file
+    */
     /// <summary>
     /// Gets the normalized full path to the source video file.
     /// </summary>
     public string FilePath { get; }
 
+    /*
+    Это свойство, которое возвращает normalized source container identifier
+    */
     /// <summary>
     /// Gets the normalized source container identifier.
     /// </summary>
     public string Container { get; }
 
+    /*
+    Это свойство, которое возвращает normalized source video codec identifier
+    */
     /// <summary>
     /// Gets the normalized source video codec identifier.
     /// </summary>
     public string VideoCodec { get; }
 
+    /*
+    Это свойство, которое возвращает normalized list of source audio codec identifiers
+    */
     /// <summary>
     /// Gets the normalized list of source audio codec identifiers.
     /// </summary>
     public IReadOnlyList<string> AudioCodecs { get; }
 
+    /*
+    Это свойство, которое возвращает source video width in pixels as reported by inspection
+    */
     /// <summary>
     /// Gets the source video width in pixels as reported by inspection.
     /// </summary>
     public int Width { get; }
 
+    /*
+    Это свойство, которое возвращает source video height in pixels as reported by inspection
+    */
     /// <summary>
     /// Gets the source video height in pixels as reported by inspection.
     /// </summary>
     public int Height { get; }
 
+    /*
+    Это свойство, которое возвращает source frame rate
+    */
     /// <summary>
     /// Gets the source frame rate.
     /// </summary>
     public double FramesPerSecond { get; }
 
+    /*
+    Это свойство, которое возвращает source duration
+    */
     /// <summary>
     /// Gets the source duration.
     /// </summary>
     public TimeSpan Duration { get; }
 
+    /*
+    Это свойство, которое возвращает normalized source bitrate in bits per second when inspection could resolve it
+    */
     /// <summary>
     /// Gets the normalized source bitrate in bits per second when inspection could resolve it.
     /// </summary>
     public long? Bitrate { get; }
 
+    /*
+    Это свойство, которое возвращает raw format_name token from the probe metadata when available
+    */
     /// <summary>
     /// Gets the raw format_name token from the probe metadata when available.
     /// </summary>
     public string? FormatName { get; }
 
+    /*
+    Это свойство, которое возвращает frame rate parsed from r_frame_rate when available
+    */
     /// <summary>
     /// Gets the frame rate parsed from r_frame_rate when available.
     /// </summary>
     public double? RawFramesPerSecond { get; }
 
+    /*
+    Это свойство, которое возвращает frame rate parsed from avg_frame_rate when available
+    */
     /// <summary>
     /// Gets the frame rate parsed from avg_frame_rate when available.
     /// </summary>
     public double? AverageFramesPerSecond { get; }
 
+    /*
+    Это свойство, которое возвращает bitrate of the primary audio stream in bits per second when available
+    */
     /// <summary>
     /// Gets the bitrate of the primary audio stream in bits per second when available.
     /// </summary>
     public long? PrimaryAudioBitrate { get; }
 
+    /*
+    Это свойство, которое возвращает bitrate of the primary video stream in bits per second when available
+    */
     /// <summary>
     /// Gets the bitrate of the primary video stream in bits per second when available.
     /// </summary>
     public long? PrimaryVideoBitrate { get; }
 
+    /*
+    Это свойство, которое возвращает sample rate of the primary audio stream in hertz when available
+    */
     /// <summary>
     /// Gets the sample rate of the primary audio stream in hertz when available.
     /// </summary>
     public int? PrimaryAudioSampleRate { get; }
 
+    /*
+    Это свойство, которое возвращает channel count of the primary audio stream when available
+    */
     /// <summary>
     /// Gets the channel count of the primary audio stream when available.
     /// </summary>
     public int? PrimaryAudioChannels { get; }
 
+    /*
+    Это свойство, которое возвращает source file name without directory segments
+    */
     /// <summary>
     /// Gets the source file name without directory segments.
     /// </summary>
     public string FileName => Path.GetFileName(FilePath);
 
+    /*
+    Это свойство, которое возвращает source file name without the file extension
+    */
     /// <summary>
     /// Gets the source file name without the file extension.
     /// </summary>
     public string FileNameWithoutExtension => Path.GetFileNameWithoutExtension(FilePath);
 
+    /*
+    Это свойство, которое возвращает normalized source file extension
+    */
     /// <summary>
     /// Gets the normalized source file extension.
     /// </summary>
     public string FileExtension => Path.GetExtension(FilePath).Trim().ToLowerInvariant();
 
+    /*
+    Это флаг, который показывает, the source contains at least one audio stream
+    */
     /// <summary>
     /// Gets a value indicating whether the source contains at least one audio stream.
     /// </summary>
     public bool HasAudio => AudioCodecs.Count > 0;
 
+    /*
+    Это свойство, которое возвращает first normalized audio codec, when present
+    */
     /// <summary>
     /// Gets the first normalized audio codec, when present.
     /// </summary>
@@ -185,6 +251,9 @@ public sealed record SourceVideo
         ? AudioCodecs[0]
         : null;
 
+    /*
+    Это флаг, который показывает, the source has a reliable raw-vs-average frame-rate mismatch signal
+    */
     /// <summary>
     /// Gets a value indicating whether the source has a reliable raw-vs-average frame-rate mismatch signal.
     /// </summary>

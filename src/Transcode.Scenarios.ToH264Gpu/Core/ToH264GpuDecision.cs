@@ -12,6 +12,9 @@ output layout и concrete ffmpeg execution details.
 /// </summary>
 internal sealed class ToH264GpuDecision
 {
+    /*
+    Это создание полностью нормализованного решения toh264gpu для конкретного файла.
+    */
     /// <summary>
     /// Initializes a fully resolved toh264gpu decision.
     /// </summary>
@@ -35,111 +38,177 @@ internal sealed class ToH264GpuDecision
         AudioExecutionDetails = audioExecution;
     }
 
+    /*
+    Это нормализованный идентификатор целевого контейнера.
+    */
     /// <summary>
     /// Gets the normalized target container identifier.
     /// </summary>
     public string TargetContainer { get; }
 
+    /*
+    Это выбранный путь обработки видеопотока.
+    */
     /// <summary>
     /// Gets the resolved video path.
     /// </summary>
     public VideoIntent Video { get; }
 
+    /*
+    Это выбранный путь обработки аудиопотока.
+    */
     /// <summary>
     /// Gets the resolved audio path.
     /// </summary>
     public AudioIntent Audio { get; }
 
+    /*
+    Это флаг сохранения исходного файла после выполнения.
+    */
     /// <summary>
     /// Gets a value indicating whether the source file should be kept.
     /// </summary>
     public bool KeepSource { get; }
 
+    /*
+    Это итоговый путь выходного файла, рассчитанный сценарием.
+    */
     /// <summary>
     /// Gets the final output path chosen by the scenario.
     /// </summary>
     public string OutputPath { get; }
 
+    /*
+    Это параметры mux-части исполнения.
+    */
     /// <summary>
     /// Gets mux-related execution details.
     /// </summary>
     public MuxExecution Mux { get; }
 
+    /*
+    Это детальные video encode-настройки, когда нужен encode.
+    */
     /// <summary>
     /// Gets normalized video execution details when video encoding is required.
     /// </summary>
     public VideoExecution? VideoExecutionDetails { get; }
 
+    /*
+    Это детальные audio encode-настройки, когда нужен encode.
+    */
     /// <summary>
     /// Gets normalized audio execution details when audio encoding is required.
     /// </summary>
     public AudioExecution? AudioExecutionDetails { get; }
 
+    /*
+    Это флаг copy-пути для видео.
+    */
     /// <summary>
     /// Gets a value indicating whether the video stream should be copied.
     /// </summary>
     public bool CopyVideo => Video is CopyVideoIntent;
 
+    /*
+    Это флаг copy-пути для аудио.
+    */
     /// <summary>
     /// Gets a value indicating whether the audio path copies compatible source streams.
     /// </summary>
     public bool CopyAudio => Audio is CopyAudioIntent;
 
+    /*
+    Это флаг использования sync-safe пути для аудио.
+    */
     /// <summary>
     /// Gets a value indicating whether the decision uses the sync-safe audio path.
     /// </summary>
     public bool SynchronizeAudio => Audio is SynchronizeAudioIntent;
 
+    /*
+    Это флаг необходимости починки таймстампов.
+    */
     /// <summary>
     /// Gets a value indicating whether timestamp normalization is required.
     /// </summary>
     public bool FixTimestamps => Audio is RepairAudioIntent;
 
+    /*
+    Это флаг, что видеопоток требуется перекодировать.
+    */
     /// <summary>
     /// Gets a value indicating whether the decision requires video encoding.
     /// </summary>
     public bool RequiresVideoEncode => !CopyVideo;
 
+    /*
+    Это флаг, что аудиопоток требуется перекодировать.
+    */
     /// <summary>
     /// Gets a value indicating whether the decision requires audio encoding.
     /// </summary>
     public bool RequiresAudioEncode => !CopyAudio;
 
+    /*
+    Это флаг оптимизации контейнера для fast-start воспроизведения.
+    */
     /// <summary>
     /// Gets a value indicating whether the output container should be optimized for progressive playback.
     /// </summary>
     public bool OptimizeForFastStart => Mux.OptimizeForFastStart;
 
+    /*
+    Это флаг маппинга только основного аудиопотока.
+    */
     /// <summary>
     /// Gets a value indicating whether only the primary audio stream should be mapped.
     /// </summary>
     public bool MapPrimaryAudioOnly => Mux.MapPrimaryAudioOnly;
 
+    /*
+    Это признак предпочтения hardware decode для encode-пути.
+    */
     /// <summary>
     /// Gets the hardware-decode preference when video encoding is required.
     /// </summary>
     public bool? UseHardwareDecode => VideoExecutionDetails?.UseHardwareDecode;
 
+    /*
+    Это признак включенной adaptive quantization.
+    */
     /// <summary>
     /// Gets a value indicating whether adaptive quantization is enabled.
     /// </summary>
     public bool? EnableAdaptiveQuantization => VideoExecutionDetails is null ? null : VideoExecutionDetails.AdaptiveQuantization is not null;
 
+    /*
+    Это явная сила AQ, если она задана.
+    */
     /// <summary>
     /// Gets the AQ strength override.
     /// </summary>
     public int? AqStrength => VideoExecutionDetails?.AdaptiveQuantization?.Strength;
 
+    /*
+    Это окно lookahead для управления качеством.
+    */
     /// <summary>
     /// Gets the lookahead window override.
     /// </summary>
     public int? RcLookahead => VideoExecutionDetails?.AdaptiveQuantization?.RcLookahead;
 
+    /*
+    Это целевой video bitrate в режиме VBR.
+    */
     /// <summary>
     /// Gets the target video bitrate in kilobits per second when VBR mode is requested.
     /// </summary>
     public int? VideoBitrateKbps => (VideoExecutionDetails?.RateControl as VariableBitrateVideoRateControlExecution)?.BitrateKbps;
 
+    /*
+    Это целевой video maxrate в Kbps.
+    */
     /// <summary>
     /// Gets the target video maxrate in kilobits per second.
     /// </summary>
@@ -150,6 +219,9 @@ internal sealed class ToH264GpuDecision
         _ => null
     };
 
+    /*
+    Это целевой video buffer size в Kbps.
+    */
     /// <summary>
     /// Gets the target video buffer size in kilobits per second.
     /// </summary>
@@ -160,46 +232,73 @@ internal sealed class ToH264GpuDecision
         _ => null
     };
 
+    /*
+    Это целевое CQ-значение в CQ-режиме.
+    */
     /// <summary>
     /// Gets the explicit CQ value when CQ-driven mode is requested.
     /// </summary>
     public int? VideoCq => (VideoExecutionDetails?.RateControl as ConstantQualityVideoRateControlExecution)?.Cq;
 
+    /*
+    Это выражение video-фильтра ffmpeg, если оно требуется.
+    */
     /// <summary>
     /// Gets the plain ffmpeg video filter expression when one is required.
     /// </summary>
     public string? VideoFilter => VideoExecutionDetails?.Filter;
 
+    /*
+    Это явный pixel format токен для видео.
+    */
     /// <summary>
     /// Gets the explicit pixel format token when one is required.
     /// </summary>
     public string? PixelFormat => VideoExecutionDetails?.PixelFormat;
 
+    /*
+    Это целевой audio bitrate в Kbps при перекодировании аудио.
+    */
     /// <summary>
     /// Gets the target audio bitrate in kilobits per second when audio must be encoded.
     /// </summary>
     public int? AudioBitrateKbps => AudioExecutionDetails?.BitrateKbps;
 
+    /*
+    Это явный sample rate аудио, если он нужен.
+    */
     /// <summary>
     /// Gets the explicit audio sample rate when one is required.
     /// </summary>
     public int? AudioSampleRate => AudioExecutionDetails?.SampleRate;
 
+    /*
+    Это явное число каналов аудио, если оно нужно.
+    */
     /// <summary>
     /// Gets the explicit audio channel count when one is required.
     /// </summary>
     public int? AudioChannels => AudioExecutionDetails?.Channels;
 
+    /*
+    Это выражение audio-фильтра ffmpeg, если оно требуется.
+    */
     /// <summary>
     /// Gets the plain ffmpeg audio filter expression when one is required.
     /// </summary>
     public string? AudioFilter => AudioExecutionDetails?.Filter;
 
+    /*
+    Это подмодель mux-поведения контейнера.
+    */
     /// <summary>
     /// Represents normalized mux details.
     /// </summary>
     public sealed class MuxExecution
     {
+        /*
+        Это создание параметров mux-этапа.
+        */
         /// <summary>
         /// Initializes mux-related execution details.
         /// </summary>
@@ -211,22 +310,34 @@ internal sealed class ToH264GpuDecision
             MapPrimaryAudioOnly = mapPrimaryAudioOnly;
         }
 
+        /*
+        Это флаг fast-start оптимизации контейнера.
+        */
         /// <summary>
         /// Gets a value indicating whether the output container should be optimized for progressive playback.
         /// </summary>
         public bool OptimizeForFastStart { get; }
 
+        /*
+        Это флаг маппинга только основной аудиодорожки.
+        */
         /// <summary>
         /// Gets a value indicating whether only the primary audio stream should be mapped.
         /// </summary>
         public bool MapPrimaryAudioOnly { get; }
     }
 
+    /*
+    Это подмодель video encode-параметров.
+    */
     /// <summary>
     /// Represents normalized video execution details.
     /// </summary>
     public sealed class VideoExecution
     {
+        /*
+        Это создание параметров video encode-этапа.
+        */
         /// <summary>
         /// Initializes video execution details.
         /// </summary>
@@ -244,32 +355,50 @@ internal sealed class ToH264GpuDecision
             PixelFormat = NormalizeOptionalText(pixelFormat);
         }
 
+        /*
+        Это признак включения hardware decode.
+        */
         /// <summary>
         /// Gets a value indicating whether hardware decode should be enabled.
         /// </summary>
         public bool UseHardwareDecode { get; }
 
+        /*
+        Это выбранная модель управления video bitrate/quality.
+        */
         /// <summary>
         /// Gets normalized rate-control details.
         /// </summary>
         public VideoRateControlExecution RateControl { get; }
 
+        /*
+        Это настройки adaptive quantization при их наличии.
+        */
         /// <summary>
         /// Gets normalized adaptive-quantization details when AQ is enabled.
         /// </summary>
         public AdaptiveQuantizationExecution? AdaptiveQuantization { get; }
 
+        /*
+        Это выражение video-фильтра ffmpeg.
+        */
         /// <summary>
         /// Gets the plain ffmpeg video filter expression when one is required.
         /// </summary>
         public string? Filter { get; }
 
+        /*
+        Это явный pixel format токен для ffmpeg.
+        */
         /// <summary>
         /// Gets the explicit pixel format token when one is required.
         /// </summary>
         public string? PixelFormat { get; }
     }
 
+    /*
+    Это базовый тип rate-control модели для видео.
+    */
     /// <summary>
     /// Represents normalized video rate-control details.
     /// </summary>
@@ -277,11 +406,17 @@ internal sealed class ToH264GpuDecision
     {
     }
 
+    /*
+    Это VBR-представление параметров video rate-control.
+    */
     /// <summary>
     /// Represents normalized VBR details.
     /// </summary>
     public sealed class VariableBitrateVideoRateControlExecution : VideoRateControlExecution
     {
+        /*
+        Это создание VBR-параметров.
+        */
         /// <summary>
         /// Initializes VBR details.
         /// </summary>
@@ -295,27 +430,42 @@ internal sealed class ToH264GpuDecision
             BufferSizeKbps = NormalizePositiveInt(bufferSizeKbps, nameof(bufferSizeKbps));
         }
 
+        /*
+        Это целевой bitrate VBR в Kbps.
+        */
         /// <summary>
         /// Gets the target bitrate in kilobits per second.
         /// </summary>
         public int BitrateKbps { get; }
 
+        /*
+        Это целевой maxrate VBR в Kbps.
+        */
         /// <summary>
         /// Gets the target maxrate in kilobits per second.
         /// </summary>
         public int MaxrateKbps { get; }
 
+        /*
+        Это целевой VBV-буфер в Kbps.
+        */
         /// <summary>
         /// Gets the target buffer size in kilobits per second.
         /// </summary>
         public int BufferSizeKbps { get; }
     }
 
+    /*
+    Это CQ-представление параметров video rate-control.
+    */
     /// <summary>
     /// Represents normalized CQ details.
     /// </summary>
     public sealed class ConstantQualityVideoRateControlExecution : VideoRateControlExecution
     {
+        /*
+        Это создание CQ-параметров.
+        */
         /// <summary>
         /// Initializes CQ details.
         /// </summary>
@@ -334,27 +484,42 @@ internal sealed class ToH264GpuDecision
             BufferSizeKbps = NormalizeOptionalPositiveInt(bufferSizeKbps, nameof(bufferSizeKbps));
         }
 
+        /*
+        Это целевое CQ-значение.
+        */
         /// <summary>
         /// Gets the CQ value.
         /// </summary>
         public int Cq { get; }
 
+        /*
+        Это верхняя граница maxrate для bounded-CQ.
+        */
         /// <summary>
         /// Gets the target maxrate in kilobits per second when bounded CQ mode is used.
         /// </summary>
         public int? MaxrateKbps { get; }
 
+        /*
+        Это размер VBV-буфера для bounded-CQ.
+        */
         /// <summary>
         /// Gets the target buffer size in kilobits per second when bounded CQ mode is used.
         /// </summary>
         public int? BufferSizeKbps { get; }
     }
 
+    /*
+    Это подмодель adaptive quantization для encode-пути.
+    */
     /// <summary>
     /// Represents normalized adaptive-quantization details.
     /// </summary>
     public sealed class AdaptiveQuantizationExecution
     {
+        /*
+        Это создание параметров adaptive quantization.
+        */
         /// <summary>
         /// Initializes adaptive-quantization details.
         /// </summary>
@@ -366,22 +531,34 @@ internal sealed class ToH264GpuDecision
             Strength = NormalizeOptionalPositiveInt(strength, nameof(strength));
         }
 
+        /*
+        Это размер окна lookahead для AQ.
+        */
         /// <summary>
         /// Gets the lookahead window size.
         /// </summary>
         public int RcLookahead { get; }
 
+        /*
+        Это явная сила AQ, если задана.
+        */
         /// <summary>
         /// Gets the explicit AQ strength when one is required.
         /// </summary>
         public int? Strength { get; }
     }
 
+    /*
+    Это подмодель audio encode-параметров.
+    */
     /// <summary>
     /// Represents normalized audio execution details.
     /// </summary>
     public sealed class AudioExecution
     {
+        /*
+        Это создание параметров audio encode-этапа.
+        */
         /// <summary>
         /// Initializes audio execution details.
         /// </summary>
@@ -397,21 +574,33 @@ internal sealed class ToH264GpuDecision
             Filter = NormalizeOptionalText(filter);
         }
 
+        /*
+        Это целевой bitrate аудио в Kbps.
+        */
         /// <summary>
         /// Gets the target bitrate in kilobits per second.
         /// </summary>
         public int BitrateKbps { get; }
 
+        /*
+        Это явный sample rate аудио.
+        */
         /// <summary>
         /// Gets the explicit sample rate when one is required.
         /// </summary>
         public int? SampleRate { get; }
 
+        /*
+        Это явное число аудиоканалов.
+        */
         /// <summary>
         /// Gets the explicit channel count when one is required.
         /// </summary>
         public int? Channels { get; }
 
+        /*
+        Это выражение audio-фильтра ffmpeg.
+        */
         /// <summary>
         /// Gets the plain ffmpeg audio filter expression when one is required.
         /// </summary>

@@ -28,6 +28,16 @@ internal static class ToMkvGpuCliRequestParser
     private const string BufsizeOptionName = "--bufsize";
     private const string NvencPresetOptionName = "--nvenc-preset";
 
+    /*
+    Это основной вход парсера raw аргументов сценария tomkvgpu.
+    */
+    /// <summary>
+    /// Parses raw scenario arguments into a normalized <see cref="ToMkvGpuRequest"/>.
+    /// </summary>
+    /// <param name="args">Scenario-specific CLI arguments.</param>
+    /// <param name="request">Parsed scenario request when parsing succeeds.</param>
+    /// <param name="errorText">Validation or parsing error message.</param>
+    /// <returns><see langword="true"/> when parsing succeeds; otherwise <see langword="false"/>.</returns>
     public static bool TryParse(
         IReadOnlyList<string> args,
         out ToMkvGpuRequest request,
@@ -54,6 +64,18 @@ internal static class ToMkvGpuCliRequestParser
         return TryCreateRequest(state, out request, out errorText);
     }
 
+    /*
+    Это обработка одного токена и обновление промежуточного состояния.
+    */
+    /// <summary>
+    /// Processes a single CLI token and updates parser state.
+    /// </summary>
+    /// <param name="args">Scenario-specific CLI arguments.</param>
+    /// <param name="index">Current token index, advanced for value-taking options.</param>
+    /// <param name="token">Current token value.</param>
+    /// <param name="state">Mutable parse state.</param>
+    /// <param name="errorText">Validation or parsing error message.</param>
+    /// <returns><see langword="true"/> when the token is valid; otherwise <see langword="false"/>.</returns>
     private static bool TryHandleToken(
         IReadOnlyList<string> args,
         ref int index,
@@ -174,6 +196,16 @@ internal static class ToMkvGpuCliRequestParser
         return true;
     }
 
+    /*
+    Это финальная сборка domain request из parse-состояния.
+    */
+    /// <summary>
+    /// Creates the scenario request from validated parse state.
+    /// </summary>
+    /// <param name="state">Validated parse state.</param>
+    /// <param name="request">Scenario request when creation succeeds.</param>
+    /// <param name="errorText">Creation error message.</param>
+    /// <returns><see langword="true"/> when request creation succeeds; otherwise <see langword="false"/>.</returns>
     private static bool TryCreateRequest(ParseState state, out ToMkvGpuRequest request, out string? errorText)
     {
         request = default!;
@@ -209,6 +241,14 @@ internal static class ToMkvGpuCliRequestParser
         }
     }
 
+    /*
+    Это перевод out-of-range ошибок доменной валидации в понятные CLI-тексты.
+    */
+    /// <summary>
+    /// Maps domain out-of-range errors to user-facing CLI validation messages.
+    /// </summary>
+    /// <param name="exception">Validation exception raised while creating the request.</param>
+    /// <returns>CLI-friendly validation message.</returns>
     private static string MapOutOfRangeError(ArgumentOutOfRangeException exception)
     {
         return exception.ParamName switch
@@ -228,11 +268,27 @@ internal static class ToMkvGpuCliRequestParser
         };
     }
 
+    /*
+    Это helper для единообразного сообщения о поддерживаемых значениях опций.
+    */
+    /// <summary>
+    /// Builds a standard "supported values" error for CLI options.
+    /// </summary>
+    /// <typeparam name="T">Supported value type.</typeparam>
+    /// <param name="optionName">Option name shown in CLI output.</param>
+    /// <param name="supportedValues">Supported values for the option.</param>
+    /// <returns>Formatted validation error text.</returns>
     private static string BuildSupportedError<T>(string optionName, IReadOnlyList<T> supportedValues)
     {
         return $"{optionName} must be one of: {CliValueFormatter.FormatList(supportedValues)}.";
     }
 
+    /*
+    Это внутреннее mutable-состояние парсинга до создания финального request.
+    */
+    /// <summary>
+    /// Holds intermediate option values while CLI tokens are being parsed.
+    /// </summary>
     private sealed class ParseState
     {
         public bool OverlayBackground;

@@ -19,6 +19,9 @@ public sealed class ToH264GpuFfmpegTool
     private readonly string _ffmpegPath;
     private readonly ILogger<ToH264GpuFfmpegTool> _logger;
 
+    /*
+    Это создание tool-адаптера с путем к ffmpeg и логгером.
+    */
     /// <summary>
     /// Initializes the toh264gpu-specific ffmpeg tool.
     /// </summary>
@@ -31,11 +34,17 @@ public sealed class ToH264GpuFfmpegTool
         _logger = logger;
     }
 
+    /*
+    Это стабильное имя инструмента для диагностики и интеграций.
+    */
     /// <summary>
     /// Gets the stable tool name.
     /// </summary>
     public string Name => "ffmpeg";
 
+    /*
+    Это проверка, что decision поддерживается именно этим renderer-ом.
+    */
     /// <summary>
     /// Determines whether the toh264gpu-specific ffmpeg tool can execute the supplied decision.
     /// </summary>
@@ -76,6 +85,9 @@ public sealed class ToH264GpuFfmpegTool
                encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase);
     }
 
+    /*
+    Это сборка полного execution-плана: ffmpeg-команда и post-операции над файлами.
+    */
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and decision.
     /// </summary>

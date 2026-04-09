@@ -6,8 +6,12 @@ using System.Globalization;
 
 namespace Transcode.Scenarios.ToH264Rife.Core;
 
+/*
+Это tool-адаптер сценария toh264rife.
+Он преобразует итоговое решение сценария в docker-команду запуска интерполяции и post-операции над файлами.
+*/
 /// <summary>
-/// Builds executable commands for the <c>toh264rife</c> scenario.
+/// Builds execution commands for the <c>toh264rife</c> scenario.
 /// </summary>
 public sealed class ToH264RifeTool
 {
@@ -15,6 +19,13 @@ public sealed class ToH264RifeTool
     private const string SourceCacheVolumeName = "media-transcode-rife-src-cache";
     private const string DockerCommandName = "docker";
 
+    /*
+    Это конструктор tool-адаптера.
+    Он принимает образ docker, в котором выполняется интерполяция.
+    */
+    /// <summary>
+    /// Initializes a tool adapter for docker-based frame interpolation.
+    /// </summary>
     public ToH264RifeTool(
         string dockerImage,
         ILogger<ToH264RifeTool> logger)
@@ -23,8 +34,21 @@ public sealed class ToH264RifeTool
         _ = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /*
+    Это имя docker-образа, который будет использован для запуска.
+    */
+    /// <summary>
+    /// Gets the docker image name used to run interpolation.
+    /// </summary>
     public string DockerImage { get; }
 
+    /*
+    Это сборка полного набора команд выполнения.
+    На выходе одна docker-команда и, при необходимости, post-операции для переименования/замены файла.
+    */
+    /// <summary>
+    /// Builds the full command sequence required to execute the scenario.
+    /// </summary>
     internal ScenarioExecution BuildExecution(SourceVideo video, ToH264RifeDecision decision)
     {
         ArgumentNullException.ThrowIfNull(video);
@@ -46,6 +70,12 @@ public sealed class ToH264RifeTool
         return new ScenarioExecution(commands);
     }
 
+    /*
+    Это рендер docker-команды интерполяции с нужными томами и параметрами.
+    */
+    /// <summary>
+    /// Builds the docker command that runs the interpolation pipeline.
+    /// </summary>
     private string BuildDockerCommand(SourceVideo video, ToH264RifeDecision decision, string outputPath)
     {
         var workingDirectory = Path.GetDirectoryName(video.FilePath);

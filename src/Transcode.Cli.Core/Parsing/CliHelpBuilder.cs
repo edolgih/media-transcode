@@ -11,6 +11,9 @@ namespace Transcode.Cli.Core.Parsing;
 /// </summary>
 internal static class CliHelpBuilder
 {
+    /*
+    Это построение: help text using the supplied scenario registry
+    */
     /// <summary>
     /// Builds help text using the supplied scenario registry.
     /// </summary>

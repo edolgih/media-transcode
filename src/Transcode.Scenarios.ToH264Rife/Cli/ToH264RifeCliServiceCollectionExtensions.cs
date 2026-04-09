@@ -7,11 +7,24 @@ using Transcode.Scenarios.ToH264Rife.Core;
 
 namespace Transcode.Scenarios.ToH264Rife.Cli;
 
+/*
+Это регистрация зависимостей CLI для сценария toh264rife.
+Здесь связываются parser/handler и tool-адаптер с настройками из конфигурации.
+*/
 /// <summary>
 /// Registers CLI services for the <c>toh264rife</c> scenario.
 /// </summary>
 public static class ToH264RifeCliServiceCollectionExtensions
 {
+	/*
+	Это extension-точка подключения сценария в общий CLI host.
+	*/
+	/// <summary>
+	/// Registers all CLI services required by the <c>toh264rife</c> scenario.
+	/// </summary>
+	/// <param name="services">Service collection being configured.</param>
+	/// <param name="configuration">Resolved application configuration.</param>
+	/// <returns>The same service collection for chaining.</returns>
 	public static IServiceCollection AddToH264RifeCliScenario(this IServiceCollection services,
 		IConfiguration configuration)
 	{
@@ -34,6 +47,15 @@ public static class ToH264RifeCliServiceCollectionExtensions
 		return services;
 	}
 
+	/*
+	Это чтение обязательного значения из конфигурации сценария.
+	*/
+	/// <summary>
+	/// Reads a required scenario configuration value.
+	/// </summary>
+	/// <param name="configuration">Resolved application configuration.</param>
+	/// <param name="key">Configuration key.</param>
+	/// <returns>Non-empty configuration value.</returns>
 	private static string GetRequiredValue(IConfiguration configuration, string key)
 	{
 		var value = configuration[key];
