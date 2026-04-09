@@ -20,6 +20,9 @@ public sealed class ToMkvGpuFfmpegTool
     private readonly string _ffmpegPath;
     private readonly ILogger<ToMkvGpuFfmpegTool> _logger;
 
+    /*
+    Это создание tool-адаптера с путем к ffmpeg и логгером.
+    */
     /// <summary>
     /// Initializes the mkv-oriented ffmpeg tool.
     /// </summary>
@@ -32,11 +35,17 @@ public sealed class ToMkvGpuFfmpegTool
         _logger = logger;
     }
 
+    /*
+    Это стабильное имя инструмента для диагностики и интеграций.
+    */
     /// <summary>
     /// Gets the stable tool name.
     /// </summary>
     public string Name => "ffmpeg";
 
+    /*
+    Это проверка, что decision поддерживается именно этим renderer-ом.
+    */
     /// <summary>
     /// Determines whether the mkv-oriented ffmpeg tool can execute the supplied decision.
     /// </summary>
@@ -66,6 +75,9 @@ public sealed class ToMkvGpuFfmpegTool
                 encodeVideo.TargetVideoCodec.Equals("h265", StringComparison.OrdinalIgnoreCase));
     }
 
+    /*
+    Это сборка полного execution-плана: ffmpeg-команда и post-операции над файлами.
+    */
     /// <summary>
     /// Builds an ffmpeg execution recipe for the supplied source video and decision.
     /// </summary>
@@ -189,7 +201,7 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (decision.ApplyOverlayBackground)
         {
-            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm);
+            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm.Value);
             return $"-filter_complex {FfmpegExecutionLayout.Quote(filter)} -map \"[v]\" {frameRatePart}" +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
                    $"{pixelFormatPart}{compatibilityPart}-g {gop}";
@@ -197,7 +209,7 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (downscale is not null)
         {
-            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={settings.Algorithm}:format=nv12\" " +
+            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={settings.Algorithm.Value}:format=nv12\" " +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
                    $"{compatibilityPart}-g {gop}";
         }
@@ -289,8 +301,8 @@ public sealed class ToMkvGpuFfmpegTool
 
     private void LogVideoSettingsResolution(
         string inputPath,
-        VideoSettingsDefaults baseSettings,
-        VideoSettingsDefaults resolvedSettings,
+        ResolvedVideoSettings baseSettings,
+        ResolvedVideoSettings resolvedSettings,
         ToMkvGpuResolvedSourceBitrate sourceBitrate)
     {
         _logger.LogInformation(
@@ -318,7 +330,7 @@ public sealed class ToMkvGpuFfmpegTool
         return $"[0:v]scale={outputWidth}:-1,crop={outputWidth}:{outputHeight}[bg];[0:v]scale=-1:{outputHeight}[fg];[bg][fg]overlay=(W-w)/2:0[v]";
     }
 
-    private static string FormatSettings(VideoSettingsDefaults settings)
+    private static string FormatSettings(ResolvedVideoSettings settings)
     {
         return string.Create(
             CultureInfo.InvariantCulture,

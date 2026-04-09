@@ -1,125 +1,106 @@
-using Transcode.Core.Tools.Ffmpeg;
-
 namespace Transcode.Core.VideoSettings;
 
 /*
-Это явное намерение downscale.
-Отдельный тип нужен, чтобы факт изменения высоты не угадывался по полям общего VideoSettingsRequest.
-Если owner сценария уже выбрал effective algorithm, этот же value object может нести и его.
+Это явный запрос на уменьшение высоты видео.
+Тип отделяет downscale от обычных quality override и при необходимости хранит уже выбранный алгоритм масштабирования.
 */
 /// <summary>
-/// Captures downscale intent together with an optional scaling algorithm.
+/// Represents an explicit request to downscale video and optionally pin the scaling algorithm.
 /// </summary>
 public sealed class DownscaleRequest
 {
-    private static readonly int[] SupportedTargetHeightsValues =
-        [.. VideoSettingsProfiles.Default.GetSupportedDownscaleTargetHeights()];
+    private static readonly int[] SupportedTargetHeightsValues = [.. VideoDownscaleTargetHeight.SupportedValues];
 
+    /*
+    Это все целевые высоты, в которые система умеет делать downscale.
+    Список нужен для валидации, подсказок и построения UI.
+    */
     /// <summary>
-    /// Gets target heights that are supported by configured downscale profiles.
+    /// Gets the target heights supported for explicit downscale requests.
     /// </summary>
     public static IReadOnlyList<int> SupportedTargetHeights => SupportedTargetHeightsValues;
 
+    /*
+    Это список алгоритмов масштабирования, которые можно указать явно.
+    Он совпадает с тем набором, который поддерживает слой FFmpeg.
+    */
     /// <summary>
-    /// Gets the canonical scaling algorithm values supported by Core.
+    /// Gets the scaling algorithms that can be requested explicitly.
     /// </summary>
-    public static IReadOnlyList<string> SupportedAlgorithms => FfmpegScaleAlgorithms.SupportedAlgorithms;
+    public static IReadOnlyList<string> SupportedAlgorithms => VideoScaleAlgorithm.SupportedValues;
 
+    /*
+    Это конструктор запроса на downscale.
+    Он сразу нормализует и проверяет высоту и алгоритм, чтобы дальше работать только с корректными значениями.
+    */
     /// <summary>
-    /// Initializes explicit downscale directives.
+    /// Initializes a new downscale request with a validated target height and optional algorithm.
     /// </summary>
-    /// <param name="targetHeight">Requested target height.</param>
-    /// <param name="algorithm">Scaling algorithm when already resolved by the owner, or an explicit override.</param>
+    /// <param name="targetHeight">Requested output height.</param>
+    /// <param name="algorithm">Optional scaling algorithm that should be kept with the request.</param>
     public DownscaleRequest(int targetHeight, string? algorithm = null)
     {
-        if (targetHeight <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(targetHeight), targetHeight, "Target height must be greater than zero.");
-        }
-
-        if (!IsSupportedTargetHeight(targetHeight))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(targetHeight),
-                targetHeight,
-                $"Supported values: {GetSupportedTargetHeightsDisplay()}.");
-        }
-
-        var normalizedAlgorithm = NormalizeName(algorithm);
-        if (normalizedAlgorithm is not null && !IsSupportedAlgorithm(normalizedAlgorithm))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(algorithm),
-                algorithm,
-                $"Supported values: {GetSupportedAlgorithmsDisplay()}.");
-        }
-
-        TargetHeight = targetHeight;
-        Algorithm = normalizedAlgorithm;
+        TargetHeight = VideoDownscaleTargetHeight.Parse(targetHeight, nameof(targetHeight)).Value;
+        Algorithm = VideoScaleAlgorithm.ParseOptional(algorithm, nameof(algorithm))?.Value;
     }
 
+    /*
+    Это итоговая высота, в которую нужно привести видео.
+    Значение всегда уже проверено на поддержку системой.
+    */
     /// <summary>
-    /// Gets the requested target height.
+    /// Gets the validated target height for the downscaled video.
     /// </summary>
     public int TargetHeight { get; }
 
+    /*
+    Это алгоритм масштабирования, который нужно использовать.
+    Пустое значение означает, что запрос фиксирует только новую высоту, а алгоритм можно выбрать позже.
+    */
     /// <summary>
-    /// Gets the scaling algorithm carried by this request.
-    /// Null means the owner kept only resize intent and has not resolved a default algorithm yet.
+    /// Gets the requested scaling algorithm, or <see langword="null"/> when only the target height is fixed.
     /// </summary>
     public string? Algorithm { get; }
 
+    /*
+    Это способ аккуратно подставить алгоритм по умолчанию.
+    Он не затирает уже выбранный алгоритм и возвращает нормализованную копию только когда это действительно нужно.
+    */
     /// <summary>
-    /// Returns a request with the supplied default algorithm when no algorithm has been chosen yet.
+    /// Returns a copy with a default algorithm when the request does not already specify one.
     /// </summary>
-    /// <param name="algorithm">Default scaling algorithm selected by the owner.</param>
-    /// <returns>The current request when the algorithm is already present; otherwise a normalized copy.</returns>
+    /// <param name="algorithm">Algorithm to apply as the default value.</param>
+    /// <returns>The current instance when an algorithm is already set; otherwise a normalized copy.</returns>
     public DownscaleRequest WithDefaultAlgorithm(string algorithm)
     {
-        var normalizedAlgorithm = NormalizeName(algorithm);
-        if (normalizedAlgorithm is null)
-        {
-            throw new ArgumentException("Algorithm is required.", nameof(algorithm));
-        }
+        var resolvedAlgorithm = VideoScaleAlgorithm.Parse(algorithm, nameof(algorithm));
 
         return Algorithm is not null
             ? this
-            : new DownscaleRequest(TargetHeight, normalizedAlgorithm);
+            : new DownscaleRequest(TargetHeight, resolvedAlgorithm.Value);
     }
 
+    /*
+    Это быстрая проверка высоты без создания объекта запроса.
+    Удобно, когда нужно валидировать входные данные заранее.
+    */
     /// <summary>
-    /// Determines whether the supplied target height is supported by configured downscale profiles.
+    /// Determines whether the specified target height is supported for downscale.
     /// </summary>
     public static bool IsSupportedTargetHeight(int targetHeight)
     {
-        return Array.IndexOf(SupportedTargetHeightsValues, targetHeight) >= 0;
+        return VideoDownscaleTargetHeight.IsSupported(targetHeight);
     }
 
+    /*
+    Это быстрая проверка алгоритма масштабирования без создания объекта запроса.
+    Ее можно использовать на этапе парсинга пользовательских параметров.
+    */
     /// <summary>
-    /// Determines whether the supplied scaling algorithm is supported.
+    /// Determines whether the specified scaling algorithm is supported.
     /// </summary>
     public static bool IsSupportedAlgorithm(string? value)
     {
-        return FfmpegScaleAlgorithms.IsSupported(value);
-    }
-
-    private static string GetSupportedTargetHeightsDisplay()
-    {
-        return string.Join(", ", SupportedTargetHeightsValues);
-    }
-
-    private static string GetSupportedAlgorithmsDisplay()
-    {
-        return string.Join(", ", FfmpegScaleAlgorithms.SupportedAlgorithms);
-    }
-
-    private static string? NormalizeName(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim().ToLowerInvariant();
+        return VideoScaleAlgorithm.IsSupported(value);
     }
 }

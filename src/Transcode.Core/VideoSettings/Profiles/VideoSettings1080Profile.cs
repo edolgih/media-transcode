@@ -1,17 +1,23 @@
 using Transcode.Core.Tools.Ffmpeg;
-using Transcode.Core.VideoSettings;
 
 namespace Transcode.Core.VideoSettings.Profiles;
 
 /*
-Это фабрика профиля video settings для output bucket 1080.
-Она задаёт quality-oriented defaults и source-height bounds overrides.
+Это фабрика профиля для целевой высоты 1080.
+Она описывает все defaults и bucket-ограничения для Full HD без явного downscale в эту высоту.
 */
 /// <summary>
-/// Builds the typed profile for output height bucket 1080.
+/// Builds the configured video settings profile for target height 1080.
 /// </summary>
 internal static class VideoSettings1080Profile
 {
+    /*
+    Это точка сборки профильной таблицы для 1080.
+    На выходе получается готовый объект, который можно включить в общий набор профилей.
+    */
+    /// <summary>
+    /// Creates the configured profile for target height 1080.
+    /// </summary>
     public static VideoSettingsProfile Create()
     {
         return new VideoSettingsProfile(

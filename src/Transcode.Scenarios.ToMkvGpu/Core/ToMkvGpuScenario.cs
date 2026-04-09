@@ -35,6 +35,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     private readonly ToMkvGpuFfmpegTool _ffmpegTool;
     private static readonly ToMkvGpuInfoFormatter InfoFormatter = new();
 
+    /*
+    Это создание сценария с опциями по умолчанию и стандартным ffmpeg-tool.
+    */
     /// <summary>
     /// Initializes a ToMkvGpu scenario with scenario-specific directives.
     /// </summary>
@@ -43,6 +46,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     {
     }
 
+    /*
+    Это создание сценария с переданным request и стандартным ffmpeg-tool.
+    */
     /// <summary>
     /// Initializes a ToMkvGpu scenario with scenario-specific directives.
     /// </summary>
@@ -52,6 +58,9 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
     {
     }
 
+    /*
+    Это создание сценария с request и конкретным renderer-ом ffmpeg.
+    */
     /// <summary>
     /// Initializes a ToMkvGpu scenario with scenario-specific directives and a concrete ffmpeg renderer.
     /// </summary>
@@ -79,11 +88,17 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         _ffmpegTool = ffmpegTool ?? throw new ArgumentNullException(nameof(ffmpegTool));
     }
 
+    /*
+    Это нормализованный набор опций, с которым работает сценарий.
+    */
     /// <summary>
     /// Gets the scenario-specific directives carried by the ToMkvGpu workflow.
     /// </summary>
     public ToMkvGpuRequest Request { get; }
 
+    /*
+    Это построение итогового decision для конкретного исходного видео.
+    */
     /// <summary>
     /// Builds the resolved tomkvgpu decision from the supplied source video.
     /// </summary>
@@ -128,33 +143,12 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         {
             var outputHeight = ResolveOutputHeight(video, videoIntent, options.ApplyOverlayBackground, encodeVideo.Downscale);
             sourceBitrate = ResolveSourceBitrate(video);
-            var useFixedBucketQuality = FixedBucketVideoSettingsPolicy.ShouldUseFixedBucketQuality(
-                _videoSettingsProfiles,
-                encodeVideo.Downscale is not null,
-                encodeVideo.Downscale,
-                outputHeight,
-                encodeVideo.VideoSettings);
-            videoResolution = encodeVideo.Downscale is not null
-                ? _videoSettingsResolver.ResolveForDownscale(
-                    request: encodeVideo.Downscale,
-                    videoSettings: encodeVideo.VideoSettings,
-                    sourceHeight: video.Height)
-                : _videoSettingsResolver.ResolveForEncode(
-                    request: encodeVideo.VideoSettings,
-                    outputHeight: outputHeight,
-                    sourceHeight: video.Height);
-
-            if (useFixedBucketQuality)
-            {
-                videoResolution = videoResolution with
-                {
-                    Settings = FixedBucketVideoSettingsPolicy.ApplySourceBitrateCap(
-                        videoResolution.Settings,
-                        sourceBitrate.Bitrate,
-                        encodeVideo.VideoSettings,
-                        videoResolution.Profile.RateModel.BufsizeMultiplier)
-                };
-            }
+            videoResolution = _videoSettingsResolver.Resolve(new VideoSettingsResolutionContext(
+                SourceHeight: video.Height,
+                OutputHeight: outputHeight,
+                SourceBitrate: sourceBitrate.Bitrate,
+                VideoSettings: encodeVideo.VideoSettings,
+                Downscale: encodeVideo.Downscale));
         }
 
         return new ToMkvGpuDecision(

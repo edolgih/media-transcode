@@ -505,8 +505,8 @@ public sealed class ToMkvGpuScenarioTests
         var videoResolution = actual.VideoResolution!;
         var sourceBitrate = actual.SourceBitrate!;
 
-        videoResolution.Settings.ContentProfile.Should().Be("film");
-        videoResolution.Settings.QualityProfile.Should().Be("default");
+        videoResolution.Settings.ContentProfile.Value.Should().Be("film");
+        videoResolution.Settings.QualityProfile.Value.Should().Be("default");
         sourceBitrate.Origin.Should().Be("probe");
     }
 

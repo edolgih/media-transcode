@@ -23,8 +23,8 @@ public sealed class VideoSettingsResolverTests
             sourceHeight: 1080);
 
         actual.Profile.TargetHeight.Should().Be(720);
-        actual.BaseSettings.ContentProfile.Should().Be("film");
-        actual.BaseSettings.QualityProfile.Should().Be("default");
+        actual.BaseSettings.ContentProfile.Value.Should().Be("film");
+        actual.BaseSettings.QualityProfile.Value.Should().Be("default");
     }
 
     [Fact]
@@ -38,8 +38,8 @@ public sealed class VideoSettingsResolverTests
             outputHeight: 650,
             sourceHeight: 1080);
 
-        actual.BaseSettings.ContentProfile.Should().Be("anime");
-        actual.BaseSettings.QualityProfile.Should().Be("high");
+        actual.BaseSettings.ContentProfile.Value.Should().Be("anime");
+        actual.BaseSettings.QualityProfile.Value.Should().Be("high");
     }
 
     [Fact]
@@ -68,8 +68,8 @@ public sealed class VideoSettingsResolverTests
             sourceHeight: 1080);
 
         actual.Profile.TargetHeight.Should().Be(576);
-        actual.BaseSettings.ContentProfile.Should().Be("anime");
-        actual.BaseSettings.QualityProfile.Should().Be("high");
+        actual.BaseSettings.ContentProfile.Value.Should().Be("anime");
+        actual.BaseSettings.QualityProfile.Value.Should().Be("high");
     }
 
     [Fact]

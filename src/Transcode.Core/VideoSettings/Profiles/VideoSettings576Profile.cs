@@ -1,17 +1,22 @@
 using Transcode.Core.Tools.Ffmpeg;
-using Transcode.Core.VideoSettings;
 
 namespace Transcode.Core.VideoSettings.Profiles;
 
 /*
-Это фабрика video-settings профиля для целевой высоты 576.
-Она задаёт профильные defaults и source-height bounds overrides.
+Это фабрика профиля для целевой высоты 576.
+Она задает таблицу defaults и локальные bucket-правила для SD-выхода.
 */
 /// <summary>
-/// Builds the typed video-settings profile for target height 576.
+/// Builds the configured video settings profile for target height 576.
 /// </summary>
 internal static class VideoSettings576Profile
 {
+    /*
+    Это точка сборки профильной таблицы для 576.
+    */
+    /// <summary>
+    /// Creates the configured profile for target height 576.
+    /// </summary>
     public static VideoSettingsProfile Create()
     {
         return new VideoSettingsProfile(

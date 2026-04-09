@@ -1,17 +1,22 @@
 using Transcode.Core.Tools.Ffmpeg;
-using Transcode.Core.VideoSettings;
 
 namespace Transcode.Core.VideoSettings.Profiles;
 
 /*
-Это фабрика профиля video settings для output bucket 720.
-Она задаёт quality-oriented defaults и source-height bounds overrides.
+Это фабрика профиля для целевой высоты 720.
+Она хранит defaults и bucket-ограничения для сценариев, где итоговое видео должно быть около HD.
 */
 /// <summary>
-/// Builds the typed profile for output height bucket 720.
+/// Builds the configured video settings profile for target height 720.
 /// </summary>
 internal static class VideoSettings720Profile
 {
+    /*
+    Это точка сборки профильной таблицы для 720.
+    */
+    /// <summary>
+    /// Creates the configured profile for target height 720.
+    /// </summary>
     public static VideoSettingsProfile Create()
     {
         return new VideoSettingsProfile(

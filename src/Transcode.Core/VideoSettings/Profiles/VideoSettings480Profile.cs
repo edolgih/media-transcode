@@ -1,17 +1,22 @@
 using Transcode.Core.Tools.Ffmpeg;
-using Transcode.Core.VideoSettings;
 
 namespace Transcode.Core.VideoSettings.Profiles;
 
 /*
-Это фабрика video-settings профиля для целевой высоты 480.
-Она возвращает типизированный профиль со своими defaults и bucket-правилами.
+Это фабрика профиля для целевой высоты 480.
+Она описывает defaults и bucket-ограничения для более компактного SD-выхода.
 */
 /// <summary>
-/// Builds the typed video-settings profile for target height 480.
+/// Builds the configured video settings profile for target height 480.
 /// </summary>
 internal static class VideoSettings480Profile
 {
+    /*
+    Это точка сборки профильной таблицы для 480.
+    */
+    /// <summary>
+    /// Creates the configured profile for target height 480.
+    /// </summary>
     public static VideoSettingsProfile Create()
     {
         return new VideoSettingsProfile(

@@ -1,17 +1,22 @@
 using Transcode.Core.Tools.Ffmpeg;
-using Transcode.Core.VideoSettings;
 
 namespace Transcode.Core.VideoSettings.Profiles;
 
 /*
-Это фабрика video-settings профиля для целевой высоты 424.
-Она описывает данные профиля как код.
+Это фабрика профиля для целевой высоты 424.
+Она задает таблицу defaults и bucket-правила для самого компактного поддерживаемого downscale-профиля.
 */
 /// <summary>
-/// Builds the typed video-settings profile for target height 424.
+/// Builds the configured video settings profile for target height 424.
 /// </summary>
 internal static class VideoSettings424Profile
 {
+    /*
+    Это точка сборки профильной таблицы для 424.
+    */
+    /// <summary>
+    /// Creates the configured profile for target height 424.
+    /// </summary>
     public static VideoSettingsProfile Create()
     {
         return new VideoSettingsProfile(

@@ -1,39 +1,48 @@
 namespace Transcode.Core.VideoSettings;
 
 /*
-Это общая request-модель для video settings.
-Она хранит только общие quality/rate overrides и используется и в ordinary encode, и рядом с explicit downscale,
-но сама по себе не несет намерения менять разрешение.
+Это общий запрос на переопределение видеонастроек.
+Он хранит только quality и rate override, но сам по себе не означает смену разрешения.
 */
 /// <summary>
-/// Captures reusable video-settings directives independent from a specific scenario.
+/// Represents user overrides for video quality and bitrate-related settings.
 /// </summary>
 public sealed class VideoSettingsRequest
 {
-    private static readonly string[] SupportedContentProfilesValues =
-        [.. VideoSettingsProfiles.Default.GetSupportedContentProfiles()];
-    private static readonly string[] SupportedQualityProfilesValues =
-        [.. VideoSettingsProfiles.Default.GetSupportedQualityProfiles()];
+    private static readonly string[] SupportedContentProfilesValues = [.. VideoContentProfile.SupportedValues];
+    private static readonly string[] SupportedQualityProfilesValues = [.. VideoQualityProfile.SupportedValues];
 
+    /*
+    Это все поддерживаемые профили контента.
+    Список нужен, когда сценарий хочет показать пользователю допустимые варианты.
+    */
     /// <summary>
-    /// Gets content-profile values supported by the core profile catalog.
+    /// Gets the content profiles that can be requested explicitly.
     /// </summary>
     public static IReadOnlyList<string> SupportedContentProfiles => SupportedContentProfilesValues;
 
+    /*
+    Это все поддерживаемые профили качества.
+    Их можно использовать для валидации и подсказок при сборке запроса.
+    */
     /// <summary>
-    /// Gets quality-profile values supported by the core profile catalog.
+    /// Gets the quality profiles that can be requested explicitly.
     /// </summary>
     public static IReadOnlyList<string> SupportedQualityProfiles => SupportedQualityProfilesValues;
 
+    /*
+    Это конструктор набора override для видеонастроек.
+    Он сразу нормализует профили, проверяет числовые значения и не допускает пустой запрос без единого изменения.
+    */
     /// <summary>
-    /// Initializes reusable video-settings directives.
+    /// Initializes a new set of video settings overrides.
     /// </summary>
-    /// <param name="contentProfile">Requested content profile for profile-driven video settings.</param>
-    /// <param name="qualityProfile">Requested quality profile for profile-driven video settings.</param>
+    /// <param name="contentProfile">Requested content profile.</param>
+    /// <param name="qualityProfile">Requested quality profile.</param>
     /// <param name="cq">Explicit CQ override.</param>
-    /// <param name="maxrate">Explicit maxrate override in Mbit/s.</param>
-    /// <param name="bufsize">Explicit bufsize override in Mbit/s.</param>
-    /// <exception cref="ArgumentException">Thrown when no overrides are supplied.</exception>
+    /// <param name="maxrate">Explicit maxrate override in Mbps.</param>
+    /// <param name="bufsize">Explicit bufsize override in Mbps.</param>
+    /// <exception cref="ArgumentException">Thrown when no override value is provided.</exception>
     public VideoSettingsRequest(
         string? contentProfile = null,
         string? qualityProfile = null,
@@ -56,16 +65,8 @@ public sealed class VideoSettingsRequest
             throw new ArgumentOutOfRangeException(nameof(bufsize), bufsize.Value, "Bufsize must be greater than zero.");
         }
 
-        ContentProfile = NormalizeSupportedValue(
-            contentProfile,
-            nameof(contentProfile),
-            SupportedContentProfilesValues,
-            GetSupportedValuesDisplay(SupportedContentProfilesValues));
-        QualityProfile = NormalizeSupportedValue(
-            qualityProfile,
-            nameof(qualityProfile),
-            SupportedQualityProfilesValues,
-            GetSupportedValuesDisplay(SupportedQualityProfilesValues));
+        ContentProfile = VideoContentProfile.ParseOptional(contentProfile, nameof(contentProfile))?.Value;
+        QualityProfile = VideoQualityProfile.ParseOptional(qualityProfile, nameof(qualityProfile))?.Value;
         Cq = cq;
         Maxrate = maxrate;
         Bufsize = bufsize;
@@ -76,33 +77,66 @@ public sealed class VideoSettingsRequest
         }
     }
 
+    /*
+    Это профиль контента, который пользователь хочет применить вместо профильного значения по умолчанию.
+    Пустое значение означает, что выбор остается за профилем целевой высоты.
+    */
     /// <summary>
-    /// Gets the requested content profile.
+    /// Gets the requested content profile override.
     /// </summary>
     public string? ContentProfile { get; }
 
+    /*
+    Это профиль качества, который должен заменить стандартный выбор профиля.
+    Если значение не задано, используется качество по умолчанию для выбранной высоты.
+    */
     /// <summary>
-    /// Gets the requested quality profile.
+    /// Gets the requested quality profile override.
     /// </summary>
     public string? QualityProfile { get; }
 
+    /*
+    Это ручное значение CQ.
+    Оно влияет не только на качество, но и на автоматический пересчет допустимого диапазона rate-параметров.
+    */
     /// <summary>
     /// Gets the explicit CQ override.
     /// </summary>
     public int? Cq { get; }
 
+    /*
+    Это ручное значение максимального битрейта.
+    Его используют как итоговое значение, если пользователь хочет явно управлять rate-моделью.
+    */
     /// <summary>
-    /// Gets the explicit maxrate override in Mbit/s.
+    /// Gets the explicit maxrate override in Mbps.
     /// </summary>
     public decimal? Maxrate { get; }
 
+    /*
+    Это ручное значение буфера кодека.
+    Обычно оно вычисляется автоматически, но здесь может быть задано явно.
+    */
     /// <summary>
-    /// Gets the explicit bufsize override in Mbit/s.
+    /// Gets the explicit bufsize override in Mbps.
     /// </summary>
     public decimal? Bufsize { get; }
 
+    /*
+    Это признак того, что пользователь вмешался в rate-поля вручную.
+    Он нужен, чтобы не применять поверх этого автоматическое ограничение битрейтом источника.
+    */
     /// <summary>
-    /// Creates a request when at least one override is provided; otherwise returns <see langword="null"/>.
+    /// Gets a value indicating whether the request contains manual bitrate-related overrides.
+    /// </summary>
+    internal bool HasManualRateOverrides => Cq.HasValue || Maxrate.HasValue || Bufsize.HasValue;
+
+    /*
+    Это удобная фабрика для случаев, когда параметры могут быть пустыми.
+    Она возвращает null вместо создания формально пустого объекта.
+    */
+    /// <summary>
+    /// Creates a request only when at least one override is provided; otherwise returns <see langword="null"/>.
     /// </summary>
     public static VideoSettingsRequest? CreateOrNull(
         string? contentProfile = null,
@@ -116,67 +150,37 @@ public sealed class VideoSettingsRequest
             : null;
     }
 
+    /*
+    Это проверка, можно ли принять строку как профиль контента.
+    Полезна, когда объект запроса создавать еще рано или не нужно.
+    */
     /// <summary>
-    /// Determines whether the supplied content-profile value is supported.
+    /// Determines whether the specified content profile value is supported.
     /// </summary>
     public static bool IsSupportedContentProfile(string? value)
     {
-        return IsSupportedValue(value, SupportedContentProfilesValues);
+        return VideoContentProfile.IsSupported(value);
     }
 
+    /*
+    Это проверка, можно ли принять строку как профиль качества.
+    Нужна для ранней валидации пользовательского ввода.
+    */
     /// <summary>
-    /// Determines whether the supplied quality-profile value is supported.
+    /// Determines whether the specified quality profile value is supported.
     /// </summary>
     public static bool IsSupportedQualityProfile(string? value)
     {
-        return IsSupportedValue(value, SupportedQualityProfilesValues);
+        return VideoQualityProfile.IsSupported(value);
     }
 
-    private static string? NormalizeName(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim().ToLowerInvariant();
-    }
-
-    private static bool IsSupportedValue(string? value, IReadOnlyList<string> supportedValues)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        return supportedValues.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static string GetSupportedValuesDisplay(IReadOnlyList<string> supportedValues)
-    {
-        return string.Join(", ", supportedValues);
-    }
-
-    private static string? NormalizeSupportedValue(
-        string? value,
-        string paramName,
-        IReadOnlyList<string> supportedValues,
-        string display)
-    {
-        var normalizedValue = NormalizeName(value);
-        if (normalizedValue is null)
-        {
-            return null;
-        }
-
-        if (!supportedValues.Contains(normalizedValue, StringComparer.OrdinalIgnoreCase))
-        {
-            throw new ArgumentOutOfRangeException(paramName, value, $"Supported values: {display}.");
-        }
-
-        return normalizedValue;
-    }
-
+    /*
+    Это внутренняя проверка, что в запросе вообще есть что применять.
+    Без нее модель могла бы появиться даже тогда, когда пользователь ничего не переопределил.
+    */
+    /// <summary>
+    /// Determines whether at least one override value is present.
+    /// </summary>
     private static bool HasAnyValue(
         string? contentProfile,
         string? qualityProfile,
