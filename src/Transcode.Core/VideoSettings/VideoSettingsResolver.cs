@@ -59,7 +59,7 @@ sealed class VideoSettingsResolver
     /// <summary>
     /// Resolves settings for regular encoding without an explicit downscale request.
     /// </summary>
-    public ProfileDrivenVideoSettingsResolution ResolveForEncode(
+    private ProfileDrivenVideoSettingsResolution ResolveForEncode(
         VideoSettingsRequest? request,
         int outputHeight,
         int? sourceHeight = null)
@@ -83,7 +83,7 @@ sealed class VideoSettingsResolver
     /// <summary>
     /// Resolves settings for an explicit downscale request.
     /// </summary>
-    public ProfileDrivenVideoSettingsResolution ResolveForDownscale(
+    private ProfileDrivenVideoSettingsResolution ResolveForDownscale(
         DownscaleRequest request,
         VideoSettingsRequest? videoSettings,
         int sourceHeight)

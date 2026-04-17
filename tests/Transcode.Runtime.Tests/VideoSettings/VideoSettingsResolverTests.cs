@@ -13,14 +13,16 @@ namespace Transcode.Runtime.Tests.VideoSettings;
 public sealed class VideoSettingsResolverTests
 {
     [Fact]
-    public void ResolveForEncode_WhenRequestIsNull_UsesResolvedOutputProfile()
+    public void Resolve_WhenEncodeRequestIsNull_UsesResolvedOutputProfile()
     {
         var sut = CreateSut();
 
-        var actual = sut.ResolveForEncode(
-            request: null,
-            outputHeight: 650,
-            sourceHeight: 1080);
+        var actual = sut.Resolve(new VideoSettingsResolutionContext(
+            SourceHeight: 1080,
+            OutputHeight: 650,
+            SourceBitrate: null,
+            VideoSettings: null,
+            Downscale: null));
 
         actual.Profile.TargetHeight.Should().Be(720);
         actual.BaseSettings.ContentProfile.Value.Should().Be("film");
@@ -28,44 +30,45 @@ public sealed class VideoSettingsResolverTests
     }
 
     [Fact]
-    public void ResolveForEncode_WhenRequestContainsProfiles_UsesProvidedProfiles()
+    public void Resolve_WhenEncodeRequestContainsProfiles_UsesProvidedProfiles()
     {
         var sut = CreateSut();
         var request = CreateRequest(contentProfile: "anime", qualityProfile: "high");
 
-        var actual = sut.ResolveForEncode(
-            request: request,
-            outputHeight: 650,
-            sourceHeight: 1080);
+        var actual = sut.Resolve(new VideoSettingsResolutionContext(
+            SourceHeight: 1080,
+            OutputHeight: 650,
+            SourceBitrate: null,
+            VideoSettings: request,
+            Downscale: null));
 
         actual.BaseSettings.ContentProfile.Value.Should().Be("anime");
         actual.BaseSettings.QualityProfile.Value.Should().Be("high");
     }
 
     [Fact]
-    public void ResolveForDownscale_WhenRequestIsNull_ThrowsArgumentNullException()
+    public void Resolve_WhenContextIsNull_ThrowsArgumentNullException()
     {
         var sut = CreateSut();
 
-        var action = () => sut.ResolveForDownscale(
-            request: null!,
-            videoSettings: null,
-            sourceHeight: 1080);
+        var action = () => sut.Resolve(context: null!);
 
         action.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void ResolveForDownscale_WhenRequestContainsProfiles_UsesTargetProfileAndOverrides()
+    public void Resolve_WhenDownscaleRequestContainsProfiles_UsesTargetProfileAndOverrides()
     {
         var sut = CreateSut();
         var downscale = new DownscaleRequest(576);
         var request = CreateRequest(contentProfile: "anime", qualityProfile: "high");
 
-        var actual = sut.ResolveForDownscale(
-            request: downscale,
-            videoSettings: request,
-            sourceHeight: 1080);
+        var actual = sut.Resolve(new VideoSettingsResolutionContext(
+            SourceHeight: 1080,
+            OutputHeight: downscale.TargetHeight,
+            SourceBitrate: null,
+            VideoSettings: request,
+            Downscale: downscale));
 
         actual.Profile.TargetHeight.Should().Be(576);
         actual.BaseSettings.ContentProfile.Value.Should().Be("anime");
@@ -73,15 +76,17 @@ public sealed class VideoSettingsResolverTests
     }
 
     [Fact]
-    public void ResolveForEncode_WhenManualCqImprovesDefaultQuality_MovesRatePointAndBoundsTowardsBetterNeighbor()
+    public void Resolve_WhenEncodeManualCqImprovesDefaultQuality_MovesRatePointAndBoundsTowardsBetterNeighbor()
     {
         var sut = CreateSut();
         var request = CreateRequest(contentProfile: "anime", qualityProfile: "default", cq: 20);
 
-        var actual = sut.ResolveForEncode(
-            request: request,
-            outputHeight: 1080,
-            sourceHeight: 1080);
+        var actual = sut.Resolve(new VideoSettingsResolutionContext(
+            SourceHeight: 1080,
+            OutputHeight: 1080,
+            SourceBitrate: null,
+            VideoSettings: request,
+            Downscale: null));
 
         actual.Settings.Cq.Should().Be(20);
         actual.Settings.Maxrate.Should().Be(4.2m);
@@ -91,16 +96,18 @@ public sealed class VideoSettingsResolverTests
     }
 
     [Fact]
-    public void ResolveForDownscale_WhenManualCqImprovesDefaultQuality_MovesRatePointAndBoundsTowardsBetterNeighbor()
+    public void Resolve_WhenDownscaleManualCqImprovesDefaultQuality_MovesRatePointAndBoundsTowardsBetterNeighbor()
     {
         var sut = CreateSut();
         var downscale = new DownscaleRequest(576);
         var request = CreateRequest(contentProfile: "film", qualityProfile: "default", cq: 22);
 
-        var actual = sut.ResolveForDownscale(
-            request: downscale,
-            videoSettings: request,
-            sourceHeight: 1080);
+        var actual = sut.Resolve(new VideoSettingsResolutionContext(
+            SourceHeight: 1080,
+            OutputHeight: downscale.TargetHeight,
+            SourceBitrate: null,
+            VideoSettings: request,
+            Downscale: downscale));
 
         actual.Settings.Cq.Should().Be(22);
         actual.Settings.Maxrate.Should().Be(4.05m);
@@ -110,16 +117,18 @@ public sealed class VideoSettingsResolverTests
     }
 
     [Fact]
-    public void ResolveForDownscale_WhenManualCqWorsensDefaultQuality_MovesRatePointAndBoundsTowardsWorseNeighbor()
+    public void Resolve_WhenDownscaleManualCqWorsensDefaultQuality_MovesRatePointAndBoundsTowardsWorseNeighbor()
     {
         var sut = CreateSut();
         var downscale = new DownscaleRequest(576);
         var request = CreateRequest(contentProfile: "film", qualityProfile: "default", cq: 24);
 
-        var actual = sut.ResolveForDownscale(
-            request: downscale,
-            videoSettings: request,
-            sourceHeight: 1080);
+        var actual = sut.Resolve(new VideoSettingsResolutionContext(
+            SourceHeight: 1080,
+            OutputHeight: downscale.TargetHeight,
+            SourceBitrate: null,
+            VideoSettings: request,
+            Downscale: downscale));
 
         actual.Settings.Cq.Should().Be(24);
         actual.Settings.Maxrate.Should().Be(3.55m);
@@ -129,16 +138,18 @@ public sealed class VideoSettingsResolverTests
     }
 
     [Fact]
-    public void ResolveForDownscale_WhenManualCqImprovesAsymmetricAnimeProfile_UsesDirectionalCorridorInsteadOfDefaultClamp()
+    public void Resolve_WhenDownscaleManualCqImprovesAsymmetricAnimeProfile_UsesDirectionalCorridorInsteadOfDefaultClamp()
     {
         var sut = CreateSut();
         var downscale = new DownscaleRequest(424);
         var request = CreateRequest(contentProfile: "anime", qualityProfile: "default", cq: 24);
 
-        var actual = sut.ResolveForDownscale(
-            request: downscale,
-            videoSettings: request,
-            sourceHeight: 1080);
+        var actual = sut.Resolve(new VideoSettingsResolutionContext(
+            SourceHeight: 1080,
+            OutputHeight: downscale.TargetHeight,
+            SourceBitrate: null,
+            VideoSettings: request,
+            Downscale: downscale));
 
         actual.Settings.Cq.Should().Be(24);
         actual.Settings.Maxrate.Should().Be(2.1m);
