@@ -128,8 +128,8 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         VideoIntent videoIntent = options.CopyVideo
             ? new CopyVideoIntent()
             : new EncodeVideoIntent(
-                TargetVideoCodec: "h264",
-                PreferredBackend: "gpu",
+                TargetVideoCodec: TargetVideoCodec.H264,
+                PreferredBackend: VideoBackend.Gpu,
                 CompatibilityProfile: H264OutputProfile.H264High,
                 TargetFramesPerSecond: options.TargetFramesPerSecond,
                 UseFrameInterpolation: false,
@@ -152,7 +152,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         }
 
         return new ToMkvGpuDecision(
-            targetContainer: "mkv",
+            targetContainer: TargetContainer.Mkv,
             video: videoIntent,
             audio: audioIntent,
             keepSource: options.KeepSource,
@@ -196,7 +196,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         DownscaleRequest? Downscale,
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
-        string NvencPreset)
+        NvencPreset NvencPreset)
     {
         public bool CopyAudio => AudioMode == AudioPathMode.Copy;
     }

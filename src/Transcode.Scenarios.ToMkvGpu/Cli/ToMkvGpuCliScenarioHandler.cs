@@ -86,10 +86,10 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
         new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile. Default: default."),
         new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Explicit downscale algorithm override. Default: profile default; built-in profiles currently bilinear."),
-        new CliHelpOption("--cq <int>", "Explicit NVENC CQ override. Default: resolved profile value."),
+        new CliHelpOption($"--cq <{VideoSettingsRequest.MinimumCq}..{VideoSettingsRequest.MaximumCq}>", "Explicit NVENC CQ override. Default: resolved profile value."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s. Default: resolved profile value."),
         new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s. Default: resolved profile value."),
-        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", $"Explicit NVENC preset override. Default: {NvencPresetOptions.DefaultPreset}.")
+        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPreset.SupportedValues)}>", $"Explicit NVENC preset override. Default: {NvencPreset.Default}.")
     ];
 
     /*

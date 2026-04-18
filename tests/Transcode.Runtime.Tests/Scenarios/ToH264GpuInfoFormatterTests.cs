@@ -134,8 +134,8 @@ public sealed class ToH264GpuInfoFormatterTests
         VideoIntent videoIntent = copyVideo
             ? new CopyVideoIntent()
             : new EncodeVideoIntent(
-                TargetVideoCodec: "h264",
-                PreferredBackend: "gpu",
+                TargetVideoCodec: TargetVideoCodec.H264,
+                PreferredBackend: VideoBackend.Gpu,
                 CompatibilityProfile: H264OutputProfile.H264High,
                 Downscale: downscaleHeight.HasValue
                     ? new DownscaleRequest(downscaleHeight.Value, "bilinear")
@@ -147,7 +147,7 @@ public sealed class ToH264GpuInfoFormatterTests
                 : new EncodeAudioIntent();
 
         return new ToH264GpuDecision(
-            targetContainer: targetContainer,
+            targetContainer: TargetContainer.Parse(targetContainer, nameof(targetContainer)),
             videoIntent: videoIntent,
             audioIntent: audioIntent,
             keepSource: false,

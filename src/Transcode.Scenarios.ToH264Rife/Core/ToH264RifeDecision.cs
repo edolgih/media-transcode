@@ -1,4 +1,5 @@
 using Transcode.Core.MediaIntent;
+
 namespace Transcode.Scenarios.ToH264Rife.Core;
 
 /*
@@ -12,29 +13,29 @@ internal sealed class ToH264RifeDecision
 {
     /*
     Это конструктор полностью разрешенного решения.
-    В него попадают уже нормализованные и проверенные значения, которые нужны для построения команд.
+    В него попадают уже типизированные и проверенные значения, которые нужны для построения команд.
     */
     /// <summary>
     /// Initializes a fully resolved <c>toh264rife</c> decision.
     /// </summary>
     public ToH264RifeDecision(
-        string targetContainer,
+        TargetContainer targetContainer,
         VideoIntent video,
         AudioIntent audio,
         bool keepSource,
         string outputPath,
-        string interpolationQualityProfile,
-        string interpolationModelName,
+        InterpolationQualityProfile interpolationQualityProfile,
+        InterpolationModelName interpolationModelName,
         ToH264RifeVideoSettings resolvedVideoSettings,
         double resolvedTargetFramesPerSecond,
         int userFacingTargetFramesPerSecond,
         int framesPerSecondMultiplier)
     {
-        TargetContainer = targetContainer;
-        Video = video;
-        Audio = audio;
+        TargetContainer = targetContainer ?? throw new ArgumentNullException(nameof(targetContainer));
+        Video = video ?? throw new ArgumentNullException(nameof(video));
+        Audio = audio ?? throw new ArgumentNullException(nameof(audio));
         KeepSource = keepSource;
-        OutputPath = outputPath;
+        OutputPath = outputPath ?? throw new ArgumentNullException(nameof(outputPath));
         InterpolationQualityProfile = interpolationQualityProfile ?? throw new ArgumentNullException(nameof(interpolationQualityProfile));
         InterpolationModelName = interpolationModelName ?? throw new ArgumentNullException(nameof(interpolationModelName));
         ResolvedVideoSettings = resolvedVideoSettings ?? throw new ArgumentNullException(nameof(resolvedVideoSettings));
@@ -49,7 +50,7 @@ internal sealed class ToH264RifeDecision
     /// <summary>
     /// Gets the target output container.
     /// </summary>
-    public string TargetContainer { get; }
+    public TargetContainer TargetContainer { get; }
 
     /*
     Это выбранный путь обработки видеопотока.
@@ -89,7 +90,7 @@ internal sealed class ToH264RifeDecision
     /// <summary>
     /// Gets the interpolation quality profile used by the scenario.
     /// </summary>
-    public string InterpolationQualityProfile { get; }
+    public InterpolationQualityProfile InterpolationQualityProfile { get; }
 
     /*
     Это конкретная модель интерполяции, которая будет запущена в tool-слое.
@@ -97,7 +98,7 @@ internal sealed class ToH264RifeDecision
     /// <summary>
     /// Gets the interpolation model name resolved from the quality profile.
     /// </summary>
-    public string InterpolationModelName { get; }
+    public InterpolationModelName InterpolationModelName { get; }
 
     /*
     Это итоговые настройки кодирования после выбора профилей и override.

@@ -41,4 +41,22 @@ public sealed class VideoSettingsRequestTests
 
         actual.Should().BeNull();
     }
+
+    [Fact]
+    public void Ctor_WhenContentProfileIsEmpty_Throws()
+    {
+        Action action = static () => _ = new VideoSettingsRequest(contentProfile: "");
+
+        action.Should().Throw<ArgumentException>()
+            .WithParameterName("contentProfile");
+    }
+
+    [Fact]
+    public void CreateOrNull_WhenQualityProfileIsWhitespace_Throws()
+    {
+        Action action = static () => _ = VideoSettingsRequest.CreateOrNull(qualityProfile: " ");
+
+        action.Should().Throw<ArgumentException>()
+            .WithParameterName("qualityProfile");
+    }
 }

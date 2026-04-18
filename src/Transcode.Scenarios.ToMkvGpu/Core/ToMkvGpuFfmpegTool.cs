@@ -58,7 +58,7 @@ public sealed class ToMkvGpuFfmpegTool
             return false;
         }
 
-        if (!decision.TargetContainer.Equals("mkv", StringComparison.OrdinalIgnoreCase))
+        if (decision.TargetContainer != TargetContainer.Mkv)
         {
             return false;
         }
@@ -70,9 +70,9 @@ public sealed class ToMkvGpuFfmpegTool
 
         return decision.Video is EncodeVideoIntent encodeVideo &&
                decision.VideoResolution is not null &&
-               encodeVideo.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
-               (encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase) ||
-                encodeVideo.TargetVideoCodec.Equals("h265", StringComparison.OrdinalIgnoreCase));
+               encodeVideo.PreferredBackend == VideoBackend.Gpu &&
+               (encodeVideo.TargetVideoCodec == TargetVideoCodec.H264 ||
+                encodeVideo.TargetVideoCodec == TargetVideoCodec.H265);
     }
 
     /*
@@ -120,7 +120,7 @@ public sealed class ToMkvGpuFfmpegTool
         var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(decision.OutputPath);
         return decision.CopyVideo &&
                decision.CopyAudio &&
-               video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase) &&
+               video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -139,7 +139,7 @@ public sealed class ToMkvGpuFfmpegTool
         }
 
         if (decision.Video is EncodeVideoIntent encodeVideo &&
-            string.Equals(encodeVideo.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase))
+            encodeVideo.PreferredBackend == VideoBackend.Gpu)
         {
             parts.Add("-hwaccel cuda -hwaccel_output_format cuda");
         }
@@ -162,7 +162,7 @@ public sealed class ToMkvGpuFfmpegTool
             return "-fflags +genpts+igndts -avoid_negative_ts make_zero";
         }
 
-        var needsContainerChange = !video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase);
+        var needsContainerChange = !video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase);
         if (decision.RequiresVideoEncode || decision.RequiresAudioEncode || needsContainerChange)
         {
             return "-avoid_negative_ts make_zero";
@@ -193,7 +193,7 @@ public sealed class ToMkvGpuFfmpegTool
             ? $"-fps_mode:v cfr -r {fpsToken} "
             : string.Empty;
         var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32 ";
-        var pixelFormatPart = string.Equals(encodeVideo.PreferredBackend, "gpu", StringComparison.OrdinalIgnoreCase)
+        var pixelFormatPart = encodeVideo.PreferredBackend == VideoBackend.Gpu
             ? string.Empty
             : "-pix_fmt yuv420p ";
         var rateControlPart = $"-rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} ";
@@ -201,7 +201,7 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (decision.ApplyOverlayBackground)
         {
-            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm.Value);
+            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm.ToString());
             return $"-filter_complex {FfmpegExecutionLayout.Quote(filter)} -map \"[v]\" {frameRatePart}" +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
                    $"{pixelFormatPart}{compatibilityPart}-g {gop}";
@@ -209,7 +209,7 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (downscale is not null)
         {
-            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={settings.Algorithm.Value}:format=nv12\" " +
+            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={settings.Algorithm}:format=nv12\" " +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
                    $"{compatibilityPart}-g {gop}";
         }
@@ -242,8 +242,8 @@ public sealed class ToMkvGpuFfmpegTool
         var encodeVideo = GetRequiredEncodeVideoIntent(decision);
         return encodeVideo.TargetVideoCodec switch
         {
-            "h264" => "h264_nvenc",
-            "h265" => "hevc_nvenc",
+            var codec when codec == TargetVideoCodec.H264 => "h264_nvenc",
+            var codec when codec == TargetVideoCodec.H265 => "hevc_nvenc",
             _ => throw new NotSupportedException($"Video codec '{encodeVideo.TargetVideoCodec}' is not supported by ToMkvGpu ffmpeg tool.")
         };
     }
@@ -272,7 +272,7 @@ public sealed class ToMkvGpuFfmpegTool
         var (width, height) = ToMkvGpuVideoGeometry.ResolveOutputDimensions(video, decision.Video, decision.ApplyOverlayBackground);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         var compatibilityPart = VideoCodecCompatibility.ResolveArguments(
-            encodeVideo.TargetVideoCodec,
+            encodeVideo.TargetVideoCodec.ToString(),
             encodeVideo.CompatibilityProfile,
             width,
             height,

@@ -123,7 +123,7 @@ internal static class ToH264GpuCliRequestParser
                     args,
                     ref index,
                     token,
-                    "--cq must be an integer from 1 to 51.",
+                    $"--cq must be an integer from {VideoSettingsRequest.MinimumCq} to {VideoSettingsRequest.MaximumCq}.",
                     out state.Cq,
                     out errorText))
                 {
@@ -252,12 +252,12 @@ internal static class ToH264GpuCliRequestParser
                 ? BuildSupportedError("--downscale", DownscaleRequest.SupportedTargetHeights)
                 : "--downscale must be greater than zero.",
             "algorithm" => BuildSupportedError("--downscale-algo", DownscaleRequest.SupportedAlgorithms),
-            "cq" => "--cq must be an integer from 1 to 51.",
+            "cq" => $"--cq must be an integer from {VideoSettingsRequest.MinimumCq} to {VideoSettingsRequest.MaximumCq}.",
             "maxrate" => "--maxrate must be greater than zero.",
             "bufsize" => "--bufsize must be greater than zero.",
             "contentProfile" => BuildSupportedError("--content-profile", VideoSettingsRequest.SupportedContentProfiles),
             "qualityProfile" => BuildSupportedError("--quality-profile", VideoSettingsRequest.SupportedQualityProfiles),
-            "nvencPreset" => BuildSupportedError("--nvenc-preset", NvencPresetOptions.SupportedPresets),
+            "nvencPreset" => BuildSupportedError("--nvenc-preset", NvencPreset.SupportedValues),
             _ => exception.Message
         };
     }

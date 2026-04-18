@@ -9,7 +9,7 @@ namespace Transcode.Core.VideoSettings;
 /// <summary>
 /// Represents one supported content profile value.
 /// </summary>
-sealed record VideoContentProfile
+public sealed record VideoContentProfile
 {
     public static readonly VideoContentProfile Anime = new("anime");
     public static readonly VideoContentProfile Mult = new("mult");
@@ -60,13 +60,13 @@ sealed record VideoContentProfile
 
     /*
     Это мягкий вариант разбора для необязательного значения.
-    Если строка пустая, система просто считает, что override не задан.
+    Только null означает, что override не задан; пустая строка считается ошибкой.
     */
     /// <summary>
-    /// Returns <see langword="null"/> when the value is not provided; otherwise parses it.
+    /// Returns <see langword="null"/> when the value is <see langword="null"/>; otherwise parses it.
     /// </summary>
     public static VideoContentProfile? ParseOptional(string? value, string paramName) =>
-        string.IsNullOrWhiteSpace(value) ? null : Parse(value, paramName);
+        value is null ? null : Parse(value, paramName);
 
     /*
     Это безопасная проверка строки без исключения.
@@ -107,7 +107,7 @@ sealed record VideoContentProfile
 /// <summary>
 /// Represents one supported quality profile value.
 /// </summary>
-sealed record VideoQualityProfile
+public sealed record VideoQualityProfile
 {
     public static readonly VideoQualityProfile High = new("high");
     public static readonly VideoQualityProfile Default = new("default");
@@ -158,13 +158,13 @@ sealed record VideoQualityProfile
 
     /*
     Это вариант разбора для необязательного значения.
-    Пустая строка трактуется как отсутствие override.
+    Только null трактуется как отсутствие override.
     */
     /// <summary>
-    /// Returns <see langword="null"/> when the value is not provided; otherwise parses it.
+    /// Returns <see langword="null"/> when the value is <see langword="null"/>; otherwise parses it.
     /// </summary>
     public static VideoQualityProfile? ParseOptional(string? value, string paramName) =>
-        string.IsNullOrWhiteSpace(value) ? null : Parse(value, paramName);
+        value is null ? null : Parse(value, paramName);
 
     /*
     Это безопасный разбор профиля качества без исключения.
@@ -229,7 +229,7 @@ sealed record VideoQualityProfile
 /// <summary>
 /// Represents one supported scaling algorithm value.
 /// </summary>
-sealed record VideoScaleAlgorithm
+public sealed record VideoScaleAlgorithm
 {
     public static readonly VideoScaleAlgorithm Bilinear = new(FfmpegScaleAlgorithms.Bilinear);
     public static readonly VideoScaleAlgorithm Bicubic = new(FfmpegScaleAlgorithms.Bicubic);
@@ -280,40 +280,15 @@ sealed record VideoScaleAlgorithm
 
     /*
     Это вариант разбора для необязательного алгоритма.
-    Если алгоритм не указан, решение о нем можно отложить на следующий этап.
+    Если алгоритм равен null, решение о нем можно отложить на следующий этап.
     */
     /// <summary>
-    /// Returns <see langword="null"/> when the value is not provided; otherwise parses it.
+    /// Returns <see langword="null"/> when the value is <see langword="null"/>; otherwise parses it.
     /// </summary>
     public static VideoScaleAlgorithm? ParseOptional(string? value, string paramName) =>
-        string.IsNullOrWhiteSpace(value) ? null : Parse(value, paramName);
+        value is null ? null : Parse(value, paramName);
 
-    /*
-    Это безопасная проверка алгоритма без исключения.
-    */
-    /// <summary>
-    /// Tries to parse the value without throwing an exception.
-    /// </summary>
-    public static bool TryParse(string? value, out VideoScaleAlgorithm? algorithm)
-    {
-        algorithm = value?.Trim().ToLowerInvariant() switch
-        {
-            FfmpegScaleAlgorithms.Bilinear => Bilinear,
-            FfmpegScaleAlgorithms.Bicubic => Bicubic,
-            FfmpegScaleAlgorithms.Lanczos => Lanczos,
-            _ => null
-        };
 
-        return algorithm is not null;
-    }
-
-    /*
-    Это короткая проверка, входит ли алгоритм в поддерживаемый набор.
-    */
-    /// <summary>
-    /// Determines whether the specified value belongs to the supported set.
-    /// </summary>
-    public static bool IsSupported(string? value) => TryParse(value, out _);
 
     public override string ToString() => Value;
 }

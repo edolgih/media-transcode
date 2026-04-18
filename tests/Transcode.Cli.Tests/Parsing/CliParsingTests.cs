@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Cli.Core;
 using Transcode.Cli.Core.Parsing;
 using Transcode.Cli.Core.Scenarios;
+using Transcode.Core.MediaIntent;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.VideoSettings;
 using Transcode.Scenarios.ToH264Gpu.Cli;
 using Transcode.Scenarios.ToH264Gpu.Core;
@@ -57,14 +59,17 @@ public sealed class CliParsingTests
         var downscale = scenarioInput.Downscale!;
         var videoSettings = scenarioInput.VideoSettings!;
         downscale.TargetHeight.Should().Be(576);
-        videoSettings.ContentProfile.Should().Be("anime");
-        videoSettings.QualityProfile.Should().Be("high");
-        downscale.Algorithm.Should().Be("lanczos");
+        videoSettings.ContentProfile.Should().NotBeNull();
+        videoSettings.ContentProfile!.Value.Should().Be("anime");
+        videoSettings.QualityProfile.Should().NotBeNull();
+        videoSettings.QualityProfile!.Value.Should().Be("high");
+        downscale.Algorithm.Should().NotBeNull();
+        downscale.Algorithm!.Value.Should().Be("lanczos");
         videoSettings.Cq.Should().Be(23);
         videoSettings.Maxrate.Should().Be(3.4m);
         videoSettings.Bufsize.Should().Be(6.8m);
         scenarioInput.MaxFramesPerSecond.Should().Be(50);
-        scenarioInput.NvencPreset.Should().Be("p5");
+        scenarioInput.NvencPreset.Should().Be(NvencPreset.P5);
     }
 
     [Fact]
@@ -117,14 +122,17 @@ public sealed class CliParsingTests
         scenarioRequest.VideoSettings.Should().NotBeNull();
         scenarioRequest.Downscale.Should().NotBeNull();
         scenarioRequest.Downscale!.TargetHeight.Should().Be(576);
-        scenarioRequest.VideoSettings.ContentProfile.Should().Be("film");
-        scenarioRequest.VideoSettings.QualityProfile.Should().Be("default");
-        scenarioRequest.Downscale.Algorithm.Should().Be("bicubic");
+        scenarioRequest.VideoSettings.ContentProfile.Should().NotBeNull();
+        scenarioRequest.VideoSettings.ContentProfile!.Value.Should().Be("film");
+        scenarioRequest.VideoSettings.QualityProfile.Should().NotBeNull();
+        scenarioRequest.VideoSettings.QualityProfile!.Value.Should().Be("default");
+        scenarioRequest.Downscale.Algorithm.Should().NotBeNull();
+        scenarioRequest.Downscale.Algorithm!.Value.Should().Be("bicubic");
         scenarioRequest.VideoSettings.Cq.Should().Be(24);
         scenarioRequest.VideoSettings.Maxrate.Should().Be(3.7m);
         scenarioRequest.VideoSettings.Bufsize.Should().Be(7.4m);
         scenarioRequest.MaxFramesPerSecond.Should().Be(40);
-        scenarioRequest.NvencPreset.Should().Be("p6");
+        scenarioRequest.NvencPreset.Should().Be(NvencPreset.P6);
     }
 
     [Fact]
@@ -163,11 +171,14 @@ public sealed class CliParsingTests
         scenarioInput.Downscale.Should().NotBeNull();
         scenarioInput.Downscale!.TargetHeight.Should().Be(576);
         scenarioInput.KeepFramesPerSecond.Should().BeTrue();
-        scenarioInput.VideoSettings!.ContentProfile.Should().Be("film");
-        scenarioInput.VideoSettings.QualityProfile.Should().Be("default");
-        scenarioInput.Downscale.Algorithm.Should().Be("lanczos");
+        scenarioInput.VideoSettings!.ContentProfile.Should().NotBeNull();
+        scenarioInput.VideoSettings.ContentProfile!.Value.Should().Be("film");
+        scenarioInput.VideoSettings.QualityProfile.Should().NotBeNull();
+        scenarioInput.VideoSettings.QualityProfile!.Value.Should().Be("default");
+        scenarioInput.Downscale.Algorithm.Should().NotBeNull();
+        scenarioInput.Downscale.Algorithm!.Value.Should().Be("lanczos");
         scenarioInput.VideoSettings.Cq.Should().Be(21);
-        scenarioInput.NvencPreset.Should().Be("p6");
+        scenarioInput.NvencPreset.Should().Be(NvencPreset.P6);
         scenarioInput.Denoise.Should().BeTrue();
         scenarioInput.SynchronizeAudio.Should().BeTrue();
         scenarioInput.OutputMkv.Should().BeTrue();
@@ -220,11 +231,14 @@ public sealed class CliParsingTests
         scenarioRequest.Downscale!.TargetHeight.Should().Be(576);
         scenarioRequest.KeepFramesPerSecond.Should().BeTrue();
         scenarioRequest.VideoSettings.Should().NotBeNull();
-        scenarioRequest.VideoSettings!.ContentProfile.Should().Be("film");
-        scenarioRequest.VideoSettings.QualityProfile.Should().Be("default");
-        scenarioRequest.Downscale.Algorithm.Should().Be("lanczos");
+        scenarioRequest.VideoSettings!.ContentProfile.Should().NotBeNull();
+        scenarioRequest.VideoSettings.ContentProfile!.Value.Should().Be("film");
+        scenarioRequest.VideoSettings.QualityProfile.Should().NotBeNull();
+        scenarioRequest.VideoSettings.QualityProfile!.Value.Should().Be("default");
+        scenarioRequest.Downscale.Algorithm.Should().NotBeNull();
+        scenarioRequest.Downscale.Algorithm!.Value.Should().Be("lanczos");
         scenarioRequest.VideoSettings.Cq.Should().Be(21);
-        scenarioRequest.NvencPreset.Should().Be("p6");
+        scenarioRequest.NvencPreset.Should().Be(NvencPreset.P6);
         scenarioRequest.Denoise.Should().BeTrue();
         scenarioRequest.SynchronizeAudio.Should().BeTrue();
         scenarioRequest.OutputMkv.Should().BeTrue();
@@ -300,11 +314,13 @@ public sealed class CliParsingTests
 
         actual.Request.KeepSource.Should().BeTrue();
         actual.Request.FramesPerSecondMultiplier.Should().Be(3);
-        actual.Request.InterpolationQualityProfile.Should().Be("high");
+        actual.Request.InterpolationQualityProfile.Should().Be(InterpolationQualityProfile.High);
         actual.Request.VideoSettings.Should().NotBeNull();
-        actual.Request.VideoSettings!.ContentProfile.Should().Be("anime");
-        actual.Request.VideoSettings.QualityProfile.Should().Be("high");
-        actual.Request.OutputContainer.Should().Be("mkv");
+        actual.Request.VideoSettings!.ContentProfile.Should().NotBeNull();
+        actual.Request.VideoSettings.ContentProfile!.Value.Should().Be("anime");
+        actual.Request.VideoSettings.QualityProfile.Should().NotBeNull();
+        actual.Request.VideoSettings.QualityProfile!.Value.Should().Be("high");
+        actual.Request.OutputContainer.Should().Be(TargetContainer.Mkv);
     }
 
     [Fact]
@@ -334,11 +350,13 @@ public sealed class CliParsingTests
         var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToH264RifeRequest>().Subject;
         scenarioInput.KeepSource.Should().BeTrue();
         scenarioInput.FramesPerSecondMultiplier.Should().Be(3);
-        scenarioInput.InterpolationQualityProfile.Should().Be("high");
+        scenarioInput.InterpolationQualityProfile.Should().Be(InterpolationQualityProfile.High);
         scenarioInput.VideoSettings.Should().NotBeNull();
-        scenarioInput.VideoSettings!.ContentProfile.Should().Be("anime");
-        scenarioInput.VideoSettings.QualityProfile.Should().Be("high");
-        scenarioInput.OutputContainer.Should().Be("mkv");
+        scenarioInput.VideoSettings!.ContentProfile.Should().NotBeNull();
+        scenarioInput.VideoSettings.ContentProfile!.Value.Should().Be("anime");
+        scenarioInput.VideoSettings.QualityProfile.Should().NotBeNull();
+        scenarioInput.VideoSettings.QualityProfile!.Value.Should().Be("high");
+        scenarioInput.OutputContainer.Should().Be(TargetContainer.Mkv);
     }
 
     [Fact]
@@ -504,7 +522,7 @@ public sealed class CliParsingTests
     [Theory]
     [InlineData("--downscale", "abc", "--downscale must be an integer.")]
     [InlineData("--max-fps", "abc", "--max-fps must be an integer.")]
-    [InlineData("--cq", "abc", "--cq must be an integer.")]
+    [InlineData("--cq", "abc", "--cq must be an integer from 1 to 51.")]
     [InlineData("--maxrate", "abc", "--maxrate must be a number.")]
     [InlineData("--bufsize", "abc", "--bufsize must be a number.")]
     public void TryParse_WhenOptionValueHasInvalidType_ReturnsFalse(
@@ -524,7 +542,7 @@ public sealed class CliParsingTests
 
     [Theory]
     [InlineData("--downscale", "0", "--downscale must be greater than zero.")]
-    [InlineData("--cq", "0", "--cq must be greater than zero.")]
+    [InlineData("--cq", "0", "--cq must be an integer from 1 to 51.")]
     [InlineData("--maxrate", "0", "--maxrate must be greater than zero.")]
     [InlineData("--bufsize", "0", "--bufsize must be greater than zero.")]
     public void TryParse_WhenPositiveNumericOptionIsNonPositive_ReturnsFalse(
@@ -569,6 +587,22 @@ public sealed class CliParsingTests
     {
         var actual = CliArgumentParser.TryParse(
             ["--scenario", "toh264rife", "--input", @"C:\video\a.mp4", optionName],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be($"{optionName} requires a value.");
+    }
+
+    [Theory]
+    [InlineData("--fps-multiplier")]
+    [InlineData("--interp-quality")]
+    [InlineData("--container")]
+    public void TryParse_WhenToH264RifeOptionValueIsWhitespace_ReturnsFalse(string optionName)
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264rife", "--input", @"C:\video\a.mp4", optionName, " "],
             CreateRegistry(),
             out _,
             out var errorText);

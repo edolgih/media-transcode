@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.VideoSettings;
 using Transcode.Scenarios.ToH264Gpu.Core;
 
@@ -36,15 +37,18 @@ public sealed class ToH264GpuRequestTests
         request.ForceEncode.Should().BeTrue();
         request.Downscale.Should().NotBeNull();
         request.Downscale!.TargetHeight.Should().Be(576);
-        request.Downscale.Algorithm.Should().Be("lanczos");
+        request.Downscale.Algorithm.Should().NotBeNull();
+        request.Downscale.Algorithm!.Value.Should().Be("lanczos");
         request.KeepFramesPerSecond.Should().BeTrue();
         request.VideoSettings.Should().NotBeNull();
-        request.VideoSettings!.ContentProfile.Should().Be("film");
-        request.VideoSettings.QualityProfile.Should().Be("default");
+        request.VideoSettings!.ContentProfile.Should().NotBeNull();
+        request.VideoSettings.ContentProfile!.Value.Should().Be("film");
+        request.VideoSettings.QualityProfile.Should().NotBeNull();
+        request.VideoSettings.QualityProfile!.Value.Should().Be("default");
         request.VideoSettings.Cq.Should().Be(21);
         request.VideoSettings.Maxrate.Should().Be(4.2m);
         request.VideoSettings.Bufsize.Should().Be(8.4m);
-        request.NvencPreset.Should().Be("p6");
+        request.NvencPreset.Should().Be(NvencPreset.P6);
         request.Denoise.Should().BeTrue();
         request.SynchronizeAudio.Should().BeTrue();
         request.OutputMkv.Should().BeTrue();
@@ -60,11 +64,20 @@ public sealed class ToH264GpuRequestTests
     }
 
     [Fact]
+    public void Constructor_WhenNvencPresetIsEmpty_Throws()
+    {
+        Action action = static () => _ = new ToH264GpuRequest(nvencPreset: "");
+
+        action.Should().Throw<ArgumentException>()
+            .WithParameterName("nvencPreset");
+    }
+
+    [Fact]
     public void Constructor_WhenNvencPresetIsOmitted_UsesP6Preset()
     {
         var request = new ToH264GpuRequest();
 
-        request.NvencPreset.Should().Be("p6");
+        request.NvencPreset.Should().Be(NvencPreset.P6);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Core.Failures;
 using Transcode.Core.MediaIntent;
 using Transcode.Core.Scenarios;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.Videos;
 using Transcode.Core.VideoSettings;
 using System.Globalization;
@@ -108,14 +109,14 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var resolvedDownscale = options.Downscale is not null
             ? includeExecutionPayload
                 ? options.Downscale.WithDefaultAlgorithm(
-                    videoResolution?.Settings.Algorithm.Value ?? throw new InvalidOperationException("Downscale algorithm must be resolved for encode path."))
+                    videoResolution?.Settings.Algorithm ?? throw new InvalidOperationException("Downscale algorithm must be resolved for encode path."))
                 : options.Downscale
             : null;
         VideoIntent videoIntent = options.CopyVideo
             ? new CopyVideoIntent()
             : new EncodeVideoIntent(
-                TargetVideoCodec: "h264",
-                PreferredBackend: "gpu",
+                TargetVideoCodec: TargetVideoCodec.H264,
+                PreferredBackend: VideoBackend.Gpu,
                 CompatibilityProfile: H264OutputProfile.H264High,
                 TargetFramesPerSecond: options.TargetFramesPerSecond,
                 UseFrameInterpolation: false,
@@ -123,7 +124,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 Downscale: resolvedDownscale,
                 EncoderPreset: options.NvencPreset);
         var mux = new ToH264GpuDecision.MuxExecution(
-            optimizeForFastStart: options.TargetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase),
+            optimizeForFastStart: options.TargetContainer == TargetContainer.Mp4,
             mapPrimaryAudioOnly: true);
         var videoExecution = !includeExecutionPayload || options.CopyVideo || videoResolution is null
             ? null
@@ -169,7 +170,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     }
 
     private sealed record ResolvedScenarioOptions(
-        string TargetContainer,
+        TargetContainer TargetContainer,
         bool KeepSource,
         bool CopyVideo,
         AudioPathMode AudioMode,
@@ -177,7 +178,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         DownscaleRequest? Downscale,
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
-        string NvencPreset,
+        NvencPreset NvencPreset,
         bool UseDenoise)
     {
         public bool CopyAudio => AudioMode == AudioPathMode.Copy;
@@ -185,7 +186,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
 
     private ResolvedScenarioOptions ResolveOptions(SourceVideo video)
     {
-        var targetContainer = Request.OutputMkv ? "mkv" : "mp4";
+        var targetContainer = Request.OutputMkv ? TargetContainer.Mkv : TargetContainer.Mp4;
         var requestedDownscale = Request.Downscale;
         var useDownscale = requestedDownscale is not null && video.Height > requestedDownscale.TargetHeight;
         ValidateDownscale(video, useDownscale, requestedDownscale);
@@ -416,7 +417,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 codec.Equals("amrnb", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string ResolveOutputPath(SourceVideo video, string targetContainer, bool keepSource, DownscaleRequest? downscale)
+    private static string ResolveOutputPath(SourceVideo video, TargetContainer targetContainer, bool keepSource, DownscaleRequest? downscale)
     {
         var directory = Path.GetDirectoryName(video.FilePath);
         if (string.IsNullOrWhiteSpace(directory))

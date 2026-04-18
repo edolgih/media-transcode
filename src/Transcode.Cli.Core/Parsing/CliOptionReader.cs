@@ -29,7 +29,7 @@ public static class CliOptionReader
         }
 
         var token = args[valueIndex];
-        if (token.StartsWith("-", StringComparison.Ordinal))
+        if (token.StartsWith("-", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(token))
         {
             errorText = $"{optionName} requires a value.";
             return false;

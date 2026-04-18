@@ -133,7 +133,7 @@ internal static class ToMkvGpuCliRequestParser
                     args,
                     ref index,
                     token,
-                    "--cq must be an integer.",
+                    $"--cq must be an integer from {VideoSettingsRequest.MinimumCq} to {VideoSettingsRequest.MaximumCq}.",
                     out state.Cq,
                     out errorText))
                 {
@@ -257,13 +257,13 @@ internal static class ToMkvGpuCliRequestParser
                 ? BuildSupportedError("--downscale", DownscaleRequest.SupportedTargetHeights)
                 : "--downscale must be greater than zero.",
             "algorithm" => BuildSupportedError("--downscale-algo", DownscaleRequest.SupportedAlgorithms),
-            "cq" => "--cq must be greater than zero.",
+            "cq" => $"--cq must be an integer from {VideoSettingsRequest.MinimumCq} to {VideoSettingsRequest.MaximumCq}.",
             "maxrate" => "--maxrate must be greater than zero.",
             "bufsize" => "--bufsize must be greater than zero.",
             "maxFramesPerSecond" => BuildSupportedError("--max-fps", ToMkvGpuRequest.SupportedMaxFramesPerSecond),
             "contentProfile" => BuildSupportedError("--content-profile", VideoSettingsRequest.SupportedContentProfiles),
             "qualityProfile" => BuildSupportedError("--quality-profile", VideoSettingsRequest.SupportedQualityProfiles),
-            "nvencPreset" => BuildSupportedError("--nvenc-preset", NvencPresetOptions.SupportedPresets),
+            "nvencPreset" => BuildSupportedError("--nvenc-preset", NvencPreset.SupportedValues),
             _ => exception.Message
         };
     }

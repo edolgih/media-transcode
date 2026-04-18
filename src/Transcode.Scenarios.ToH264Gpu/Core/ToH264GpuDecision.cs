@@ -19,7 +19,7 @@ internal sealed class ToH264GpuDecision
     /// Initializes a fully resolved toh264gpu decision.
     /// </summary>
     public ToH264GpuDecision(
-        string targetContainer,
+        TargetContainer targetContainer,
         VideoIntent videoIntent,
         AudioIntent audioIntent,
         bool keepSource,
@@ -28,7 +28,7 @@ internal sealed class ToH264GpuDecision
         VideoExecution? videoExecution = null,
         AudioExecution? audioExecution = null)
     {
-        TargetContainer = NormalizeRequiredToken(targetContainer, nameof(targetContainer));
+        TargetContainer = targetContainer ?? throw new ArgumentNullException(nameof(targetContainer));
         Video = NormalizeVideoPlan(videoIntent);
         Audio = NormalizeAudioPlan(audioIntent);
         KeepSource = keepSource;
@@ -44,7 +44,7 @@ internal sealed class ToH264GpuDecision
     /// <summary>
     /// Gets the normalized target container identifier.
     /// </summary>
-    public string TargetContainer { get; }
+    public TargetContainer TargetContainer { get; }
 
     /*
     Это выбранный путь обработки видеопотока.
@@ -149,144 +149,6 @@ internal sealed class ToH264GpuDecision
     /// Gets a value indicating whether the decision requires audio encoding.
     /// </summary>
     public bool RequiresAudioEncode => !CopyAudio;
-
-    /*
-    Это флаг оптимизации контейнера для fast-start воспроизведения.
-    */
-    /// <summary>
-    /// Gets a value indicating whether the output container should be optimized for progressive playback.
-    /// </summary>
-    public bool OptimizeForFastStart => Mux.OptimizeForFastStart;
-
-    /*
-    Это флаг маппинга только основного аудиопотока.
-    */
-    /// <summary>
-    /// Gets a value indicating whether only the primary audio stream should be mapped.
-    /// </summary>
-    public bool MapPrimaryAudioOnly => Mux.MapPrimaryAudioOnly;
-
-    /*
-    Это признак предпочтения hardware decode для encode-пути.
-    */
-    /// <summary>
-    /// Gets the hardware-decode preference when video encoding is required.
-    /// </summary>
-    public bool? UseHardwareDecode => VideoExecutionDetails?.UseHardwareDecode;
-
-    /*
-    Это признак включенной adaptive quantization.
-    */
-    /// <summary>
-    /// Gets a value indicating whether adaptive quantization is enabled.
-    /// </summary>
-    public bool? EnableAdaptiveQuantization => VideoExecutionDetails is null ? null : VideoExecutionDetails.AdaptiveQuantization is not null;
-
-    /*
-    Это явная сила AQ, если она задана.
-    */
-    /// <summary>
-    /// Gets the AQ strength override.
-    /// </summary>
-    public int? AqStrength => VideoExecutionDetails?.AdaptiveQuantization?.Strength;
-
-    /*
-    Это окно lookahead для управления качеством.
-    */
-    /// <summary>
-    /// Gets the lookahead window override.
-    /// </summary>
-    public int? RcLookahead => VideoExecutionDetails?.AdaptiveQuantization?.RcLookahead;
-
-    /*
-    Это целевой video bitrate в режиме VBR.
-    */
-    /// <summary>
-    /// Gets the target video bitrate in kilobits per second when VBR mode is requested.
-    /// </summary>
-    public int? VideoBitrateKbps => (VideoExecutionDetails?.RateControl as VariableBitrateVideoRateControlExecution)?.BitrateKbps;
-
-    /*
-    Это целевой video maxrate в Kbps.
-    */
-    /// <summary>
-    /// Gets the target video maxrate in kilobits per second.
-    /// </summary>
-    public int? VideoMaxrateKbps => VideoExecutionDetails?.RateControl switch
-    {
-        VariableBitrateVideoRateControlExecution rateControl => rateControl.MaxrateKbps,
-        ConstantQualityVideoRateControlExecution rateControl => rateControl.MaxrateKbps,
-        _ => null
-    };
-
-    /*
-    Это целевой video buffer size в Kbps.
-    */
-    /// <summary>
-    /// Gets the target video buffer size in kilobits per second.
-    /// </summary>
-    public int? VideoBufferSizeKbps => VideoExecutionDetails?.RateControl switch
-    {
-        VariableBitrateVideoRateControlExecution rateControl => rateControl.BufferSizeKbps,
-        ConstantQualityVideoRateControlExecution rateControl => rateControl.BufferSizeKbps,
-        _ => null
-    };
-
-    /*
-    Это целевое CQ-значение в CQ-режиме.
-    */
-    /// <summary>
-    /// Gets the explicit CQ value when CQ-driven mode is requested.
-    /// </summary>
-    public int? VideoCq => (VideoExecutionDetails?.RateControl as ConstantQualityVideoRateControlExecution)?.Cq;
-
-    /*
-    Это выражение video-фильтра ffmpeg, если оно требуется.
-    */
-    /// <summary>
-    /// Gets the plain ffmpeg video filter expression when one is required.
-    /// </summary>
-    public string? VideoFilter => VideoExecutionDetails?.Filter;
-
-    /*
-    Это явный pixel format токен для видео.
-    */
-    /// <summary>
-    /// Gets the explicit pixel format token when one is required.
-    /// </summary>
-    public string? PixelFormat => VideoExecutionDetails?.PixelFormat;
-
-    /*
-    Это целевой audio bitrate в Kbps при перекодировании аудио.
-    */
-    /// <summary>
-    /// Gets the target audio bitrate in kilobits per second when audio must be encoded.
-    /// </summary>
-    public int? AudioBitrateKbps => AudioExecutionDetails?.BitrateKbps;
-
-    /*
-    Это явный sample rate аудио, если он нужен.
-    */
-    /// <summary>
-    /// Gets the explicit audio sample rate when one is required.
-    /// </summary>
-    public int? AudioSampleRate => AudioExecutionDetails?.SampleRate;
-
-    /*
-    Это явное число каналов аудио, если оно нужно.
-    */
-    /// <summary>
-    /// Gets the explicit audio channel count when one is required.
-    /// </summary>
-    public int? AudioChannels => AudioExecutionDetails?.Channels;
-
-    /*
-    Это выражение audio-фильтра ffmpeg, если оно требуется.
-    */
-    /// <summary>
-    /// Gets the plain ffmpeg audio filter expression when one is required.
-    /// </summary>
-    public string? AudioFilter => AudioExecutionDetails?.Filter;
 
     /*
     Это подмодель mux-поведения контейнера.
@@ -632,12 +494,6 @@ internal sealed class ToH264GpuDecision
         }
 
         return value.Trim();
-    }
-
-    private static string NormalizeRequiredToken(string? value, string paramName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
-        return value.Trim().ToLowerInvariant();
     }
 
     private static string NormalizeOutputPath(string? outputPath, string paramName)

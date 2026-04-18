@@ -10,8 +10,8 @@ namespace Transcode.Scenarios.ToH264Rife.Core;
 /// Stores compact resolved video settings required by the <c>toh264rife</c> tool layer.
 /// </summary>
 sealed record ToH264RifeVideoSettings(
-    string ContentProfile,
-    string QualityProfile,
+    VideoContentProfile ContentProfile,
+    VideoQualityProfile QualityProfile,
     int Cq,
     decimal Maxrate,
     decimal Bufsize)
@@ -43,8 +43,8 @@ sealed record ToH264RifeVideoSettings(
         ArgumentNullException.ThrowIfNull(settings);
 
         return new ToH264RifeVideoSettings(
-            ContentProfile: settings.ContentProfile.Value,
-            QualityProfile: settings.QualityProfile.Value,
+            ContentProfile: settings.ContentProfile,
+            QualityProfile: settings.QualityProfile,
             Cq: settings.Cq,
             Maxrate: settings.Maxrate,
             Bufsize: settings.Bufsize);

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Core.Failures;
 using Transcode.Core.MediaIntent;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.Videos;
 using Transcode.Core.VideoSettings;
 using Transcode.Core.VideoSettings.Profiles;
@@ -30,7 +31,7 @@ public sealed class ToMkvGpuScenarioTests
 
         actual.CopyVideo.Should().BeTrue();
         actual.Video.Should().BeOfType<CopyVideoIntent>();
-        actual.TargetContainer.Should().Be("mkv");
+        actual.TargetContainer.Should().Be(TargetContainer.Mkv);
         actual.OutputPath.Should().Be(video.FilePath);
     }
 
@@ -42,7 +43,7 @@ public sealed class ToMkvGpuScenarioTests
 
         var actual = sut.BuildDecision(video);
 
-        actual.TargetContainer.Should().Be("mkv");
+        actual.TargetContainer.Should().Be(TargetContainer.Mkv);
         actual.OutputPath.Should().Be(@"C:\video\input.mkv");
     }
 
@@ -176,7 +177,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
         actual.FixTimestamps.Should().BeTrue();
-        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be("h264");
+        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be(TargetVideoCodec.H264);
     }
 
     [Fact]
@@ -189,10 +190,10 @@ public sealed class ToMkvGpuScenarioTests
         var encodeVideo = GetRequiredEncodeVideo(actual);
 
         actual.CopyVideo.Should().BeFalse();
-        encodeVideo.TargetVideoCodec.Should().Be("h264");
+        encodeVideo.TargetVideoCodec.Should().Be(TargetVideoCodec.H264);
         encodeVideo.CompatibilityProfile.Should().Be(H264OutputProfile.H264High);
-        encodeVideo.EncoderPreset.Should().Be("p6");
-        encodeVideo.PreferredBackend.Should().Be("gpu");
+        encodeVideo.EncoderPreset.Should().Be(NvencPreset.P6);
+        encodeVideo.PreferredBackend.Should().Be(VideoBackend.Gpu);
         actual.CopyAudio.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
     }
@@ -207,7 +208,7 @@ public sealed class ToMkvGpuScenarioTests
 
         actual.CopyVideo.Should().BeFalse();
         actual.ApplyOverlayBackground.Should().BeTrue();
-        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be("h264");
+        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be(TargetVideoCodec.H264);
     }
 
     [Fact]
@@ -315,7 +316,7 @@ public sealed class ToMkvGpuScenarioTests
         encodeVideo.Downscale!.TargetHeight.Should().Be(576);
         actual.CopyVideo.Should().BeFalse();
         actual.FixTimestamps.Should().BeFalse();
-        encodeVideo.TargetVideoCodec.Should().Be("h264");
+        encodeVideo.TargetVideoCodec.Should().Be(TargetVideoCodec.H264);
     }
 
     [Fact]
@@ -407,7 +408,7 @@ public sealed class ToMkvGpuScenarioTests
         var encodeVideo = GetRequiredEncodeVideo(actual);
         encodeVideo.VideoSettings.Should().NotBeNull();
         encodeVideo.VideoSettings!.Cq.Should().Be(23);
-        encodeVideo.EncoderPreset.Should().Be("p5");
+        encodeVideo.EncoderPreset.Should().Be(NvencPreset.P5);
     }
 
     [Fact]
@@ -451,7 +452,7 @@ public sealed class ToMkvGpuScenarioTests
         encodeVideo.Downscale!.TargetHeight.Should().Be(720);
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
-        encodeVideo.TargetVideoCodec.Should().Be("h264");
+        encodeVideo.TargetVideoCodec.Should().Be(TargetVideoCodec.H264);
     }
 
     [Fact]

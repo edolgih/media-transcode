@@ -10,6 +10,24 @@ namespace Transcode.Runtime.Tests.Scenarios;
 public sealed class ToH264RifeScenarioTests
 {
     [Fact]
+    public void RequestCtor_WhenInterpolationQualityProfileIsEmpty_Throws()
+    {
+        Action action = static () => _ = new ToH264RifeRequest(interpolationQualityProfile: "");
+
+        action.Should().Throw<ArgumentException>()
+            .WithParameterName("interpolationQualityProfile");
+    }
+
+    [Fact]
+    public void RequestCtor_WhenOutputContainerIsWhitespace_Throws()
+    {
+        Action action = static () => _ = new ToH264RifeRequest(outputContainer: " ");
+
+        action.Should().Throw<ArgumentException>()
+            .WithParameterName("outputContainer");
+    }
+
+    [Fact]
     public void BuildDecision_WhenMultiplierIsNotSpecified_UsesDoubleSourceFrameRate()
     {
         var sut = CreateSut();
@@ -22,10 +40,10 @@ public sealed class ToH264RifeScenarioTests
         actual.FramesPerSecondMultiplier.Should().Be(2);
         actual.ResolvedTargetFramesPerSecond.Should().BeApproximately(48000d / 1001d, 0.0001);
         actual.UserFacingTargetFramesPerSecond.Should().Be(48);
-        actual.InterpolationQualityProfile.Should().Be("default");
-        actual.InterpolationModelName.Should().Be("4.25");
-        actual.ResolvedVideoSettings.ContentProfile.Should().Be("film");
-        actual.ResolvedVideoSettings.QualityProfile.Should().Be("default");
+        actual.InterpolationQualityProfile.Should().Be(InterpolationQualityProfile.Default);
+        actual.InterpolationModelName.Should().Be(InterpolationModelName.Rife425);
+        actual.ResolvedVideoSettings.ContentProfile.Should().Be(VideoContentProfile.Film);
+        actual.ResolvedVideoSettings.QualityProfile.Should().Be(VideoQualityProfile.Default);
         actual.ResolvedVideoSettings.Cq.Should().Be(22);
         actual.ResolvedVideoSettings.Maxrate.Should().Be(5.272m);
         actual.ResolvedVideoSettings.Bufsize.Should().Be(10.544m);
@@ -164,10 +182,10 @@ public sealed class ToH264RifeScenarioTests
 
         var actual = sut.BuildDecision(video);
 
-        actual.InterpolationQualityProfile.Should().Be("high");
-        actual.InterpolationModelName.Should().Be("4.26.heavy");
-        actual.ResolvedVideoSettings.ContentProfile.Should().Be("anime");
-        actual.ResolvedVideoSettings.QualityProfile.Should().Be("high");
+        actual.InterpolationQualityProfile.Should().Be(InterpolationQualityProfile.High);
+        actual.InterpolationModelName.Should().Be(InterpolationModelName.Rife426Heavy);
+        actual.ResolvedVideoSettings.ContentProfile.Should().Be(VideoContentProfile.Anime);
+        actual.ResolvedVideoSettings.QualityProfile.Should().Be(VideoQualityProfile.High);
         actual.ResolvedVideoSettings.Cq.Should().Be(22);
         actual.ResolvedVideoSettings.Maxrate.Should().Be(4.0m);
         actual.ResolvedVideoSettings.Bufsize.Should().Be(8.0m);
@@ -187,8 +205,8 @@ public sealed class ToH264RifeScenarioTests
 
         var actual = sut.BuildDecision(video);
 
-        actual.ResolvedVideoSettings.ContentProfile.Should().Be("anime");
-        actual.ResolvedVideoSettings.QualityProfile.Should().Be("default");
+        actual.ResolvedVideoSettings.ContentProfile.Should().Be(VideoContentProfile.Anime);
+        actual.ResolvedVideoSettings.QualityProfile.Should().Be(VideoQualityProfile.Default);
         actual.ResolvedVideoSettings.Cq.Should().Be(20);
         actual.ResolvedVideoSettings.Maxrate.Should().Be(4.6m);
         actual.ResolvedVideoSettings.Bufsize.Should().Be(9.2m);
@@ -208,8 +226,8 @@ public sealed class ToH264RifeScenarioTests
 
         var actual = sut.BuildDecision(video);
 
-        actual.ResolvedVideoSettings.ContentProfile.Should().Be("mult");
-        actual.ResolvedVideoSettings.QualityProfile.Should().Be("default");
+        actual.ResolvedVideoSettings.ContentProfile.Should().Be(VideoContentProfile.Mult);
+        actual.ResolvedVideoSettings.QualityProfile.Should().Be(VideoQualityProfile.Default);
         actual.ResolvedVideoSettings.Cq.Should().Be(23);
         actual.ResolvedVideoSettings.Maxrate.Should().Be(4.4m);
         actual.ResolvedVideoSettings.Bufsize.Should().Be(8.8m);

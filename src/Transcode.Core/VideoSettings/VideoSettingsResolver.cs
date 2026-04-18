@@ -93,9 +93,7 @@ sealed class VideoSettingsResolver
 
         var profile = _profiles.GetRequiredProfile(request.TargetHeight);
         var effectiveSelection = BuildEffectiveVideoSettingsSelection(profile, videoSettings);
-        var algorithmOverride = request.Algorithm is null
-            ? null
-            : VideoScaleAlgorithm.Parse(request.Algorithm, nameof(request.Algorithm));
+        var algorithmOverride = request.Algorithm;
         return ResolveCore(
             profile,
             effectiveSelection,
@@ -139,10 +137,10 @@ sealed class VideoSettingsResolver
         return new EffectiveVideoSettingsSelection(
             request?.ContentProfile is null
                 ? profile.DefaultContentProfile
-                : VideoContentProfile.Parse(request.ContentProfile, nameof(request.ContentProfile)),
+                : request.ContentProfile,
             request?.QualityProfile is null
                 ? profile.DefaultQualityProfile
-                : VideoQualityProfile.Parse(request.QualityProfile, nameof(request.QualityProfile)));
+                : request.QualityProfile);
     }
 
     /*

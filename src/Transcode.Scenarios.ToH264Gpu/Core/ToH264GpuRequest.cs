@@ -29,26 +29,14 @@ public sealed class ToH264GpuRequest
         bool synchronizeAudio = false,
         bool outputMkv = false)
     {
-        var normalizedNvencPreset = NormalizeName(nvencPreset);
-        if (normalizedNvencPreset is not null && !NvencPresetOptions.IsSupportedPreset(normalizedNvencPreset))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(nvencPreset),
-                nvencPreset,
-                $"Supported values: {GetSupportedPresetsDisplay()}.");
-        }
-
-        if (videoSettings?.Cq is > 51)
-        {
-            throw new ArgumentOutOfRangeException("cq", videoSettings.Cq.Value, "CQ must be between 1 and 51.");
-        }
+        var resolvedNvencPreset = NvencPreset.ParseOptional(nvencPreset, nameof(nvencPreset));
 
         KeepSource = keepSource;
         ForceEncode = forceEncode;
         Downscale = downscale;
         KeepFramesPerSecond = keepFramesPerSecond;
         VideoSettings = videoSettings;
-        NvencPreset = normalizedNvencPreset ?? NvencPresetOptions.DefaultPreset;
+        NvencPreset = resolvedNvencPreset ?? NvencPreset.Default;
         Denoise = denoise;
         SynchronizeAudio = synchronizeAudio;
         OutputMkv = outputMkv;
@@ -100,7 +88,7 @@ public sealed class ToH264GpuRequest
     /// <summary>
     /// Gets the normalized NVENC preset used by the scenario.
     /// </summary>
-    public string NvencPreset { get; }
+    public NvencPreset NvencPreset { get; }
 
     /*
     Это флаг включения denoise в обычном encode-режиме.
@@ -125,19 +113,4 @@ public sealed class ToH264GpuRequest
     /// Gets a value indicating whether the target container should be MKV instead of MP4.
     /// </summary>
     public bool OutputMkv { get; }
-
-    private static string GetSupportedPresetsDisplay()
-    {
-        return string.Join(", ", NvencPresetOptions.SupportedPresets);
-    }
-
-    private static string? NormalizeName(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim().ToLowerInvariant();
-    }
 }

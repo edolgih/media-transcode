@@ -87,7 +87,7 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--cq <1..51>", "Explicit CQ override. Default: resolved profile value."),
         new CliHelpOption("--maxrate <number>", "Explicit VBV maxrate in Mbit/s. Default: resolved profile value."),
         new CliHelpOption("--bufsize <number>", "Explicit VBV bufsize in Mbit/s. Default: resolved profile value."),
-        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPresetOptions.SupportedPresets)}>", $"Explicit NVENC preset override. Default: {NvencPresetOptions.DefaultPreset}."),
+        new CliHelpOption($"--nvenc-preset <{CliValueFormatter.FormatAlternatives(NvencPreset.SupportedValues)}>", $"Explicit NVENC preset override. Default: {NvencPreset.Default}."),
         new CliHelpOption("--denoise", "Enable denoise in normal encode mode. Default: off."),
         new CliHelpOption("--sync-audio", "Use the explicit audio-sync repair path. Default: off."),
         new CliHelpOption("--mkv", "Write MKV instead of MP4. Default: off (MP4).")

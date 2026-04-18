@@ -57,8 +57,8 @@ public sealed class ToH264GpuFfmpegTool
             return false;
         }
 
-        if (!decision.TargetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase) &&
-            !decision.TargetContainer.Equals("mkv", StringComparison.OrdinalIgnoreCase))
+        if (decision.TargetContainer != TargetContainer.Mp4 &&
+            decision.TargetContainer != TargetContainer.Mkv)
         {
             return false;
         }
@@ -81,8 +81,8 @@ public sealed class ToH264GpuFfmpegTool
         }
 
         return decision.Video is EncodeVideoIntent encodeVideo &&
-               encodeVideo.PreferredBackend?.Equals("gpu", StringComparison.OrdinalIgnoreCase) == true &&
-               encodeVideo.TargetVideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase);
+               encodeVideo.PreferredBackend == VideoBackend.Gpu &&
+               encodeVideo.TargetVideoCodec == TargetVideoCodec.H264;
     }
 
     /*
@@ -122,7 +122,7 @@ public sealed class ToH264GpuFfmpegTool
         return decision.CopyVideo &&
                decision.CopyAudio &&
                !RequiresMuxRewrite(decision.Mux) &&
-               video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase) &&
+               video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -151,8 +151,8 @@ public sealed class ToH264GpuFfmpegTool
         parts.Add(BuildAudioPart(decision));
         parts.Add("-sn");
 
-        if (decision.TargetContainer.Equals("mp4", StringComparison.OrdinalIgnoreCase) &&
-            decision.OptimizeForFastStart)
+        if (decision.TargetContainer == TargetContainer.Mp4 &&
+            decision.Mux.OptimizeForFastStart)
         {
             parts.Add("-movflags +faststart");
         }
@@ -170,7 +170,7 @@ public sealed class ToH264GpuFfmpegTool
             return "-fflags +genpts+igndts -avoid_negative_ts make_zero";
         }
 
-        var needsContainerChange = !video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase);
+        var needsContainerChange = !video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase);
         if (decision.RequiresVideoEncode || decision.RequiresAudioEncode || needsContainerChange)
         {
             return "-avoid_negative_ts make_zero";
@@ -209,7 +209,7 @@ public sealed class ToH264GpuFfmpegTool
 
         if (downscale is not null)
         {
-            var algorithm = downscale.Algorithm
+            var algorithm = downscale.Algorithm?.ToString()
                             ?? throw new InvalidOperationException("Downscale algorithm must be resolved before tool rendering.");
             return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={algorithm}:format=nv12\" " +
                    $"-c:v h264_nvenc -preset {preset} {rateControlPart}{aqPart}" +

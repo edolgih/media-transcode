@@ -187,8 +187,8 @@ public sealed class ToMkvGpuInfoFormatterTests
         VideoIntent videoIntent = copyVideo
             ? new CopyVideoIntent()
             : new EncodeVideoIntent(
-                TargetVideoCodec: targetVideoCodec ?? "h264",
-                PreferredBackend: preferredBackend,
+                TargetVideoCodec: targetVideoCodec is null ? TargetVideoCodec.H264 : TargetVideoCodec.Parse(targetVideoCodec, nameof(targetVideoCodec)),
+                PreferredBackend: VideoBackend.ParseOptional(preferredBackend, nameof(preferredBackend)),
                 CompatibilityProfile: string.Equals(targetVideoCodec, "h264", StringComparison.OrdinalIgnoreCase)
                     ? H264OutputProfile.H264High
                     : null,
@@ -200,7 +200,7 @@ public sealed class ToMkvGpuInfoFormatterTests
                 : new EncodeAudioIntent();
 
         return new ToMkvGpuDecision(
-            targetContainer: "mkv",
+            targetContainer: TargetContainer.Mkv,
             video: videoIntent,
             audio: audioIntent,
             keepSource: false,

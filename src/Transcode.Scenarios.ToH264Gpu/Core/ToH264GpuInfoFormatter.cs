@@ -62,7 +62,7 @@ public sealed class ToH264GpuInfoFormatter
             parts.Add("encode h264");
         }
 
-        if (!video.Container.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase))
+        if (!video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             parts.Add($"container .{video.Container}->{decision.TargetContainer}");
         }

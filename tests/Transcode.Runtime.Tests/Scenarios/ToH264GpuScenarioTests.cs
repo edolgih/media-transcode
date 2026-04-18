@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Transcode.Core.Failures;
 using Transcode.Core.MediaIntent;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.Videos;
 using Transcode.Core.VideoSettings;
 using Transcode.Scenarios.ToH264Gpu.Core;
@@ -31,13 +32,13 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        actual.TargetContainer.Should().Be("mp4");
+        actual.TargetContainer.Should().Be(TargetContainer.Mp4);
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
         actual.Video.Should().BeOfType<CopyVideoIntent>();
         actual.OutputPath.Should().Be(@"C:\video\input.mp4");
-        spec.OptimizeForFastStart.Should().BeTrue();
-        spec.MapPrimaryAudioOnly.Should().BeTrue();
+        spec.Mux.OptimizeForFastStart.Should().BeTrue();
+        spec.Mux.MapPrimaryAudioOnly.Should().BeTrue();
         spec.VideoExecutionDetails.Should().BeNull();
         spec.AudioExecutionDetails.Should().BeNull();
     }
@@ -63,9 +64,9 @@ public sealed class ToH264GpuScenarioTests
         actual.CopyAudio.Should().BeTrue();
         encodeVideo.Downscale.Should().BeNull();
         encodeVideo.TargetFramesPerSecond.Should().Be(24);
-        actual.VideoCq.Should().Be(23);
-        actual.VideoMaxrateKbps.Should().Be(3800);
-        actual.VideoBufferSizeKbps.Should().Be(7600);
+        GetVideoCq(actual).Should().Be(23);
+        GetVideoMaxrateKbps(actual).Should().Be(3800);
+        GetVideoBufferSizeKbps(actual).Should().Be(7600);
     }
 
     [Fact]
@@ -102,7 +103,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
 
         actual.CopyVideo.Should().BeFalse();
-        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be("h264");
+        GetRequiredEncodeVideo(actual).TargetVideoCodec.Should().Be(TargetVideoCodec.H264);
         actual.CopyAudio.Should().BeTrue();
     }
 
@@ -143,10 +144,10 @@ public sealed class ToH264GpuScenarioTests
         actual.CopyAudio.Should().BeFalse();
         spec.VideoExecutionDetails.Should().BeNull();
         spec.AudioExecutionDetails.Should().NotBeNull();
-        spec.AudioBitrateKbps.Should().Be(128);
-        spec.AudioSampleRate.Should().Be(48000);
-        spec.AudioChannels.Should().Be(2);
-        spec.AudioFilter.Should().Be("aresample=async=1:first_pts=0");
+        GetAudioBitrateKbps(spec).Should().Be(128);
+        GetAudioSampleRate(spec).Should().Be(48000);
+        GetAudioChannels(spec).Should().Be(2);
+        GetAudioFilter(spec).Should().Be("aresample=async=1:first_pts=0");
     }
 
     [Theory]
@@ -228,7 +229,7 @@ public sealed class ToH264GpuScenarioTests
         actual.CopyAudio.Should().BeFalse();
         spec.VideoExecutionDetails.Should().BeNull();
         spec.AudioExecutionDetails.Should().NotBeNull();
-        spec.AudioBitrateKbps.Should().Be(192);
+        GetAudioBitrateKbps(spec).Should().Be(192);
     }
 
     [Fact]
@@ -246,7 +247,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.AudioBitrateKbps.Should().Be(192);
+        GetAudioBitrateKbps(spec).Should().Be(192);
     }
 
     [Fact]
@@ -266,9 +267,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
-        spec.VideoCq.Should().Be(20);
-        spec.VideoMaxrateKbps.Should().Be(5800);
-        spec.VideoBufferSizeKbps.Should().Be(11600);
+        GetVideoCq(spec).Should().Be(20);
+        GetVideoMaxrateKbps(spec).Should().Be(5800);
+        GetVideoBufferSizeKbps(spec).Should().Be(11600);
     }
 
     [Fact]
@@ -286,9 +287,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(19);
-        spec.VideoMaxrateKbps.Should().Be(6000);
-        spec.VideoBufferSizeKbps.Should().Be(12000);
+        GetVideoCq(spec).Should().Be(19);
+        GetVideoMaxrateKbps(spec).Should().Be(6000);
+        GetVideoBufferSizeKbps(spec).Should().Be(12000);
     }
 
     [Fact]
@@ -310,9 +311,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(20);
-        spec.VideoMaxrateKbps.Should().Be(4200);
-        spec.VideoBufferSizeKbps.Should().Be(8400);
+        GetVideoCq(spec).Should().Be(20);
+        GetVideoMaxrateKbps(spec).Should().Be(4200);
+        GetVideoBufferSizeKbps(spec).Should().Be(8400);
     }
 
     [Fact]
@@ -335,9 +336,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(24);
-        spec.VideoMaxrateKbps.Should().Be(2100);
-        spec.VideoBufferSizeKbps.Should().Be(4200);
+        GetVideoCq(spec).Should().Be(24);
+        GetVideoMaxrateKbps(spec).Should().Be(2100);
+        GetVideoBufferSizeKbps(spec).Should().Be(4200);
     }
 
     [Fact]
@@ -357,9 +358,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(21);
-        spec.VideoMaxrateKbps.Should().Be(3400);
-        spec.VideoBufferSizeKbps.Should().Be(6800);
+        GetVideoCq(spec).Should().Be(21);
+        GetVideoMaxrateKbps(spec).Should().Be(3400);
+        GetVideoBufferSizeKbps(spec).Should().Be(6800);
     }
 
     [Fact]
@@ -385,9 +386,9 @@ public sealed class ToH264GpuScenarioTests
         actual.CopyVideo.Should().BeFalse();
         actual.CopyAudio.Should().BeFalse();
         actual.SynchronizeAudio.Should().BeTrue();
-        spec.VideoCq.Should().Be(21);
-        spec.VideoMaxrateKbps.Should().Be(4600);
-        spec.VideoBufferSizeKbps.Should().Be(9200);
+        GetVideoCq(spec).Should().Be(21);
+        GetVideoMaxrateKbps(spec).Should().Be(4600);
+        GetVideoBufferSizeKbps(spec).Should().Be(9200);
     }
 
     [Fact]
@@ -597,7 +598,7 @@ public sealed class ToH264GpuScenarioTests
 
         var actual = sut.BuildDecision(video);
 
-        GetRequiredEncodeVideo(actual).EncoderPreset.Should().Be("p6");
+        GetRequiredEncodeVideo(actual).EncoderPreset.Should().Be(NvencPreset.P6);
     }
 
     [Fact]
@@ -614,8 +615,8 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.EnableAdaptiveQuantization.Should().BeTrue();
-        spec.AqStrength.Should().BeNull();
+        HasAdaptiveQuantization(spec).Should().BeTrue();
+        GetAdaptiveQuantizationStrength(spec).Should().BeNull();
     }
 
     [Fact]
@@ -652,7 +653,7 @@ public sealed class ToH264GpuScenarioTests
 
         actual.CopyVideo.Should().BeTrue();
         actual.CopyAudio.Should().BeTrue();
-        actual.TargetContainer.Should().Be("mp4");
+        actual.TargetContainer.Should().Be(TargetContainer.Mp4);
     }
 
     [Fact]
@@ -672,7 +673,8 @@ public sealed class ToH264GpuScenarioTests
         var encodeVideo = GetRequiredEncodeVideo(actual);
 
         encodeVideo.Downscale!.TargetHeight.Should().Be(576);
-        encodeVideo.Downscale.Algorithm.Should().Be("bilinear");
+        encodeVideo.Downscale.Algorithm.Should().NotBeNull();
+        encodeVideo.Downscale.Algorithm!.Value.Should().Be("bilinear");
         encodeVideo.TargetFramesPerSecond.Should().BeApproximately(30000d / 1001d, 0.0001);
         encodeVideo.VideoSettings.Should().BeNull();
     }
@@ -715,9 +717,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(576);
-        spec.VideoCq.Should().Be(23);
-        spec.VideoMaxrateKbps.Should().Be(2400);
-        spec.VideoBufferSizeKbps.Should().Be(4800);
+        GetVideoCq(spec).Should().Be(23);
+        GetVideoMaxrateKbps(spec).Should().Be(2400);
+        GetVideoBufferSizeKbps(spec).Should().Be(4800);
     }
 
     [Fact]
@@ -740,9 +742,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(480);
-        spec.VideoCq.Should().Be(23);
-        spec.VideoMaxrateKbps.Should().Be(3100);
-        spec.VideoBufferSizeKbps.Should().Be(6200);
+        GetVideoCq(spec).Should().Be(23);
+        GetVideoMaxrateKbps(spec).Should().Be(3100);
+        GetVideoBufferSizeKbps(spec).Should().Be(6200);
     }
 
     [Fact]
@@ -765,9 +767,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
-        spec.VideoCq.Should().Be(20);
-        spec.VideoMaxrateKbps.Should().Be(5800);
-        spec.VideoBufferSizeKbps.Should().Be(11600);
+        GetVideoCq(spec).Should().Be(20);
+        GetVideoMaxrateKbps(spec).Should().Be(5800);
+        GetVideoBufferSizeKbps(spec).Should().Be(11600);
     }
 
     [Fact]
@@ -789,9 +791,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(20);
-        spec.VideoMaxrateKbps.Should().Be(5000);
-        spec.VideoBufferSizeKbps.Should().Be(10000);
+        GetVideoCq(spec).Should().Be(20);
+        GetVideoMaxrateKbps(spec).Should().Be(5000);
+        GetVideoBufferSizeKbps(spec).Should().Be(10000);
     }
 
     [Fact]
@@ -815,8 +817,8 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoMaxrateKbps.Should().Be(6500);
-        spec.VideoBufferSizeKbps.Should().Be(13000);
+        GetVideoMaxrateKbps(spec).Should().Be(6500);
+        GetVideoBufferSizeKbps(spec).Should().Be(13000);
     }
 
     [Fact]
@@ -839,9 +841,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
-        spec.VideoCq.Should().Be(21);
-        spec.VideoMaxrateKbps.Should().Be(4600);
-        spec.VideoBufferSizeKbps.Should().Be(9200);
+        GetVideoCq(spec).Should().Be(21);
+        GetVideoMaxrateKbps(spec).Should().Be(4600);
+        GetVideoBufferSizeKbps(spec).Should().Be(9200);
     }
 
     [Fact]
@@ -863,9 +865,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(21);
-        spec.VideoMaxrateKbps.Should().Be(2000);
-        spec.VideoBufferSizeKbps.Should().Be(4000);
+        GetVideoCq(spec).Should().Be(21);
+        GetVideoMaxrateKbps(spec).Should().Be(2000);
+        GetVideoBufferSizeKbps(spec).Should().Be(4000);
     }
 
     [Fact]
@@ -889,8 +891,8 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoMaxrateKbps.Should().Be(6500);
-        spec.VideoBufferSizeKbps.Should().Be(13000);
+        GetVideoMaxrateKbps(spec).Should().Be(6500);
+        GetVideoBufferSizeKbps(spec).Should().Be(13000);
     }
 
     [Fact]
@@ -913,9 +915,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         actual.CopyVideo.Should().BeFalse();
-        spec.VideoCq.Should().Be(21);
-        spec.VideoMaxrateKbps.Should().Be(3400);
-        spec.VideoBufferSizeKbps.Should().Be(6800);
+        GetVideoCq(spec).Should().Be(21);
+        GetVideoMaxrateKbps(spec).Should().Be(3400);
+        GetVideoBufferSizeKbps(spec).Should().Be(6800);
     }
 
     [Fact]
@@ -937,9 +939,9 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoCq.Should().Be(21);
-        spec.VideoMaxrateKbps.Should().Be(2000);
-        spec.VideoBufferSizeKbps.Should().Be(4000);
+        GetVideoCq(spec).Should().Be(21);
+        GetVideoMaxrateKbps(spec).Should().Be(2000);
+        GetVideoBufferSizeKbps(spec).Should().Be(4000);
     }
 
     [Fact]
@@ -963,8 +965,8 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.VideoMaxrateKbps.Should().Be(6500);
-        spec.VideoBufferSizeKbps.Should().Be(13000);
+        GetVideoMaxrateKbps(spec).Should().Be(6500);
+        GetVideoBufferSizeKbps(spec).Should().Be(13000);
     }
 
     [Fact]
@@ -987,9 +989,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         GetRequiredEncodeVideo(actual).Downscale!.TargetHeight.Should().Be(424);
-        spec.VideoCq.Should().Be(24);
-        spec.VideoMaxrateKbps.Should().Be(2900);
-        spec.VideoBufferSizeKbps.Should().Be(5800);
+        GetVideoCq(spec).Should().Be(24);
+        GetVideoMaxrateKbps(spec).Should().Be(2900);
+        GetVideoBufferSizeKbps(spec).Should().Be(5800);
     }
 
     [Fact]
@@ -1029,7 +1031,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.AudioBitrateKbps.Should().Be(192);
+        GetAudioBitrateKbps(spec).Should().Be(192);
     }
 
     [Fact]
@@ -1047,7 +1049,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.AudioBitrateKbps.Should().Be(320);
+        GetAudioBitrateKbps(spec).Should().Be(320);
     }
 
     [Fact]
@@ -1065,7 +1067,7 @@ public sealed class ToH264GpuScenarioTests
         var actual = sut.BuildDecision(video);
         var spec = actual;
 
-        spec.AudioBitrateKbps.Should().Be(48);
+        GetAudioBitrateKbps(spec).Should().Be(48);
     }
 
     [Fact]
@@ -1084,9 +1086,9 @@ public sealed class ToH264GpuScenarioTests
         var spec = actual;
 
         actual.CopyAudio.Should().BeFalse();
-        spec.AudioSampleRate.Should().Be(48000);
-        spec.AudioChannels.Should().Be(1);
-        spec.AudioFilter.Should().Be("aresample=48000:async=1:first_pts=0");
+        GetAudioSampleRate(spec).Should().Be(48000);
+        GetAudioChannels(spec).Should().Be(1);
+        GetAudioFilter(spec).Should().Be("aresample=48000:async=1:first_pts=0");
     }
 
     [Fact]
@@ -1201,20 +1203,12 @@ public sealed class ToH264GpuScenarioTests
     }
 
     [Fact]
-    public void BuildExecution_WhenContainerIsUnsupported_CanHandleReturnsFalse()
+    public void BuildExecution_WhenContainerIsUnsupported_ThrowsAtDecisionCreation()
     {
-        var tool = CreateFfmpegTool();
-        var decision = new ToH264GpuDecision(
-            targetContainer: "avi",
-            videoIntent: new CopyVideoIntent(),
-            audioIntent: new CopyAudioIntent(),
-            keepSource: false,
-            outputPath: @"C:\video\input.avi",
-            mux: new ToH264GpuDecision.MuxExecution(optimizeForFastStart: true, mapPrimaryAudioOnly: true));
+        Action action = static () => _ = TargetContainer.Parse("avi", "targetContainer");
 
-        var actual = tool.CanHandle(decision);
-
-        actual.Should().BeFalse();
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("targetContainer");
     }
 
     private static ToH264GpuScenario CreateSut(
@@ -1254,6 +1248,61 @@ public sealed class ToH264GpuScenarioTests
     private static EncodeVideoIntent GetRequiredEncodeVideo(ToH264GpuDecision decision)
     {
         return decision.Video.Should().BeOfType<EncodeVideoIntent>().Subject;
+    }
+
+    private static int? GetVideoCq(ToH264GpuDecision decision)
+    {
+        return (decision.VideoExecutionDetails?.RateControl as ToH264GpuDecision.ConstantQualityVideoRateControlExecution)?.Cq;
+    }
+
+    private static int? GetVideoMaxrateKbps(ToH264GpuDecision decision)
+    {
+        return decision.VideoExecutionDetails?.RateControl switch
+        {
+            ToH264GpuDecision.VariableBitrateVideoRateControlExecution rateControl => rateControl.MaxrateKbps,
+            ToH264GpuDecision.ConstantQualityVideoRateControlExecution rateControl => rateControl.MaxrateKbps,
+            _ => null
+        };
+    }
+
+    private static int? GetVideoBufferSizeKbps(ToH264GpuDecision decision)
+    {
+        return decision.VideoExecutionDetails?.RateControl switch
+        {
+            ToH264GpuDecision.VariableBitrateVideoRateControlExecution rateControl => rateControl.BufferSizeKbps,
+            ToH264GpuDecision.ConstantQualityVideoRateControlExecution rateControl => rateControl.BufferSizeKbps,
+            _ => null
+        };
+    }
+
+    private static bool HasAdaptiveQuantization(ToH264GpuDecision decision)
+    {
+        return decision.VideoExecutionDetails?.AdaptiveQuantization is not null;
+    }
+
+    private static int? GetAdaptiveQuantizationStrength(ToH264GpuDecision decision)
+    {
+        return decision.VideoExecutionDetails?.AdaptiveQuantization?.Strength;
+    }
+
+    private static int? GetAudioBitrateKbps(ToH264GpuDecision decision)
+    {
+        return decision.AudioExecutionDetails?.BitrateKbps;
+    }
+
+    private static int? GetAudioSampleRate(ToH264GpuDecision decision)
+    {
+        return decision.AudioExecutionDetails?.SampleRate;
+    }
+
+    private static int? GetAudioChannels(ToH264GpuDecision decision)
+    {
+        return decision.AudioExecutionDetails?.Channels;
+    }
+
+    private static string? GetAudioFilter(ToH264GpuDecision decision)
+    {
+        return decision.AudioExecutionDetails?.Filter;
     }
 
     private static SourceVideo CreateVideo(

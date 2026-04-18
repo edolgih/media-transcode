@@ -1,3 +1,4 @@
+using Transcode.Core.MediaIntent;
 using Transcode.Core.VideoSettings;
 
 namespace Transcode.Scenarios.ToH264Rife.Core;
@@ -25,7 +26,7 @@ public sealed class ToH264RifeRequest
     /// <summary>
     /// Gets supported output containers.
     /// </summary>
-    public static IReadOnlyList<string> SupportedContainers { get; } = ["mp4", "mkv"];
+    public static IReadOnlyList<string> SupportedContainers => TargetContainer.SupportedValues;
 
     /*
     Это профили качества интерполяции, которые знает сценарий.
@@ -33,7 +34,7 @@ public sealed class ToH264RifeRequest
     /// <summary>
     /// Gets supported interpolation quality profiles.
     /// </summary>
-    public static IReadOnlyList<string> SupportedInterpolationQualityProfiles { get; } = ["low", "default", "high"];
+    public static IReadOnlyList<string> SupportedInterpolationQualityProfiles => InterpolationQualityProfile.SupportedValues;
 
     /*
     Это поддерживаемые профили контента для финального NVENC-кодирования.
@@ -73,37 +74,14 @@ public sealed class ToH264RifeRequest
                 $"Value must be one of: {string.Join(", ", SupportedFramesPerSecondMultipliers)}.");
         }
 
-        if (!string.IsNullOrWhiteSpace(outputContainer) &&
-            !SupportedContainers.Contains(outputContainer.Trim().ToLowerInvariant()))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(outputContainer),
-                outputContainer,
-                $"Value must be one of: {string.Join(", ", SupportedContainers)}.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(interpolationQualityProfile) &&
-            !SupportedInterpolationQualityProfiles.Contains(interpolationQualityProfile.Trim().ToLowerInvariant()))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(interpolationQualityProfile),
-                interpolationQualityProfile,
-                $"Value must be one of: {string.Join(", ", SupportedInterpolationQualityProfiles)}.");
-        }
-
-        if (videoSettings?.Cq is > 51)
-        {
-            throw new ArgumentOutOfRangeException("cq", videoSettings.Cq.Value, "CQ must be between 1 and 51.");
-        }
+        var resolvedOutputContainer = TargetContainer.ParseOptional(outputContainer, nameof(outputContainer));
+        var resolvedInterpolationQualityProfile =
+            InterpolationQualityProfile.ParseOrDefault(interpolationQualityProfile, nameof(interpolationQualityProfile));
 
         KeepSource = keepSource;
         FramesPerSecondMultiplier = framesPerSecondMultiplier;
-        InterpolationQualityProfile = string.IsNullOrWhiteSpace(interpolationQualityProfile)
-            ? "default"
-            : interpolationQualityProfile.Trim().ToLowerInvariant();
-        OutputContainer = string.IsNullOrWhiteSpace(outputContainer)
-            ? null
-            : outputContainer.Trim().ToLowerInvariant();
+        InterpolationQualityProfile = resolvedInterpolationQualityProfile;
+        OutputContainer = resolvedOutputContainer;
         VideoSettings = videoSettings;
     }
 
@@ -129,7 +107,7 @@ public sealed class ToH264RifeRequest
     /// <summary>
     /// Gets the interpolation quality profile.
     /// </summary>
-    public string InterpolationQualityProfile { get; }
+    public InterpolationQualityProfile InterpolationQualityProfile { get; }
 
     /*
     Это явный контейнер результата, если пользователь его задал.
@@ -137,7 +115,7 @@ public sealed class ToH264RifeRequest
     /// <summary>
     /// Gets the explicitly requested output container, or <see langword="null"/> when the scenario should auto-select it.
     /// </summary>
-    public string? OutputContainer { get; }
+    public TargetContainer? OutputContainer { get; }
 
     /*
     Это переопределения video-settings для финального этапа кодирования.
@@ -153,19 +131,19 @@ public sealed class ToH264RifeRequest
     /// <summary>
     /// Resolves the interpolation model name for the supplied quality profile.
     /// </summary>
-    public static string ResolveInterpolationModelName(string interpolationQualityProfile)
+    public static InterpolationModelName ResolveInterpolationModelName(InterpolationQualityProfile interpolationQualityProfile)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(interpolationQualityProfile);
+        ArgumentNullException.ThrowIfNull(interpolationQualityProfile);
 
-        return interpolationQualityProfile.Trim().ToLowerInvariant() switch
-        {
-            "low" => "4.25.lite",
-            "default" => "4.25",
-            "high" => "4.26.heavy",
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(interpolationQualityProfile),
-                interpolationQualityProfile,
-                $"Value must be one of: {string.Join(", ", SupportedInterpolationQualityProfiles)}.")
-        };
+        return interpolationQualityProfile.ResolveModelName();
+    }
+
+    /// <summary>
+    /// Resolves the interpolation model name for the supplied quality profile.
+    /// </summary>
+    public static InterpolationModelName ResolveInterpolationModelName(string interpolationQualityProfile)
+    {
+        return ResolveInterpolationModelName(
+            InterpolationQualityProfile.Parse(interpolationQualityProfile, nameof(interpolationQualityProfile)));
     }
 }

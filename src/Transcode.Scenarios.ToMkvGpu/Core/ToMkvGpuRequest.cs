@@ -54,14 +54,7 @@ public sealed class ToMkvGpuRequest
                 $"Supported values: {GetSupportedMaxFramesPerSecondDisplay()}.");
         }
 
-        var normalizedNvencPreset = NormalizeName(nvencPreset);
-        if (normalizedNvencPreset is not null && !NvencPresetOptions.IsSupportedPreset(normalizedNvencPreset))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(nvencPreset),
-                nvencPreset,
-                $"Supported values: {GetSupportedPresetsDisplay()}.");
-        }
+        var resolvedNvencPreset = NvencPreset.ParseOptional(nvencPreset, nameof(nvencPreset));
 
         OverlayBackground = overlayBackground;
         SynchronizeAudio = synchronizeAudio;
@@ -69,7 +62,7 @@ public sealed class ToMkvGpuRequest
         ForceEncode = forceEncode;
         VideoSettings = videoSettings;
         Downscale = downscale;
-        NvencPreset = normalizedNvencPreset ?? NvencPresetOptions.DefaultPreset;
+        NvencPreset = resolvedNvencPreset ?? NvencPreset.Default;
         MaxFramesPerSecond = maxFramesPerSecond;
     }
 
@@ -127,7 +120,7 @@ public sealed class ToMkvGpuRequest
     /// <summary>
     /// Gets the normalized NVENC preset used by the scenario.
     /// </summary>
-    public string NvencPreset { get; }
+    public NvencPreset NvencPreset { get; }
 
     /*
     Это ограничение FPS, которое применяется только если исходный FPS выше.
@@ -151,20 +144,5 @@ public sealed class ToMkvGpuRequest
     private static string GetSupportedMaxFramesPerSecondDisplay()
     {
         return string.Join(", ", SupportedMaxFramesPerSecondValues);
-    }
-
-    private static string GetSupportedPresetsDisplay()
-    {
-        return string.Join(", ", NvencPresetOptions.SupportedPresets);
-    }
-
-    private static string? NormalizeName(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim().ToLowerInvariant();
     }
 }

@@ -52,7 +52,7 @@ public sealed class ToH264RifeInfoFormatter
         parts.Add($"maxrate {decision.ResolvedVideoSettings.Maxrate.ToString("0.###", CultureInfo.InvariantCulture)}M");
         parts.Add($"bufsize {decision.ResolvedVideoSettings.Bufsize.ToString("0.###", CultureInfo.InvariantCulture)}M");
 
-        if (!sourceContainer.Equals(decision.TargetContainer, StringComparison.OrdinalIgnoreCase))
+        if (!sourceContainer.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             parts.Add($"container .{sourceContainer}->{decision.TargetContainer}");
         }

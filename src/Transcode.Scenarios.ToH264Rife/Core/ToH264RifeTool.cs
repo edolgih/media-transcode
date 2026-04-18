@@ -100,8 +100,8 @@ public sealed class ToH264RifeTool
             FfmpegExecutionLayout.Quote(inputContainerPath),
             FfmpegExecutionLayout.Quote(outputContainerPath),
             decision.FramesPerSecondMultiplier.ToString(),
-            decision.TargetContainer,
-            decision.InterpolationModelName,
+            decision.TargetContainer.ToString(),
+            decision.InterpolationModelName.ToString(),
             decision.ResolvedVideoSettings.Cq.ToString(CultureInfo.InvariantCulture),
             decision.ResolvedVideoSettings.MaxrateKbps.ToString(CultureInfo.InvariantCulture),
             decision.ResolvedVideoSettings.BufsizeKbps.ToString(CultureInfo.InvariantCulture)

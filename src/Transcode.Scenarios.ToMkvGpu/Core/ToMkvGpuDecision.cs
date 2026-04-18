@@ -19,16 +19,8 @@ internal sealed class ToMkvGpuDecision
     /// <summary>
     /// Initializes a fully resolved <c>tomkvgpu</c> decision.
     /// </summary>
-    /// <param name="targetContainer">Target container token.</param>
-    /// <param name="video">Resolved video intent.</param>
-    /// <param name="audio">Resolved audio intent.</param>
-    /// <param name="keepSource">Whether the source file must be kept.</param>
-    /// <param name="outputPath">Resolved output path.</param>
-    /// <param name="applyOverlayBackground">Whether overlay-background mode is enabled.</param>
-    /// <param name="videoResolution">Resolved video-settings payload for encode mode.</param>
-    /// <param name="sourceBitrate">Resolved source bitrate metadata for diagnostics.</param>
     public ToMkvGpuDecision(
-        string targetContainer,
+        TargetContainer targetContainer,
         VideoIntent video,
         AudioIntent audio,
         bool keepSource,
@@ -37,7 +29,7 @@ internal sealed class ToMkvGpuDecision
         ProfileDrivenVideoSettingsResolution? videoResolution = null,
         ToMkvGpuResolvedSourceBitrate? sourceBitrate = null)
     {
-        TargetContainer = NormalizeRequiredToken(targetContainer, nameof(targetContainer));
+        TargetContainer = targetContainer ?? throw new ArgumentNullException(nameof(targetContainer));
         Video = NormalizeVideoPlan(video);
         Audio = NormalizeAudioPlan(audio);
         KeepSource = keepSource;
@@ -53,7 +45,7 @@ internal sealed class ToMkvGpuDecision
     /// <summary>
     /// Gets the normalized target container identifier.
     /// </summary>
-    public string TargetContainer { get; }
+    public TargetContainer TargetContainer { get; }
 
     /*
     Это выбранный сценарий обработки видеопотока.
@@ -158,12 +150,6 @@ internal sealed class ToMkvGpuDecision
     /// Gets a value indicating whether audio encoding is required.
     /// </summary>
     public bool RequiresAudioEncode => !CopyAudio;
-
-    private static string NormalizeRequiredToken(string? value, string paramName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
-        return value.Trim().ToLowerInvariant();
-    }
 
     private static string NormalizeOutputPath(string? outputPath, string paramName)
     {

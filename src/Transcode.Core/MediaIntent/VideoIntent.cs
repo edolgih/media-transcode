@@ -1,4 +1,5 @@
 using Transcode.Core.VideoSettings;
+using Transcode.Core.Tools.Ffmpeg;
 
 namespace Transcode.Core.MediaIntent;
 
@@ -25,11 +26,11 @@ public sealed record CopyVideoIntent : VideoIntent;
 /// Represents an explicit video-encode intent and its encode-specific settings.
 /// </summary>
 public sealed record EncodeVideoIntent(
-    string TargetVideoCodec,
-    string? PreferredBackend = null,
-    H264OutputProfile? CompatibilityProfile = null,
-    double? TargetFramesPerSecond = null,
-    bool UseFrameInterpolation = false,
-    VideoSettingsRequest? VideoSettings = null,
-    DownscaleRequest? Downscale = null,
-    string? EncoderPreset = null) : VideoIntent;
+	TargetVideoCodec TargetVideoCodec,
+	VideoBackend? PreferredBackend = null,
+	H264OutputProfile? CompatibilityProfile = null,
+	double? TargetFramesPerSecond = null,
+	bool UseFrameInterpolation = false,
+	VideoSettingsRequest? VideoSettings = null,
+	DownscaleRequest? Downscale = null,
+	NvencPreset? EncoderPreset = null) : VideoIntent;

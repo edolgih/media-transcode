@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.VideoSettings;
 using Transcode.Scenarios.ToMkvGpu.Core;
 
@@ -37,14 +38,17 @@ public sealed class ToMkvGpuRequestTests
         request.ForceEncode.Should().BeTrue();
         request.Downscale.Should().NotBeNull();
         request.Downscale!.TargetHeight.Should().Be(576);
-        request.Downscale.Algorithm.Should().Be("bicubic");
+        request.Downscale.Algorithm.Should().NotBeNull();
+        request.Downscale.Algorithm!.Value.Should().Be("bicubic");
         request.VideoSettings.Should().NotBeNull();
-        request.VideoSettings!.ContentProfile.Should().Be("film");
-        request.VideoSettings.QualityProfile.Should().Be("default");
+        request.VideoSettings!.ContentProfile.Should().NotBeNull();
+        request.VideoSettings.ContentProfile!.Value.Should().Be("film");
+        request.VideoSettings.QualityProfile.Should().NotBeNull();
+        request.VideoSettings.QualityProfile!.Value.Should().Be("default");
         request.VideoSettings.Cq.Should().Be(24);
         request.VideoSettings.Maxrate.Should().Be(3.7m);
         request.VideoSettings.Bufsize.Should().Be(7.4m);
-        request.NvencPreset.Should().Be("p6");
+        request.NvencPreset.Should().Be(NvencPreset.P6);
         request.MaxFramesPerSecond.Should().Be(40);
     }
 
@@ -58,11 +62,20 @@ public sealed class ToMkvGpuRequestTests
     }
 
     [Fact]
+    public void Constructor_WhenNvencPresetIsEmpty_Throws()
+    {
+        Action action = static () => _ = new ToMkvGpuRequest(nvencPreset: "");
+
+        action.Should().Throw<ArgumentException>()
+            .WithParameterName("nvencPreset");
+    }
+
+    [Fact]
     public void Constructor_WhenNvencPresetIsOmitted_UsesP6Preset()
     {
         var request = new ToMkvGpuRequest();
 
-        request.NvencPreset.Should().Be("p6");
+        request.NvencPreset.Should().Be(NvencPreset.P6);
     }
 
     [Fact]

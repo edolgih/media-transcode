@@ -9,6 +9,9 @@ namespace Transcode.Core.VideoSettings;
 /// </summary>
 public sealed class VideoSettingsRequest
 {
+    public const int MinimumCq = 1;
+    public const int MaximumCq = 51;
+
     private static readonly string[] SupportedContentProfilesValues = [.. VideoContentProfile.SupportedValues];
     private static readonly string[] SupportedQualityProfilesValues = [.. VideoQualityProfile.SupportedValues];
 
@@ -50,9 +53,12 @@ public sealed class VideoSettingsRequest
         decimal? maxrate = null,
         decimal? bufsize = null)
     {
-        if (cq.HasValue && cq.Value <= 0)
+        if (cq.HasValue && (cq.Value < MinimumCq || cq.Value > MaximumCq))
         {
-            throw new ArgumentOutOfRangeException(nameof(cq), cq.Value, "CQ must be greater than zero.");
+            throw new ArgumentOutOfRangeException(
+                nameof(cq),
+                cq.Value,
+                $"CQ must be between {MinimumCq} and {MaximumCq}.");
         }
 
         if (maxrate.HasValue && maxrate.Value <= 0m)
@@ -65,8 +71,8 @@ public sealed class VideoSettingsRequest
             throw new ArgumentOutOfRangeException(nameof(bufsize), bufsize.Value, "Bufsize must be greater than zero.");
         }
 
-        ContentProfile = VideoContentProfile.ParseOptional(contentProfile, nameof(contentProfile))?.Value;
-        QualityProfile = VideoQualityProfile.ParseOptional(qualityProfile, nameof(qualityProfile))?.Value;
+        ContentProfile = VideoContentProfile.ParseOptional(contentProfile, nameof(contentProfile));
+        QualityProfile = VideoQualityProfile.ParseOptional(qualityProfile, nameof(qualityProfile));
         Cq = cq;
         Maxrate = maxrate;
         Bufsize = bufsize;
@@ -84,7 +90,7 @@ public sealed class VideoSettingsRequest
     /// <summary>
     /// Gets the requested content profile override.
     /// </summary>
-    public string? ContentProfile { get; }
+    public VideoContentProfile? ContentProfile { get; }
 
     /*
     Это профиль качества, который должен заменить стандартный выбор профиля.
@@ -93,7 +99,7 @@ public sealed class VideoSettingsRequest
     /// <summary>
     /// Gets the requested quality profile override.
     /// </summary>
-    public string? QualityProfile { get; }
+    public VideoQualityProfile? QualityProfile { get; }
 
     /*
     Это ручное значение CQ.
@@ -145,9 +151,13 @@ public sealed class VideoSettingsRequest
         decimal? maxrate = null,
         decimal? bufsize = null)
     {
-        return HasAnyValue(contentProfile, qualityProfile, cq, maxrate, bufsize)
-            ? new VideoSettingsRequest(contentProfile, qualityProfile, cq, maxrate, bufsize)
-            : null;
+        return contentProfile is null &&
+               qualityProfile is null &&
+               !cq.HasValue &&
+               !maxrate.HasValue &&
+               !bufsize.HasValue
+            ? null
+            : new VideoSettingsRequest(contentProfile, qualityProfile, cq, maxrate, bufsize);
     }
 
     /*
@@ -182,16 +192,17 @@ public sealed class VideoSettingsRequest
     /// Determines whether at least one override value is present.
     /// </summary>
     private static bool HasAnyValue(
-        string? contentProfile,
-        string? qualityProfile,
+        VideoContentProfile? contentProfile,
+        VideoQualityProfile? qualityProfile,
         int? cq,
         decimal? maxrate,
         decimal? bufsize)
     {
-        return !string.IsNullOrWhiteSpace(contentProfile) ||
-               !string.IsNullOrWhiteSpace(qualityProfile) ||
+        return contentProfile is not null ||
+               qualityProfile is not null ||
                cq.HasValue ||
                maxrate.HasValue ||
                bufsize.HasValue;
     }
+
 }
