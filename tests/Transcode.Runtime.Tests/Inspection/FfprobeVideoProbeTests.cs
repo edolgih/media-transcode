@@ -105,6 +105,23 @@ public sealed class FfprobeVideoProbeTests
     }
 
     [Fact]
+    public void Probe_WhenAttachmentStreamHasNoCodecName_UsesUnknownCodec()
+    {
+        var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
+            ExitCode: 0,
+            StandardOutput: CreateJsonWithAttachmentWithoutCodecName(),
+            StandardError: string.Empty));
+
+        var actual = sut.Probe(@"C:\video\input.mkv");
+
+        actual.streams.Should().HaveCount(2);
+        actual.streams[0].streamType.Should().Be("video");
+        actual.streams[0].codec.Should().Be("h264");
+        actual.streams[1].streamType.Should().Be("attachment");
+        actual.streams[1].codec.Should().Be("unknown");
+    }
+
+    [Fact]
     public void Probe_WhenStreamsFieldIsMissing_ThrowsRuntimeFailureException()
     {
         var sut = new FfprobeVideoProbe(_ => new FfprobeProcessResult(
@@ -372,6 +389,30 @@ public sealed class FfprobeVideoProbeTests
                      "width": 1920,
                      "height": 1080,
                      "r_frame_rate": "25/1"
+                   }
+                 ]
+               }
+               """;
+    }
+
+    private static string CreateJsonWithAttachmentWithoutCodecName()
+    {
+        return """
+               {
+                 "format": {
+                   "format_name": "matroska,webm",
+                   "duration": "120.5"
+                 },
+                 "streams": [
+                   {
+                     "codec_type": "video",
+                     "codec_name": "h264",
+                     "width": 1920,
+                     "height": 1080,
+                     "r_frame_rate": "25/1"
+                   },
+                   {
+                     "codec_type": "attachment"
                    }
                  ]
                }

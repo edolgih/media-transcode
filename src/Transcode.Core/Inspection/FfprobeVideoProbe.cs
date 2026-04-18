@@ -85,7 +85,18 @@ public sealed class FfprobeVideoProbe : IVideoProbe
             }
 
             var streamType = ReadRequiredString(streamElement, "codec_type", "stream");
-            var codec = ReadRequiredString(streamElement, "codec_name", "stream");
+            var codec = TryGetString(streamElement, "codec_name")?.Trim();
+            if (string.IsNullOrWhiteSpace(codec))
+            {
+                if (streamType.Equals("video", StringComparison.OrdinalIgnoreCase) ||
+                    streamType.Equals("audio", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw RuntimeFailures.ProbeMissingRequiredField("codec_name", "stream");
+                }
+
+                codec = "unknown";
+            }
+
             var rawFramesPerSecond = ParseFrameRate(TryGetString(streamElement, "r_frame_rate"));
             var averageFramesPerSecond = ParseFrameRate(TryGetString(streamElement, "avg_frame_rate"));
             var framesPerSecond = rawFramesPerSecond ?? averageFramesPerSecond;
