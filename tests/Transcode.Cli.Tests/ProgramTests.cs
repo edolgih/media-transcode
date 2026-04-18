@@ -254,6 +254,7 @@ public sealed class ProgramTests
             output.ToString().Should().Contain("--scenario toh264gpu --input C:\\video\\input.mkv --force-encode --content-profile film --quality-profile default");
             output.ToString().Should().Contain("--scenario toh264rife");
             output.ToString().Should().Contain("--max-fps <50|40|30|24>");
+            output.ToString().Should().Contain("--nvdec-max-threads <1..32>");
             output.ToString().Should().Contain("--fps-multiplier <2|3>");
             output.ToString().Should().Contain("--interp-quality <low|default|high>");
             output.ToString().Should().Contain("--downscale <720|576|480|424>");

@@ -26,6 +26,7 @@ internal sealed class ToMkvGpuDecision
         bool keepSource,
         string outputPath,
         bool applyOverlayBackground,
+        int? nvdecMaxThreads,
         ProfileDrivenVideoSettingsResolution? videoResolution = null,
         ToMkvGpuResolvedSourceBitrate? sourceBitrate = null)
     {
@@ -35,6 +36,7 @@ internal sealed class ToMkvGpuDecision
         KeepSource = keepSource;
         OutputPath = NormalizeOutputPath(outputPath, nameof(outputPath));
         ApplyOverlayBackground = applyOverlayBackground;
+        NvdecMaxThreads = NormalizeNvdecMaxThreads(nvdecMaxThreads);
         VideoResolution = videoResolution;
         SourceBitrate = sourceBitrate;
     }
@@ -86,6 +88,12 @@ internal sealed class ToMkvGpuDecision
     /// Gets a value indicating whether overlay-background mode is enabled.
     /// </summary>
     public bool ApplyOverlayBackground { get; }
+
+    /// <summary>
+    /// Gets the optional upper limit for NVDEC decode threads.
+    /// When <see langword="null"/>, ffmpeg default threading is used.
+    /// </summary>
+    public int? NvdecMaxThreads { get; }
 
     /*
     Это resolved payload video-настроек для ffmpeg encode-рендеринга.
@@ -179,6 +187,25 @@ internal sealed class ToMkvGpuDecision
             EncodeAudioIntent => audio,
             _ => throw new ArgumentException($"Unsupported audio plan type '{audio.GetType().Name}'.", nameof(audio))
         };
+    }
+
+    private static int? NormalizeNvdecMaxThreads(int? nvdecMaxThreads)
+    {
+        if (!nvdecMaxThreads.HasValue)
+        {
+            return null;
+        }
+
+        if (nvdecMaxThreads.Value < ToMkvGpuRequest.MinimumNvdecMaxThreads ||
+            nvdecMaxThreads.Value > ToMkvGpuRequest.MaximumNvdecMaxThreads)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(nvdecMaxThreads),
+                nvdecMaxThreads.Value,
+                $"Value must be in range {ToMkvGpuRequest.MinimumNvdecMaxThreads}..{ToMkvGpuRequest.MaximumNvdecMaxThreads}.");
+        }
+
+        return nvdecMaxThreads;
     }
 }
 

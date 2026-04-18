@@ -141,7 +141,9 @@ public sealed class ToMkvGpuFfmpegTool
         if (decision.Video is EncodeVideoIntent encodeVideo &&
             encodeVideo.PreferredBackend == VideoBackend.Gpu)
         {
-            parts.Add("-hwaccel cuda -hwaccel_output_format cuda");
+            parts.Add(decision.NvdecMaxThreads.HasValue
+                ? $"-hwaccel cuda -hwaccel_output_format cuda -threads:v {decision.NvdecMaxThreads.Value}"
+                : "-hwaccel cuda -hwaccel_output_format cuda");
         }
 
         parts.Add("-i");

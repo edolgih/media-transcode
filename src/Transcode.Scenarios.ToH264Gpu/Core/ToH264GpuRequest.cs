@@ -12,6 +12,19 @@ namespace Transcode.Scenarios.ToH264Gpu.Core;
 /// </summary>
 public sealed class ToH264GpuRequest
 {
+    private const int MinimumNvdecMaxThreadsValue = 1;
+    private const int MaximumNvdecMaxThreadsValue = 32;
+
+    /// <summary>
+    /// Gets the minimum allowed NVDEC decode thread limit.
+    /// </summary>
+    public static int MinimumNvdecMaxThreads => MinimumNvdecMaxThreadsValue;
+
+    /// <summary>
+    /// Gets the maximum allowed NVDEC decode thread limit.
+    /// </summary>
+    public static int MaximumNvdecMaxThreads => MaximumNvdecMaxThreadsValue;
+
     /*
     Это создание scenario request с набором управляемых опций toh264gpu.
     */
@@ -27,8 +40,18 @@ public sealed class ToH264GpuRequest
         string? nvencPreset = null,
         bool denoise = false,
         bool synchronizeAudio = false,
-        bool outputMkv = false)
+        bool outputMkv = false,
+        int? nvdecMaxThreads = null)
     {
+        if (nvdecMaxThreads.HasValue &&
+            (nvdecMaxThreads.Value < MinimumNvdecMaxThreadsValue || nvdecMaxThreads.Value > MaximumNvdecMaxThreadsValue))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(nvdecMaxThreads),
+                nvdecMaxThreads.Value,
+                $"Value must be in range {MinimumNvdecMaxThreadsValue}..{MaximumNvdecMaxThreadsValue}.");
+        }
+
         var resolvedNvencPreset = NvencPreset.ParseOptional(nvencPreset, nameof(nvencPreset));
 
         KeepSource = keepSource;
@@ -40,6 +63,7 @@ public sealed class ToH264GpuRequest
         Denoise = denoise;
         SynchronizeAudio = synchronizeAudio;
         OutputMkv = outputMkv;
+        NvdecMaxThreads = nvdecMaxThreads;
     }
 
     /*
@@ -89,6 +113,12 @@ public sealed class ToH264GpuRequest
     /// Gets the normalized NVENC preset used by the scenario.
     /// </summary>
     public NvencPreset NvencPreset { get; }
+
+    /// <summary>
+    /// Gets the optional upper limit for NVDEC decode threads.
+    /// When <see langword="null"/>, ffmpeg default threading is used.
+    /// </summary>
+    public int? NvdecMaxThreads { get; }
 
     /*
     Это флаг включения denoise в обычном encode-режиме.

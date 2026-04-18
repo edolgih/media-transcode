@@ -158,6 +158,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             keepSource: options.KeepSource,
             outputPath: ResolveOutputPath(video, options.KeepSource, options.CopyVideo, options.CopyAudio, options.Downscale),
             applyOverlayBackground: options.ApplyOverlayBackground,
+            nvdecMaxThreads: options.NvdecMaxThreads,
             videoResolution: videoResolution,
             sourceBitrate: sourceBitrate);
     }
@@ -196,7 +197,8 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         DownscaleRequest? Downscale,
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
-        NvencPreset NvencPreset)
+        NvencPreset NvencPreset,
+        int? NvdecMaxThreads)
     {
         public bool CopyAudio => AudioMode == AudioPathMode.Copy;
     }
@@ -229,7 +231,8 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
                 ? null
                 : applyFrameRateCap ? Request.MaxFramesPerSecond : null,
             VideoSettings: copyVideo ? null : Request.VideoSettings,
-            NvencPreset: Request.NvencPreset);
+            NvencPreset: Request.NvencPreset,
+            NvdecMaxThreads: Request.NvdecMaxThreads);
     }
 
     private AudioPathMode ResolveAudioMode(SourceVideo video, bool copyVideo, bool requiresTimestampFix)

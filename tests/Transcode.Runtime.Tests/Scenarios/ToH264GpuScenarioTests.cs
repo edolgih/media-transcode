@@ -1157,6 +1157,22 @@ public sealed class ToH264GpuScenarioTests
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().NotContain("-threads:v");
+        actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenDownscaleAndNvdecMaxThreadsAreRequested_UsesThreadsOverride()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", filePath: @"C:\video\input.mp4", height: 1080);
+        var decision = CreateSut(new ToH264GpuRequest(
+            downscale: new DownscaleRequest(576),
+            nvdecMaxThreads: 14)).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda -threads:v 14");
         actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
     }
 

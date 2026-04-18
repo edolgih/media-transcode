@@ -20,6 +20,7 @@ internal static class ToMkvGpuCliRequestParser
     private const string OverlayBackgroundOptionName = "--overlay-bg";
     private const string MaxFramesPerSecondOptionName = "--max-fps";
     private const string SynchronizeAudioOptionName = "--sync-audio";
+    private const string NvdecMaxThreadsOptionName = "--nvdec-max-threads";
     private const string ContentProfileOptionName = "--content-profile";
     private const string QualityProfileOptionName = "--quality-profile";
     private const string DownscaleAlgorithmOptionName = "--downscale-algo";
@@ -122,6 +123,19 @@ internal static class ToMkvGpuCliRequestParser
                     token,
                     "--max-fps must be an integer.",
                     out state.MaxFramesPerSecond,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                return true;
+            case NvdecMaxThreadsOptionName:
+                if (!CliOptionReader.TryReadInt(
+                    args,
+                    ref index,
+                    token,
+                    "--nvdec-max-threads must be an integer.",
+                    out state.NvdecMaxThreads,
                     out errorText))
                 {
                     return false;
@@ -231,7 +245,8 @@ internal static class ToMkvGpuCliRequestParser
                 videoSettings: videoSettingsRequest,
                 downscale: downscaleRequest,
                 nvencPreset: state.NvencPreset,
-                maxFramesPerSecond: state.MaxFramesPerSecond);
+                maxFramesPerSecond: state.MaxFramesPerSecond,
+                nvdecMaxThreads: state.NvdecMaxThreads);
             return true;
         }
         catch (ArgumentOutOfRangeException exception)
@@ -261,6 +276,7 @@ internal static class ToMkvGpuCliRequestParser
             "maxrate" => "--maxrate must be greater than zero.",
             "bufsize" => "--bufsize must be greater than zero.",
             "maxFramesPerSecond" => BuildSupportedError("--max-fps", ToMkvGpuRequest.SupportedMaxFramesPerSecond),
+            "nvdecMaxThreads" => $"--nvdec-max-threads must be an integer from {ToMkvGpuRequest.MinimumNvdecMaxThreads} to {ToMkvGpuRequest.MaximumNvdecMaxThreads}.",
             "contentProfile" => BuildSupportedError("--content-profile", VideoSettingsRequest.SupportedContentProfiles),
             "qualityProfile" => BuildSupportedError("--quality-profile", VideoSettingsRequest.SupportedQualityProfiles),
             "nvencPreset" => BuildSupportedError("--nvenc-preset", NvencPreset.SupportedValues),
@@ -297,6 +313,7 @@ internal static class ToMkvGpuCliRequestParser
         public bool ForceEncode;
         public int? DownscaleTargetHeight;
         public int? MaxFramesPerSecond;
+        public int? NvdecMaxThreads;
         public int? Cq;
         public decimal? Maxrate;
         public decimal? Bufsize;

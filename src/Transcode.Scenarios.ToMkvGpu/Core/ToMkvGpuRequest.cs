@@ -13,6 +13,8 @@ namespace Transcode.Scenarios.ToMkvGpu.Core;
 public sealed class ToMkvGpuRequest
 {
     private static readonly int[] SupportedMaxFramesPerSecondValues = [50, 40, 30, 24];
+    private const int MinimumNvdecMaxThreadsValue = 1;
+    private const int MaximumNvdecMaxThreadsValue = 32;
 
     /*
     Это список поддерживаемых лимитов FPS для томквгпу.
@@ -21,6 +23,16 @@ public sealed class ToMkvGpuRequest
     /// Gets frame-rate cap values supported by the ToMkvGpu workflow.
     /// </summary>
     public static IReadOnlyList<int> SupportedMaxFramesPerSecond => SupportedMaxFramesPerSecondValues;
+
+    /// <summary>
+    /// Gets the minimum allowed NVDEC decode thread limit.
+    /// </summary>
+    public static int MinimumNvdecMaxThreads => MinimumNvdecMaxThreadsValue;
+
+    /// <summary>
+    /// Gets the maximum allowed NVDEC decode thread limit.
+    /// </summary>
+    public static int MaximumNvdecMaxThreads => MaximumNvdecMaxThreadsValue;
 
     /*
     Это создание scenario request с набором управляемых опций tomkvgpu.
@@ -36,6 +48,7 @@ public sealed class ToMkvGpuRequest
     /// <param name="downscale">Explicit downscale intent when the scenario requests resized output.</param>
     /// <param name="nvencPreset">Explicit NVENC preset override.</param>
     /// <param name="maxFramesPerSecond">Optional frame-rate cap applied only when the source frame rate is higher.</param>
+    /// <param name="nvdecMaxThreads">Upper limit for NVDEC decode threads used in ffmpeg command rendering.</param>
     public ToMkvGpuRequest(
         bool overlayBackground = false,
         bool synchronizeAudio = false,
@@ -44,7 +57,8 @@ public sealed class ToMkvGpuRequest
         VideoSettingsRequest? videoSettings = null,
         DownscaleRequest? downscale = null,
         string? nvencPreset = null,
-        int? maxFramesPerSecond = null)
+        int? maxFramesPerSecond = null,
+        int? nvdecMaxThreads = null)
     {
         if (maxFramesPerSecond.HasValue && !IsSupportedMaxFramesPerSecond(maxFramesPerSecond.Value))
         {
@@ -52,6 +66,15 @@ public sealed class ToMkvGpuRequest
                 nameof(maxFramesPerSecond),
                 maxFramesPerSecond.Value,
                 $"Supported values: {GetSupportedMaxFramesPerSecondDisplay()}.");
+        }
+
+        if (nvdecMaxThreads.HasValue &&
+            (nvdecMaxThreads.Value < MinimumNvdecMaxThreadsValue || nvdecMaxThreads.Value > MaximumNvdecMaxThreadsValue))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(nvdecMaxThreads),
+                nvdecMaxThreads.Value,
+                $"Value must be in range {MinimumNvdecMaxThreadsValue}..{MaximumNvdecMaxThreadsValue}.");
         }
 
         var resolvedNvencPreset = NvencPreset.ParseOptional(nvencPreset, nameof(nvencPreset));
@@ -64,6 +87,7 @@ public sealed class ToMkvGpuRequest
         Downscale = downscale;
         NvencPreset = resolvedNvencPreset ?? NvencPreset.Default;
         MaxFramesPerSecond = maxFramesPerSecond;
+        NvdecMaxThreads = nvdecMaxThreads;
     }
 
     /*
@@ -129,6 +153,12 @@ public sealed class ToMkvGpuRequest
     /// Gets the optional frame-rate cap applied only when the source exceeds it.
     /// </summary>
     public int? MaxFramesPerSecond { get; }
+
+    /// <summary>
+    /// Gets the optional upper limit for NVDEC decode threads.
+    /// When <see langword="null"/>, ffmpeg default threading is used.
+    /// </summary>
+    public int? NvdecMaxThreads { get; }
 
     /*
     Это проверка, поддерживается ли переданный лимит FPS сценарием.

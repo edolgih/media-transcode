@@ -31,7 +31,8 @@ public sealed class ToH264GpuRequestTests
             nvencPreset: "P6",
             denoise: true,
             synchronizeAudio: true,
-            outputMkv: true);
+            outputMkv: true,
+            nvdecMaxThreads: 12);
 
         request.KeepSource.Should().BeTrue();
         request.ForceEncode.Should().BeTrue();
@@ -49,6 +50,7 @@ public sealed class ToH264GpuRequestTests
         request.VideoSettings.Maxrate.Should().Be(4.2m);
         request.VideoSettings.Bufsize.Should().Be(8.4m);
         request.NvencPreset.Should().Be(NvencPreset.P6);
+        request.NvdecMaxThreads.Should().Be(12);
         request.Denoise.Should().BeTrue();
         request.SynchronizeAudio.Should().BeTrue();
         request.OutputMkv.Should().BeTrue();
@@ -78,6 +80,18 @@ public sealed class ToH264GpuRequestTests
         var request = new ToH264GpuRequest();
 
         request.NvencPreset.Should().Be(NvencPreset.P6);
+        request.NvdecMaxThreads.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(33)]
+    public void Constructor_WhenNvdecMaxThreadsIsOutOfRange_Throws(int value)
+    {
+        Action action = () => _ = new ToH264GpuRequest(nvdecMaxThreads: value);
+
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("nvdecMaxThreads");
     }
 
     [Fact]

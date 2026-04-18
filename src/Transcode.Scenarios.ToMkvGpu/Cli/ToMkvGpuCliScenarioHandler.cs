@@ -82,6 +82,7 @@ public sealed class ToMkvGpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--force-encode", "Force full encode even for remux-compatible video, keeping the source resolution. Default: off."),
         new CliHelpOption("--overlay-bg", "Apply overlay background path during encode. Default: off."),
         new CliHelpOption($"--max-fps <{CliValueFormatter.FormatAlternatives(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}>", $"Optional frame-rate cap. Default: no cap. Supported values: {CliValueFormatter.FormatList(ToMkvGpuRequest.SupportedMaxFramesPerSecond)}."),
+        new CliHelpOption($"--nvdec-max-threads <{ToMkvGpuRequest.MinimumNvdecMaxThreads}..{ToMkvGpuRequest.MaximumNvdecMaxThreads}>", "Optional upper bound for NVDEC decode threads. Default: ffmpeg behavior."),
         new CliHelpOption("--sync-audio", "Force sync-safe audio path. Default: off."),
         new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
         new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile. Default: default."),

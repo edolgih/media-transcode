@@ -643,11 +643,25 @@ public sealed class ToMkvGpuScenarioTests
 
         actual.Commands.Should().HaveCount(2);
         actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().NotContain("-threads:v");
+        actual.Commands[0].Should().NotContain(" || ");
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
         actual.Commands[0].Should().Contain("-preset p6");
         actual.Commands[0].Should().Contain("-c:a libmp3lame");
         actual.Commands[0].Should().Contain("-q:a 2");
         actual.Commands[1].Should().Be("del \"C:\\video\\input.mp4\"");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenNvdecMaxThreadsOverrideIsProvided_UsesOverride()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "av1", audioCodecs: ["ac3"], filePath: @"C:\video\input.mp4");
+        var decision = CreateSut(nvdecMaxThreads: 10).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-threads:v 10");
     }
 
     [Fact]
@@ -698,7 +712,8 @@ public sealed class ToMkvGpuScenarioTests
         bool synchronizeAudio = false,
         bool keepSource = false,
         bool forceEncode = false,
-        int? maxFramesPerSecond = null)
+        int? maxFramesPerSecond = null,
+        int? nvdecMaxThreads = null)
     {
         return new ToMkvGpuScenario(new ToMkvGpuRequest(
             overlayBackground: overlayBackground,
@@ -706,7 +721,8 @@ public sealed class ToMkvGpuScenarioTests
             keepSource: keepSource,
             forceEncode: forceEncode,
             downscale: downscaleTarget.HasValue ? new DownscaleRequest(downscaleTarget.Value) : null,
-            maxFramesPerSecond: maxFramesPerSecond));
+            maxFramesPerSecond: maxFramesPerSecond,
+            nvdecMaxThreads: nvdecMaxThreads));
     }
 
     private static ToMkvGpuFfmpegTool CreateFfmpegTool()

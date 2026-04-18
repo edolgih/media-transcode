@@ -142,7 +142,9 @@ public sealed class ToH264GpuFfmpegTool
 
         if (decision.VideoExecutionDetails?.UseHardwareDecode == true)
         {
-            parts.Add("-hwaccel cuda -hwaccel_output_format cuda");
+            parts.Add(decision.VideoExecutionDetails.NvdecMaxThreads.HasValue
+                ? $"-hwaccel cuda -hwaccel_output_format cuda -threads:v {decision.VideoExecutionDetails.NvdecMaxThreads.Value}"
+                : "-hwaccel cuda -hwaccel_output_format cuda");
         }
 
         parts.Add("-i");

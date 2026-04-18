@@ -81,6 +81,7 @@ public sealed class ToH264GpuCliScenarioHandler : ICliScenarioHandler
         new CliHelpOption("--force-encode", "Force full encode even for remux-compatible video, keeping the source resolution. Default: off."),
         new CliHelpOption($"--downscale <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedTargetHeights)}>", "GPU downscale when the source is higher than the target. Default: off."),
         new CliHelpOption("--keep-fps", "Keep the source FPS in downscale mode instead of capping to 30000/1001. Default: off."),
+        new CliHelpOption($"--nvdec-max-threads <{ToH264GpuRequest.MinimumNvdecMaxThreads}..{ToH264GpuRequest.MaximumNvdecMaxThreads}>", "Optional upper bound for NVDEC decode threads. Default: ffmpeg behavior."),
         new CliHelpOption($"--content-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedContentProfiles)}>", "Quality-oriented content profile. Default: film."),
         new CliHelpOption($"--quality-profile <{CliValueFormatter.FormatAlternatives(VideoSettingsRequest.SupportedQualityProfiles)}>", "Quality-oriented quality profile. Default: default."),
         new CliHelpOption($"--downscale-algo <{CliValueFormatter.FormatAlternatives(DownscaleRequest.SupportedAlgorithms)}>", "Downscale interpolation algorithm. Default: profile default; built-in profiles currently bilinear."),

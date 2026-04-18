@@ -205,6 +205,7 @@ public sealed class ToMkvGpuInfoFormatterTests
             audio: audioIntent,
             keepSource: false,
             outputPath: outputPath,
-            applyOverlayBackground: false);
+            applyOverlayBackground: false,
+            nvdecMaxThreads: null);
     }
 }

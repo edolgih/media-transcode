@@ -207,12 +207,14 @@ internal sealed class ToH264GpuDecision
             bool useHardwareDecode,
             VideoRateControlExecution rateControl,
             AdaptiveQuantizationExecution? adaptiveQuantization = null,
+            int? nvdecMaxThreads = null,
             string? filter = null,
             string? pixelFormat = null)
         {
             RateControl = rateControl ?? throw new ArgumentNullException(nameof(rateControl));
             UseHardwareDecode = useHardwareDecode;
             AdaptiveQuantization = adaptiveQuantization;
+            NvdecMaxThreads = NormalizeNvdecMaxThreads(useHardwareDecode, nvdecMaxThreads);
             Filter = NormalizeOptionalText(filter);
             PixelFormat = NormalizeOptionalText(pixelFormat);
         }
@@ -224,6 +226,12 @@ internal sealed class ToH264GpuDecision
         /// Gets a value indicating whether hardware decode should be enabled.
         /// </summary>
         public bool UseHardwareDecode { get; }
+
+        /// <summary>
+        /// Gets the optional upper limit for NVDEC decode threads.
+        /// When <see langword="null"/>, ffmpeg default threading is used.
+        /// </summary>
+        public int? NvdecMaxThreads { get; }
 
         /*
         Это выбранная модель управления video bitrate/quality.
@@ -256,6 +264,30 @@ internal sealed class ToH264GpuDecision
         /// Gets the explicit pixel format token when one is required.
         /// </summary>
         public string? PixelFormat { get; }
+
+        private static int? NormalizeNvdecMaxThreads(bool useHardwareDecode, int? nvdecMaxThreads)
+        {
+            if (!useHardwareDecode)
+            {
+                return null;
+            }
+
+            if (!nvdecMaxThreads.HasValue)
+            {
+                return null;
+            }
+
+            if (nvdecMaxThreads.Value < ToH264GpuRequest.MinimumNvdecMaxThreads ||
+                nvdecMaxThreads.Value > ToH264GpuRequest.MaximumNvdecMaxThreads)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(nvdecMaxThreads),
+                    nvdecMaxThreads.Value,
+                    $"Value must be in range {ToH264GpuRequest.MinimumNvdecMaxThreads}..{ToH264GpuRequest.MaximumNvdecMaxThreads}.");
+            }
+
+            return nvdecMaxThreads;
+        }
     }
 
     /*

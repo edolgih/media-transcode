@@ -30,7 +30,8 @@ public sealed class ToMkvGpuRequestTests
                 bufsize: 7.4m),
             downscale: new DownscaleRequest(576, "Bicubic"),
             nvencPreset: "P6",
-            maxFramesPerSecond: 40);
+            maxFramesPerSecond: 40,
+            nvdecMaxThreads: 12);
 
         request.KeepSource.Should().BeTrue();
         request.OverlayBackground.Should().BeTrue();
@@ -50,6 +51,7 @@ public sealed class ToMkvGpuRequestTests
         request.VideoSettings.Bufsize.Should().Be(7.4m);
         request.NvencPreset.Should().Be(NvencPreset.P6);
         request.MaxFramesPerSecond.Should().Be(40);
+        request.NvdecMaxThreads.Should().Be(12);
     }
 
     [Fact]
@@ -76,6 +78,18 @@ public sealed class ToMkvGpuRequestTests
         var request = new ToMkvGpuRequest();
 
         request.NvencPreset.Should().Be(NvencPreset.P6);
+        request.NvdecMaxThreads.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(33)]
+    public void Constructor_WhenNvdecMaxThreadsIsOutOfRange_Throws(int value)
+    {
+        Action action = () => _ = new ToMkvGpuRequest(nvdecMaxThreads: value);
+
+        action.Should().Throw<ArgumentOutOfRangeException>()
+            .WithParameterName("nvdecMaxThreads");
     }
 
     [Fact]

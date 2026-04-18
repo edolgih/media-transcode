@@ -24,6 +24,7 @@ internal static class ToH264GpuCliRequestParser
     private const string CqOptionName = "--cq";
     private const string MaxrateOptionName = "--maxrate";
     private const string BufsizeOptionName = "--bufsize";
+    private const string NvdecMaxThreadsOptionName = "--nvdec-max-threads";
     private const string NvencPresetOptionName = "--nvenc-preset";
     private const string DenoiseOptionName = "--denoise";
     private const string SynchronizeAudioOptionName = "--sync-audio";
@@ -157,6 +158,19 @@ internal static class ToH264GpuCliRequestParser
                 }
 
                 return true;
+            case NvdecMaxThreadsOptionName:
+                if (!CliOptionReader.TryReadInt(
+                    args,
+                    ref index,
+                    token,
+                    "--nvdec-max-threads must be an integer.",
+                    out state.NvdecMaxThreads,
+                    out errorText))
+                {
+                    return false;
+                }
+
+                return true;
             case NvencPresetOptionName:
                 return CliOptionReader.TryReadRequiredValue(args, ref index, token, out state.NvencPreset, out errorText);
             case DenoiseOptionName:
@@ -226,7 +240,8 @@ internal static class ToH264GpuCliRequestParser
                 nvencPreset: state.NvencPreset,
                 denoise: state.Denoise,
                 synchronizeAudio: state.SynchronizeAudio,
-                outputMkv: state.OutputMkv);
+                outputMkv: state.OutputMkv,
+                nvdecMaxThreads: state.NvdecMaxThreads);
             return true;
         }
         catch (ArgumentOutOfRangeException exception)
@@ -255,6 +270,7 @@ internal static class ToH264GpuCliRequestParser
             "cq" => $"--cq must be an integer from {VideoSettingsRequest.MinimumCq} to {VideoSettingsRequest.MaximumCq}.",
             "maxrate" => "--maxrate must be greater than zero.",
             "bufsize" => "--bufsize must be greater than zero.",
+            "nvdecMaxThreads" => $"--nvdec-max-threads must be an integer from {ToH264GpuRequest.MinimumNvdecMaxThreads} to {ToH264GpuRequest.MaximumNvdecMaxThreads}.",
             "contentProfile" => BuildSupportedError("--content-profile", VideoSettingsRequest.SupportedContentProfiles),
             "qualityProfile" => BuildSupportedError("--quality-profile", VideoSettingsRequest.SupportedQualityProfiles),
             "nvencPreset" => BuildSupportedError("--nvenc-preset", NvencPreset.SupportedValues),
@@ -293,6 +309,7 @@ internal static class ToH264GpuCliRequestParser
         public int? Cq;
         public decimal? Maxrate;
         public decimal? Bufsize;
+        public int? NvdecMaxThreads;
         public string? ContentProfile;
         public string? QualityProfile;
         public string? NvencPreset;

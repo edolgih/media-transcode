@@ -37,6 +37,7 @@ public sealed class CliParsingTests
                 "--quality-profile", "High",
                 "--downscale-algo", "Lanczos",
                 "--max-fps", "50",
+                "--nvdec-max-threads", "12",
                 "--cq", "23",
                 "--maxrate", "3.4",
                 "--bufsize", "6.8",
@@ -51,7 +52,7 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mp4");
         parsed.Scenario.Should().Be("tomkvgpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgCount.Should().Be(19);
+        parsed.ScenarioArgCount.Should().Be(21);
         var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToMkvGpuRequest>().Subject;
         scenarioInput.ForceEncode.Should().BeTrue();
         scenarioInput.Downscale.Should().NotBeNull();
@@ -69,6 +70,7 @@ public sealed class CliParsingTests
         videoSettings.Maxrate.Should().Be(3.4m);
         videoSettings.Bufsize.Should().Be(6.8m);
         scenarioInput.MaxFramesPerSecond.Should().Be(50);
+        scenarioInput.NvdecMaxThreads.Should().Be(12);
         scenarioInput.NvencPreset.Should().Be(NvencPreset.P5);
     }
 
@@ -88,6 +90,7 @@ public sealed class CliParsingTests
                 "--quality-profile", "Default",
                 "--downscale-algo", "Bicubic",
                 "--max-fps", "40",
+                "--nvdec-max-threads", "10",
                 "--cq", "24",
                 "--maxrate", "3.7",
                 "--bufsize", "7.4",
@@ -132,6 +135,7 @@ public sealed class CliParsingTests
         scenarioRequest.VideoSettings.Maxrate.Should().Be(3.7m);
         scenarioRequest.VideoSettings.Bufsize.Should().Be(7.4m);
         scenarioRequest.MaxFramesPerSecond.Should().Be(40);
+        scenarioRequest.NvdecMaxThreads.Should().Be(10);
         scenarioRequest.NvencPreset.Should().Be(NvencPreset.P6);
     }
 
@@ -150,6 +154,7 @@ public sealed class CliParsingTests
                 "--quality-profile", "default",
                 "--downscale-algo", "lanczos",
                 "--cq", "21",
+                "--nvdec-max-threads", "14",
                 "--nvenc-preset", "p6",
                 "--denoise",
                 "--sync-audio",
@@ -164,7 +169,7 @@ public sealed class CliParsingTests
         parsed.Inputs.Should().ContainSingle().Which.Should().Be(@"C:\video\a.mkv");
         parsed.Scenario.Should().Be("toh264gpu");
         parsed.Info.Should().BeFalse();
-        parsed.ScenarioArgCount.Should().Be(18);
+        parsed.ScenarioArgCount.Should().Be(20);
         var scenarioInput = parsed.ScenarioInput.Should().BeOfType<ToH264GpuRequest>().Subject;
         scenarioInput.KeepSource.Should().BeTrue();
         scenarioInput.ForceEncode.Should().BeTrue();
@@ -178,6 +183,7 @@ public sealed class CliParsingTests
         scenarioInput.Downscale.Algorithm.Should().NotBeNull();
         scenarioInput.Downscale.Algorithm!.Value.Should().Be("lanczos");
         scenarioInput.VideoSettings.Cq.Should().Be(21);
+        scenarioInput.NvdecMaxThreads.Should().Be(14);
         scenarioInput.NvencPreset.Should().Be(NvencPreset.P6);
         scenarioInput.Denoise.Should().BeTrue();
         scenarioInput.SynchronizeAudio.Should().BeTrue();
@@ -199,6 +205,7 @@ public sealed class CliParsingTests
                 "--quality-profile", "default",
                 "--downscale-algo", "lanczos",
                 "--cq", "21",
+                "--nvdec-max-threads", "10",
                 "--nvenc-preset", "p6",
                 "--denoise",
                 "--sync-audio",
@@ -238,6 +245,7 @@ public sealed class CliParsingTests
         scenarioRequest.Downscale.Algorithm.Should().NotBeNull();
         scenarioRequest.Downscale.Algorithm!.Value.Should().Be("lanczos");
         scenarioRequest.VideoSettings.Cq.Should().Be(21);
+        scenarioRequest.NvdecMaxThreads.Should().Be(10);
         scenarioRequest.NvencPreset.Should().Be(NvencPreset.P6);
         scenarioRequest.Denoise.Should().BeTrue();
         scenarioRequest.SynchronizeAudio.Should().BeTrue();
@@ -507,6 +515,7 @@ public sealed class CliParsingTests
     [Theory]
     [InlineData("--downscale")]
     [InlineData("--max-fps")]
+    [InlineData("--nvdec-max-threads")]
     public void TryParse_WhenScenarioSpecificOptionValueIsMissing_ReturnsFalse(string optionName)
     {
         var actual = CliArgumentParser.TryParse(
@@ -522,6 +531,7 @@ public sealed class CliParsingTests
     [Theory]
     [InlineData("--downscale", "abc", "--downscale must be an integer.")]
     [InlineData("--max-fps", "abc", "--max-fps must be an integer.")]
+    [InlineData("--nvdec-max-threads", "abc", "--nvdec-max-threads must be an integer.")]
     [InlineData("--cq", "abc", "--cq must be an integer from 1 to 51.")]
     [InlineData("--maxrate", "abc", "--maxrate must be a number.")]
     [InlineData("--bufsize", "abc", "--bufsize must be a number.")]
@@ -624,6 +634,21 @@ public sealed class CliParsingTests
         errorText.Should().Be("--max-fps must be one of: 50, 40, 30, 24.");
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("33")]
+    public void TryParse_WhenNvdecMaxThreadsIsOutOfRange_ReturnsFalse(string value)
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "tomkvgpu", "--input", @"C:\video\a.mp4", "--nvdec-max-threads", value],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--nvdec-max-threads must be an integer from 1 to 32.");
+    }
+
     [Fact]
     public void TryParse_WhenTomkvgpuDownscaleIsUnsupported_ReturnsFalse()
     {
@@ -700,6 +725,47 @@ public sealed class CliParsingTests
 
         actual.Should().BeFalse();
         errorText.Should().Be("--cq must be an integer from 1 to 51.");
+    }
+
+    [Fact]
+    public void TryParse_WhenToH264GpuNvdecMaxThreadsIsMissingValue_ReturnsFalse()
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--nvdec-max-threads"],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--nvdec-max-threads requires a value.");
+    }
+
+    [Fact]
+    public void TryParse_WhenToH264GpuNvdecMaxThreadsHasInvalidType_ReturnsFalse()
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--nvdec-max-threads", "abc"],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--nvdec-max-threads must be an integer.");
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("33")]
+    public void TryParse_WhenToH264GpuNvdecMaxThreadsIsOutOfRange_ReturnsFalse(string value)
+    {
+        var actual = CliArgumentParser.TryParse(
+            ["--scenario", "toh264gpu", "--input", @"C:\video\a.mp4", "--nvdec-max-threads", value],
+            CreateRegistry(),
+            out _,
+            out var errorText);
+
+        actual.Should().BeFalse();
+        errorText.Should().Be("--nvdec-max-threads must be an integer from 1 to 32.");
     }
 
     [Fact]

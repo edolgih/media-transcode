@@ -128,7 +128,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             mapPrimaryAudioOnly: true);
         var videoExecution = !includeExecutionPayload || options.CopyVideo || videoResolution is null
             ? null
-            : BuildVideoExecution(videoResolution.Settings, options.UseDownscale, options.UseDenoise);
+            : BuildVideoExecution(videoResolution.Settings, options.UseDownscale, options.UseDenoise, options.NvdecMaxThreads);
         var audioExecution = !includeExecutionPayload || options.CopyAudio
             ? null
             : BuildAudioExecution(video, audioIntent);
@@ -179,6 +179,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
         NvencPreset NvencPreset,
+        int? NvdecMaxThreads,
         bool UseDenoise)
     {
         public bool CopyAudio => AudioMode == AudioPathMode.Copy;
@@ -205,6 +206,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
                 : ResolveTargetFramesPerSecond(video, useDownscale, Request.KeepFramesPerSecond),
             VideoSettings: copyVideo ? null : Request.VideoSettings,
             NvencPreset: Request.NvencPreset,
+            NvdecMaxThreads: Request.NvdecMaxThreads,
             UseDenoise: Request.Denoise && !useDownscale);
     }
 
@@ -317,10 +319,15 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         return video.FramesPerSecond;
     }
 
-    private static ToH264GpuDecision.VideoExecution BuildVideoExecution(ResolvedVideoSettings videoSettings, bool useDownscale, bool useDenoise)
+    private static ToH264GpuDecision.VideoExecution BuildVideoExecution(
+        ResolvedVideoSettings videoSettings,
+        bool useDownscale,
+        bool useDenoise,
+        int? nvdecMaxThreads)
     {
         return new ToH264GpuDecision.VideoExecution(
             useHardwareDecode: useDownscale,
+            nvdecMaxThreads: useDownscale ? nvdecMaxThreads : null,
             rateControl: new ToH264GpuDecision.ConstantQualityVideoRateControlExecution(
                 cq: videoSettings.Cq,
                 maxrateKbps: ToKbps(videoSettings.Maxrate),
