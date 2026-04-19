@@ -325,18 +325,22 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         bool useDenoise,
         NvdecMaxThreads? nvdecMaxThreads)
     {
+        var filter = useDownscale || !useDenoise
+            ? null
+            : "hqdn3d=1.2:1.2:6:6";
+        // Keep decode on CPU when a CPU-only filter is active; otherwise use the same GPU decode path as tomkvgpu.
+        var useHardwareDecode = string.IsNullOrWhiteSpace(filter);
+
         return new ToH264GpuDecision.VideoExecution(
-            useHardwareDecode: useDownscale,
-            nvdecMaxThreads: useDownscale ? nvdecMaxThreads : null,
+            useHardwareDecode: useHardwareDecode,
+            nvdecMaxThreads: useHardwareDecode ? nvdecMaxThreads : null,
             rateControl: new ToH264GpuDecision.ConstantQualityVideoRateControlExecution(
                 cq: videoSettings.Cq,
                 maxrateKbps: ToKbps(videoSettings.Maxrate),
                 bufferSizeKbps: ToKbps(videoSettings.Bufsize)),
             adaptiveQuantization: new ToH264GpuDecision.AdaptiveQuantizationExecution(rcLookahead: 32),
-            filter: useDownscale || !useDenoise
-                ? null
-                : "hqdn3d=1.2:1.2:6:6",
-            pixelFormat: useDownscale ? null : "yuv420p");
+            filter: filter,
+            pixelFormat: useHardwareDecode ? null : "yuv420p");
     }
 
     private static ToH264GpuDecision.AudioExecution BuildAudioExecution(SourceVideo video, AudioIntent audioIntent)

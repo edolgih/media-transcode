@@ -1143,8 +1143,22 @@ public sealed class ToH264GpuScenarioTests
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("-preset p6");
         actual.Commands[0].Should().Contain("-rc vbr_hq -cq");
+        actual.Commands[0].Should().NotContain("-pix_fmt yuv420p");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenEncodeWithoutDownscaleUsesNvdecMaxThreads_UsesThreadsOverride()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", audioCodecs: ["ac3"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut(new ToH264GpuRequest(nvdecMaxThreads: 12)).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda -threads:v 12");
     }
 
     [Fact]
@@ -1187,6 +1201,7 @@ public sealed class ToH264GpuScenarioTests
 
         actual.Commands[0].Should().Contain("-vf \"hqdn3d=1.2:1.2:6:6\"");
         actual.Commands[0].Should().Contain("-pix_fmt yuv420p");
+        actual.Commands[0].Should().NotContain("-hwaccel cuda -hwaccel_output_format cuda");
     }
 
     [Fact]
