@@ -198,7 +198,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
         NvencPreset NvencPreset,
-        int? NvdecMaxThreads)
+        NvdecMaxThreads? NvdecMaxThreads)
     {
         public bool CopyAudio => AudioMode == AudioPathMode.Copy;
     }

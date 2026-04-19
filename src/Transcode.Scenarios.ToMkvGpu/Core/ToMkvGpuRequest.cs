@@ -13,8 +13,6 @@ namespace Transcode.Scenarios.ToMkvGpu.Core;
 public sealed class ToMkvGpuRequest
 {
     private static readonly int[] SupportedMaxFramesPerSecondValues = [50, 40, 30, 24];
-    private const int MinimumNvdecMaxThreadsValue = 1;
-    private const int MaximumNvdecMaxThreadsValue = 32;
 
     /*
     Это список поддерживаемых лимитов FPS для томквгпу.
@@ -27,12 +25,12 @@ public sealed class ToMkvGpuRequest
     /// <summary>
     /// Gets the minimum allowed NVDEC decode thread limit.
     /// </summary>
-    public static int MinimumNvdecMaxThreads => MinimumNvdecMaxThreadsValue;
+    public static int MinimumNvdecMaxThreads => NvdecMaxThreads.Minimum;
 
     /// <summary>
     /// Gets the maximum allowed NVDEC decode thread limit.
     /// </summary>
-    public static int MaximumNvdecMaxThreads => MaximumNvdecMaxThreadsValue;
+    public static int MaximumNvdecMaxThreads => NvdecMaxThreads.Maximum;
 
     /*
     Это создание scenario request с набором управляемых опций tomkvgpu.
@@ -68,16 +66,8 @@ public sealed class ToMkvGpuRequest
                 $"Supported values: {GetSupportedMaxFramesPerSecondDisplay()}.");
         }
 
-        if (nvdecMaxThreads.HasValue &&
-            (nvdecMaxThreads.Value < MinimumNvdecMaxThreadsValue || nvdecMaxThreads.Value > MaximumNvdecMaxThreadsValue))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(nvdecMaxThreads),
-                nvdecMaxThreads.Value,
-                $"Value must be in range {MinimumNvdecMaxThreadsValue}..{MaximumNvdecMaxThreadsValue}.");
-        }
-
         var resolvedNvencPreset = NvencPreset.ParseOptional(nvencPreset, nameof(nvencPreset));
+        var resolvedNvdecMaxThreads = NvdecMaxThreads.ParseOptional(nvdecMaxThreads, nameof(nvdecMaxThreads));
 
         OverlayBackground = overlayBackground;
         SynchronizeAudio = synchronizeAudio;
@@ -87,7 +77,7 @@ public sealed class ToMkvGpuRequest
         Downscale = downscale;
         NvencPreset = resolvedNvencPreset ?? NvencPreset.Default;
         MaxFramesPerSecond = maxFramesPerSecond;
-        NvdecMaxThreads = nvdecMaxThreads;
+        NvdecMaxThreads = resolvedNvdecMaxThreads;
     }
 
     /*
@@ -158,7 +148,7 @@ public sealed class ToMkvGpuRequest
     /// Gets the optional upper limit for NVDEC decode threads.
     /// When <see langword="null"/>, ffmpeg default threading is used.
     /// </summary>
-    public int? NvdecMaxThreads { get; }
+    public NvdecMaxThreads? NvdecMaxThreads { get; }
 
     /*
     Это проверка, поддерживается ли переданный лимит FPS сценарием.

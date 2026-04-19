@@ -63,7 +63,7 @@ public sealed class ToMkvGpuInfoFormatter
 
         var parts = new List<string>();
 
-        if (!video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase))
+        if (!video.Container.Equals(decision.TargetContainer.Value, StringComparison.OrdinalIgnoreCase))
         {
             parts.Add($"container .{video.Container}→{decision.TargetContainer}");
         }

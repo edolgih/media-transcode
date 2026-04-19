@@ -179,7 +179,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
         NvencPreset NvencPreset,
-        int? NvdecMaxThreads,
+        NvdecMaxThreads? NvdecMaxThreads,
         bool UseDenoise)
     {
         public bool CopyAudio => AudioMode == AudioPathMode.Copy;
@@ -323,7 +323,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         ResolvedVideoSettings videoSettings,
         bool useDownscale,
         bool useDenoise,
-        int? nvdecMaxThreads)
+        NvdecMaxThreads? nvdecMaxThreads)
     {
         return new ToH264GpuDecision.VideoExecution(
             useHardwareDecode: useDownscale,

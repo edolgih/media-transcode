@@ -70,7 +70,8 @@ public sealed class CliParsingTests
         videoSettings.Maxrate.Should().Be(3.4m);
         videoSettings.Bufsize.Should().Be(6.8m);
         scenarioInput.MaxFramesPerSecond.Should().Be(50);
-        scenarioInput.NvdecMaxThreads.Should().Be(12);
+        scenarioInput.NvdecMaxThreads.Should().NotBeNull();
+        scenarioInput.NvdecMaxThreads!.Value.Should().Be(12);
         scenarioInput.NvencPreset.Should().Be(NvencPreset.P5);
     }
 
@@ -135,7 +136,8 @@ public sealed class CliParsingTests
         scenarioRequest.VideoSettings.Maxrate.Should().Be(3.7m);
         scenarioRequest.VideoSettings.Bufsize.Should().Be(7.4m);
         scenarioRequest.MaxFramesPerSecond.Should().Be(40);
-        scenarioRequest.NvdecMaxThreads.Should().Be(10);
+        scenarioRequest.NvdecMaxThreads.Should().NotBeNull();
+        scenarioRequest.NvdecMaxThreads!.Value.Should().Be(10);
         scenarioRequest.NvencPreset.Should().Be(NvencPreset.P6);
     }
 
@@ -183,7 +185,8 @@ public sealed class CliParsingTests
         scenarioInput.Downscale.Algorithm.Should().NotBeNull();
         scenarioInput.Downscale.Algorithm!.Value.Should().Be("lanczos");
         scenarioInput.VideoSettings.Cq.Should().Be(21);
-        scenarioInput.NvdecMaxThreads.Should().Be(14);
+        scenarioInput.NvdecMaxThreads.Should().NotBeNull();
+        scenarioInput.NvdecMaxThreads!.Value.Should().Be(14);
         scenarioInput.NvencPreset.Should().Be(NvencPreset.P6);
         scenarioInput.Denoise.Should().BeTrue();
         scenarioInput.SynchronizeAudio.Should().BeTrue();
@@ -245,7 +248,8 @@ public sealed class CliParsingTests
         scenarioRequest.Downscale.Algorithm.Should().NotBeNull();
         scenarioRequest.Downscale.Algorithm!.Value.Should().Be("lanczos");
         scenarioRequest.VideoSettings.Cq.Should().Be(21);
-        scenarioRequest.NvdecMaxThreads.Should().Be(10);
+        scenarioRequest.NvdecMaxThreads.Should().NotBeNull();
+        scenarioRequest.NvdecMaxThreads!.Value.Should().Be(10);
         scenarioRequest.NvencPreset.Should().Be(NvencPreset.P6);
         scenarioRequest.Denoise.Should().BeTrue();
         scenarioRequest.SynchronizeAudio.Should().BeTrue();

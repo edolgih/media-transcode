@@ -1,4 +1,5 @@
 using Transcode.Core.MediaIntent;
+using Transcode.Core.Tools.Ffmpeg;
 using Transcode.Core.VideoSettings;
 
 namespace Transcode.Scenarios.ToMkvGpu.Core;
@@ -26,7 +27,7 @@ internal sealed class ToMkvGpuDecision
         bool keepSource,
         string outputPath,
         bool applyOverlayBackground,
-        int? nvdecMaxThreads,
+        NvdecMaxThreads? nvdecMaxThreads,
         ProfileDrivenVideoSettingsResolution? videoResolution = null,
         ToMkvGpuResolvedSourceBitrate? sourceBitrate = null)
     {
@@ -36,7 +37,7 @@ internal sealed class ToMkvGpuDecision
         KeepSource = keepSource;
         OutputPath = NormalizeOutputPath(outputPath, nameof(outputPath));
         ApplyOverlayBackground = applyOverlayBackground;
-        NvdecMaxThreads = NormalizeNvdecMaxThreads(nvdecMaxThreads);
+        NvdecMaxThreads = nvdecMaxThreads;
         VideoResolution = videoResolution;
         SourceBitrate = sourceBitrate;
     }
@@ -93,7 +94,7 @@ internal sealed class ToMkvGpuDecision
     /// Gets the optional upper limit for NVDEC decode threads.
     /// When <see langword="null"/>, ffmpeg default threading is used.
     /// </summary>
-    public int? NvdecMaxThreads { get; }
+    public NvdecMaxThreads? NvdecMaxThreads { get; }
 
     /*
     Это resolved payload video-настроек для ffmpeg encode-рендеринга.
@@ -187,25 +188,6 @@ internal sealed class ToMkvGpuDecision
             EncodeAudioIntent => audio,
             _ => throw new ArgumentException($"Unsupported audio plan type '{audio.GetType().Name}'.", nameof(audio))
         };
-    }
-
-    private static int? NormalizeNvdecMaxThreads(int? nvdecMaxThreads)
-    {
-        if (!nvdecMaxThreads.HasValue)
-        {
-            return null;
-        }
-
-        if (nvdecMaxThreads.Value < ToMkvGpuRequest.MinimumNvdecMaxThreads ||
-            nvdecMaxThreads.Value > ToMkvGpuRequest.MaximumNvdecMaxThreads)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(nvdecMaxThreads),
-                nvdecMaxThreads.Value,
-                $"Value must be in range {ToMkvGpuRequest.MinimumNvdecMaxThreads}..{ToMkvGpuRequest.MaximumNvdecMaxThreads}.");
-        }
-
-        return nvdecMaxThreads;
     }
 }
 

@@ -120,7 +120,7 @@ public sealed class ToMkvGpuFfmpegTool
         var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(decision.OutputPath);
         return decision.CopyVideo &&
                decision.CopyAudio &&
-               video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase) &&
+               video.Container.Equals(decision.TargetContainer.Value, StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -141,8 +141,8 @@ public sealed class ToMkvGpuFfmpegTool
         if (decision.Video is EncodeVideoIntent encodeVideo &&
             encodeVideo.PreferredBackend == VideoBackend.Gpu)
         {
-            parts.Add(decision.NvdecMaxThreads.HasValue
-                ? $"-hwaccel cuda -hwaccel_output_format cuda -threads:v {decision.NvdecMaxThreads.Value}"
+            parts.Add(decision.NvdecMaxThreads is not null
+                ? $"-hwaccel cuda -hwaccel_output_format cuda -threads:v {decision.NvdecMaxThreads}"
                 : "-hwaccel cuda -hwaccel_output_format cuda");
         }
 
@@ -164,7 +164,7 @@ public sealed class ToMkvGpuFfmpegTool
             return "-fflags +genpts+igndts -avoid_negative_ts make_zero";
         }
 
-        var needsContainerChange = !video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase);
+        var needsContainerChange = !video.Container.Equals(decision.TargetContainer.Value, StringComparison.OrdinalIgnoreCase);
         if (decision.RequiresVideoEncode || decision.RequiresAudioEncode || needsContainerChange)
         {
             return "-avoid_negative_ts make_zero";
@@ -203,7 +203,7 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (decision.ApplyOverlayBackground)
         {
-            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm.ToString());
+            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm);
             return $"-filter_complex {FfmpegExecutionLayout.Quote(filter)} -map \"[v]\" {frameRatePart}" +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
                    $"{pixelFormatPart}{compatibilityPart}-g {gop}";
@@ -274,7 +274,7 @@ public sealed class ToMkvGpuFfmpegTool
         var (width, height) = ToMkvGpuVideoGeometry.ResolveOutputDimensions(video, decision.Video, decision.ApplyOverlayBackground);
         var fps = encodeVideo.TargetFramesPerSecond ?? video.FramesPerSecond;
         var compatibilityPart = VideoCodecCompatibility.ResolveArguments(
-            encodeVideo.TargetVideoCodec.ToString(),
+            $"{encodeVideo.TargetVideoCodec}",
             encodeVideo.CompatibilityProfile,
             width,
             height,
@@ -317,7 +317,7 @@ public sealed class ToMkvGpuFfmpegTool
             FormatSettings(resolvedSettings));
     }
 
-    private static string BuildOverlayFilter(SourceVideo video, int? targetHeight, string downscaleAlgorithm)
+    private static string BuildOverlayFilter(SourceVideo video, int? targetHeight, VideoScaleAlgorithm downscaleAlgorithm)
     {
         var (outputWidth, outputHeight) = ToMkvGpuVideoGeometry.ResolveOverlayOutputDimensions(video, targetHeight);
 

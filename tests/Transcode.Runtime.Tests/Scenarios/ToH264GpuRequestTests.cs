@@ -50,7 +50,8 @@ public sealed class ToH264GpuRequestTests
         request.VideoSettings.Maxrate.Should().Be(4.2m);
         request.VideoSettings.Bufsize.Should().Be(8.4m);
         request.NvencPreset.Should().Be(NvencPreset.P6);
-        request.NvdecMaxThreads.Should().Be(12);
+        request.NvdecMaxThreads.Should().NotBeNull();
+        request.NvdecMaxThreads!.Value.Should().Be(12);
         request.Denoise.Should().BeTrue();
         request.SynchronizeAudio.Should().BeTrue();
         request.OutputMkv.Should().BeTrue();

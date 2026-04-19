@@ -122,7 +122,7 @@ public sealed class ToH264GpuFfmpegTool
         return decision.CopyVideo &&
                decision.CopyAudio &&
                !RequiresMuxRewrite(decision.Mux) &&
-               video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase) &&
+               video.Container.Equals(decision.TargetContainer.Value, StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -142,8 +142,8 @@ public sealed class ToH264GpuFfmpegTool
 
         if (decision.VideoExecutionDetails?.UseHardwareDecode == true)
         {
-            parts.Add(decision.VideoExecutionDetails.NvdecMaxThreads.HasValue
-                ? $"-hwaccel cuda -hwaccel_output_format cuda -threads:v {decision.VideoExecutionDetails.NvdecMaxThreads.Value}"
+            parts.Add(decision.VideoExecutionDetails.NvdecMaxThreads is not null
+                ? $"-hwaccel cuda -hwaccel_output_format cuda -threads:v {decision.VideoExecutionDetails.NvdecMaxThreads}"
                 : "-hwaccel cuda -hwaccel_output_format cuda");
         }
 
@@ -172,7 +172,7 @@ public sealed class ToH264GpuFfmpegTool
             return "-fflags +genpts+igndts -avoid_negative_ts make_zero";
         }
 
-        var needsContainerChange = !video.Container.Equals(decision.TargetContainer.ToString(), StringComparison.OrdinalIgnoreCase);
+        var needsContainerChange = !video.Container.Equals(decision.TargetContainer.Value, StringComparison.OrdinalIgnoreCase);
         if (decision.RequiresVideoEncode || decision.RequiresAudioEncode || needsContainerChange)
         {
             return "-avoid_negative_ts make_zero";
@@ -211,7 +211,7 @@ public sealed class ToH264GpuFfmpegTool
 
         if (downscale is not null)
         {
-            var algorithm = downscale.Algorithm?.ToString()
+            var algorithm = downscale.Algorithm
                             ?? throw new InvalidOperationException("Downscale algorithm must be resolved before tool rendering.");
             return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={algorithm}:format=nv12\" " +
                    $"-c:v h264_nvenc -preset {preset} {rateControlPart}{aqPart}" +

@@ -51,7 +51,8 @@ public sealed class ToMkvGpuRequestTests
         request.VideoSettings.Bufsize.Should().Be(7.4m);
         request.NvencPreset.Should().Be(NvencPreset.P6);
         request.MaxFramesPerSecond.Should().Be(40);
-        request.NvdecMaxThreads.Should().Be(12);
+        request.NvdecMaxThreads.Should().NotBeNull();
+        request.NvdecMaxThreads!.Value.Should().Be(12);
     }
 
     [Fact]
