@@ -138,8 +138,7 @@ public sealed class ToMkvGpuFfmpegTool
             parts.Add(sanitizePart);
         }
 
-        if (decision.Video is EncodeVideoIntent encodeVideo &&
-            encodeVideo.PreferredBackend == VideoBackend.Gpu)
+        if (ShouldUseHardwareDecode(video, decision))
         {
             parts.Add(decision.NvdecMaxThreads is not null
                 ? $"-hwaccel cuda -hwaccel_output_format cuda -threads:v {decision.NvdecMaxThreads}"
@@ -191,11 +190,12 @@ public sealed class ToMkvGpuFfmpegTool
         var compatibilityPart = ResolveVideoCompatibilityPart(video, decision);
         var preset = encodeVideo.EncoderPreset
                      ?? throw new InvalidOperationException("Encoder preset must be resolved before tool rendering.");
+        var useHardwareDecode = ShouldUseHardwareDecode(video, decision);
         var frameRatePart = encodeVideo.TargetFramesPerSecond.HasValue
             ? $"-fps_mode:v cfr -r {fpsToken} "
             : string.Empty;
         var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32 ";
-        var pixelFormatPart = encodeVideo.PreferredBackend == VideoBackend.Gpu
+        var pixelFormatPart = useHardwareDecode
             ? string.Empty
             : "-pix_fmt yuv420p ";
         var rateControlPart = $"-rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} ";
@@ -203,7 +203,7 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (decision.ApplyOverlayBackground)
         {
-            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm);
+            var filter = BuildOverlayFilter(video, downscale?.TargetHeight, settings.Algorithm, useHardwareDecode);
             return $"-filter_complex {FfmpegExecutionLayout.Quote(filter)} -map \"[v]\" {frameRatePart}" +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
                    $"{pixelFormatPart}{compatibilityPart}-g {gop}";
@@ -211,9 +211,12 @@ public sealed class ToMkvGpuFfmpegTool
 
         if (downscale is not null)
         {
-            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={settings.Algorithm}:format=nv12\" " +
+            var scaleFilter = useHardwareDecode
+                ? $"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={settings.Algorithm}:format=nv12"
+                : $"scale=-2:{downscale.TargetHeight}:flags={settings.Algorithm}";
+            return $"-map 0:v:0 {frameRatePart}-vf \"{scaleFilter}\" " +
                    $"-c:v {encoder} -preset {preset} {rateControlPart}{aqPart}" +
-                   $"{compatibilityPart}-g {gop}";
+                   $"{pixelFormatPart}{compatibilityPart}-g {gop}";
         }
 
         return $"-map 0:v:0 {frameRatePart}" +
@@ -284,6 +287,23 @@ public sealed class ToMkvGpuFfmpegTool
             : $"{compatibilityPart} ";
     }
 
+    private static bool ShouldUseHardwareDecode(SourceVideo video, ToMkvGpuDecision decision)
+    {
+        if (decision.Video is not EncodeVideoIntent { PreferredBackend: var backend } ||
+            backend != VideoBackend.Gpu)
+        {
+            return false;
+        }
+
+        if (video.VideoCodec.Equals("av1", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !decision.ApplyOverlayBackground ||
+               decision.Video is EncodeVideoIntent { Downscale: not null };
+    }
+
     private static EncodeVideoIntent GetRequiredEncodeVideoIntent(ToMkvGpuDecision decision)
     {
         return decision.Video as EncodeVideoIntent
@@ -317,11 +337,11 @@ public sealed class ToMkvGpuFfmpegTool
             FormatSettings(resolvedSettings));
     }
 
-    private static string BuildOverlayFilter(SourceVideo video, int? targetHeight, VideoScaleAlgorithm downscaleAlgorithm)
+    private static string BuildOverlayFilter(SourceVideo video, int? targetHeight, VideoScaleAlgorithm downscaleAlgorithm, bool useHardwareDecode)
     {
         var (outputWidth, outputHeight) = ToMkvGpuVideoGeometry.ResolveOverlayOutputDimensions(video, targetHeight);
 
-        if (targetHeight.HasValue)
+        if (targetHeight.HasValue && useHardwareDecode)
         {
             return "[0:v]split=2[bg0][fg0];" +
                    $"[bg0]scale_cuda={outputWidth}:-2:interp_algo={downscaleAlgorithm}:format=nv12,hwdownload,format=nv12,crop={outputWidth}:{outputHeight},hwupload_cuda[bg];" +
@@ -329,7 +349,9 @@ public sealed class ToMkvGpuFfmpegTool
                    "[bg][fg]overlay_cuda=(W-w)/2:0[v]";
         }
 
-        return $"[0:v]scale={outputWidth}:-1,crop={outputWidth}:{outputHeight}[bg];[0:v]scale=-1:{outputHeight}[fg];[bg][fg]overlay=(W-w)/2:0[v]";
+        return $"[0:v]scale={outputWidth}:-1:flags={downscaleAlgorithm},crop={outputWidth}:{outputHeight}[bg];" +
+               $"[0:v]scale=-1:{outputHeight}:flags={downscaleAlgorithm}[fg];" +
+               "[bg][fg]overlay=(W-w)/2:0[v]";
     }
 
     private static string FormatSettings(ResolvedVideoSettings settings)

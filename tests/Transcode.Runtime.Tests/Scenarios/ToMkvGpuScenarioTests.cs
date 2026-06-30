@@ -633,7 +633,7 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildExecution_WhenEncodeIsRequired_BuildsNvencCommandAndDeleteStep()
+    public void BuildExecution_WhenAv1EncodeIsRequired_UsesCpuDecodeNvencEncodeAndDeleteStep()
     {
         var tool = CreateFfmpegTool();
         var video = CreateVideo(container: "mp4", videoCodec: "av1", audioCodecs: ["ac3"], filePath: @"C:\video\input.mp4");
@@ -642,18 +642,19 @@ public sealed class ToMkvGpuScenarioTests
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands.Should().HaveCount(2);
-        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().NotContain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().NotContain("-threads:v");
         actual.Commands[0].Should().NotContain(" || ");
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
         actual.Commands[0].Should().Contain("-preset p6");
+        actual.Commands[0].Should().Contain("-pix_fmt yuv420p");
         actual.Commands[0].Should().Contain("-c:a libmp3lame");
         actual.Commands[0].Should().Contain("-q:a 2");
         actual.Commands[1].Should().Be("del \"C:\\video\\input.mp4\"");
     }
 
     [Fact]
-    public void BuildExecution_WhenNvdecMaxThreadsOverrideIsProvided_UsesOverride()
+    public void BuildExecution_WhenNvdecMaxThreadsOverrideIsProvidedForAv1_IgnoresOverride()
     {
         var tool = CreateFfmpegTool();
         var video = CreateVideo(container: "mp4", videoCodec: "av1", audioCodecs: ["ac3"], filePath: @"C:\video\input.mp4");
@@ -661,7 +662,22 @@ public sealed class ToMkvGpuScenarioTests
 
         var actual = tool.BuildExecution(video, decision);
 
-        actual.Commands[0].Should().Contain("-threads:v 10");
+        actual.Commands[0].Should().NotContain("-threads:v 10");
+        actual.Commands[0].Should().NotContain("-hwaccel cuda -hwaccel_output_format cuda");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenNvdecMaxThreadsOverrideIsProvidedForNonAv1_UsesOverride()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut(forceEncode: true, nvdecMaxThreads: 10).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda -threads:v 10");
+        actual.Commands[0].Should().Contain("-c:v h264_nvenc");
+        actual.Commands[0].Should().NotContain("-pix_fmt yuv420p");
     }
 
     [Fact]
@@ -674,8 +690,24 @@ public sealed class ToMkvGpuScenarioTests
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().NotContain("scale_cuda=");
         actual.Commands[0].Should().NotContain("-filter_complex");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenAv1DownscaleIsRequested_UsesCpuScaleBeforeNvencEncode()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "av1", filePath: @"C:\video\input.mp4", height: 1080);
+        var decision = CreateSut(downscaleTarget: 576).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().NotContain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().Contain("-vf \"scale=-2:576:flags=bilinear\"");
+        actual.Commands[0].Should().Contain("-pix_fmt yuv420p");
+        actual.Commands[0].Should().Contain("-c:v h264_nvenc");
     }
 
     [Fact]
@@ -688,7 +720,26 @@ public sealed class ToMkvGpuScenarioTests
         var actual = tool.BuildExecution(video, decision);
 
         actual.Commands[0].Should().Contain("-filter_complex");
+        actual.Commands[0].Should().NotContain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().Contain("scale=1280:-1:flags=bilinear,crop=1280:720");
         actual.Commands[0].Should().Contain("overlay");
+        actual.Commands[0].Should().Contain("-pix_fmt yuv420p");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenOverlayBackgroundAndDownscaleAreRequestedForNonAv1_UsesCudaOverlayFilter()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv", width: 720, height: 1280);
+        var decision = CreateSut(overlayBackground: true, downscaleTarget: 576).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands[0].Should().Contain("-hwaccel cuda -hwaccel_output_format cuda");
+        actual.Commands[0].Should().Contain("scale_cuda=1024:-2:interp_algo=bilinear:format=nv12");
+        actual.Commands[0].Should().Contain("scale_cuda=-2:576:interp_algo=bilinear:format=nv12");
+        actual.Commands[0].Should().Contain("overlay_cuda=(W-w)/2:0[v]");
+        actual.Commands[0].Should().NotContain("-pix_fmt yuv420p");
     }
 
     [Fact]

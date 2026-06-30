@@ -128,7 +128,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
             mapPrimaryAudioOnly: true);
         var videoExecution = !includeExecutionPayload || options.CopyVideo || videoResolution is null
             ? null
-            : BuildVideoExecution(videoResolution.Settings, options.UseDownscale, options.UseDenoise, options.NvdecMaxThreads);
+            : BuildVideoExecution(video, videoResolution.Settings, options.UseDownscale, options.UseDenoise, options.NvdecMaxThreads);
         var audioExecution = !includeExecutionPayload || options.CopyAudio
             ? null
             : BuildAudioExecution(video, audioIntent);
@@ -320,6 +320,7 @@ public sealed class ToH264GpuScenario : TranscodeScenario
     }
 
     private static ToH264GpuDecision.VideoExecution BuildVideoExecution(
+        SourceVideo video,
         ResolvedVideoSettings videoSettings,
         bool useDownscale,
         bool useDenoise,
@@ -328,8 +329,9 @@ public sealed class ToH264GpuScenario : TranscodeScenario
         var filter = useDownscale || !useDenoise
             ? null
             : "hqdn3d=1.2:1.2:6:6";
-        // Keep decode on CPU when a CPU-only filter is active; otherwise use the same GPU decode path as tomkvgpu.
-        var useHardwareDecode = string.IsNullOrWhiteSpace(filter);
+        // Keep decode on CPU when the filter chain is CPU-only or AV1 NVDEC may be unavailable.
+        var useHardwareDecode = string.IsNullOrWhiteSpace(filter) &&
+                                !video.VideoCodec.Equals("av1", StringComparison.OrdinalIgnoreCase);
 
         return new ToH264GpuDecision.VideoExecution(
             useHardwareDecode: useHardwareDecode,

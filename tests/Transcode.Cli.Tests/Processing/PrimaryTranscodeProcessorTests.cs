@@ -146,7 +146,7 @@ public sealed class PrimaryTranscodeProcessorTests
 
         var actual = sut.Process(CreateRequest(@"C:\video\a.mp4", false, "--overlay-bg"));
 
-        actual.Should().Contain("scale=1920:-1,crop=1920:1080");
+        actual.Should().Contain("scale=1920:-1:flags=bilinear,crop=1920:1080");
         actual.Should().Contain("-map \"[v]\"");
         actual.Should().NotContain("REM Unknown dimensions");
     }

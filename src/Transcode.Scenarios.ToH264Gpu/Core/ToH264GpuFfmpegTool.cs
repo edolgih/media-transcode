@@ -213,9 +213,12 @@ public sealed class ToH264GpuFfmpegTool
         {
             var algorithm = downscale.Algorithm
                             ?? throw new InvalidOperationException("Downscale algorithm must be resolved before tool rendering.");
-            return $"-map 0:v:0 {frameRatePart}-vf \"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={algorithm}:format=nv12\" " +
+            var scaleFilter = execution.UseHardwareDecode
+                ? $"scale_cuda=-2:{downscale.TargetHeight}:interp_algo={algorithm}:format=nv12"
+                : $"scale=-2:{downscale.TargetHeight}:flags={algorithm}";
+            return $"-map 0:v:0 {frameRatePart}-vf \"{scaleFilter}\" " +
                    $"-c:v h264_nvenc -preset {preset} {rateControlPart}{aqPart}" +
-                   $"{compatibilityPart}-g {gop}";
+                   $"{pixelFormatPart}{compatibilityPart}-g {gop}";
         }
 
         return $"-map 0:v:0 {frameRatePart}{videoFilterPart}" +
