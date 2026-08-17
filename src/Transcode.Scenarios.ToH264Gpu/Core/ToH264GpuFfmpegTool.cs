@@ -288,9 +288,9 @@ public sealed class ToH264GpuFfmpegTool
             ToH264GpuDecision.VariableBitrateVideoRateControlExecution rateControl =>
                 $"-rc vbr -b:v {rateControl.BitrateKbps}k -maxrate {rateControl.MaxrateKbps}k -bufsize {rateControl.BufferSizeKbps}k ",
             ToH264GpuDecision.ConstantQualityVideoRateControlExecution rateControl when rateControl.MaxrateKbps.HasValue =>
-                $"-rc vbr_hq -cq {rateControl.Cq} -b:v 0 -maxrate {rateControl.MaxrateKbps.Value}k -bufsize {rateControl.BufferSizeKbps!.Value}k ",
+                $"-rc vbr -multipass fullres -cq {rateControl.Cq} -b:v 0 -maxrate {rateControl.MaxrateKbps.Value}k -bufsize {rateControl.BufferSizeKbps!.Value}k ",
             ToH264GpuDecision.ConstantQualityVideoRateControlExecution rateControl =>
-                $"-rc vbr_hq -cq {rateControl.Cq} -b:v 0 ",
+                $"-rc vbr -multipass fullres -cq {rateControl.Cq} -b:v 0 ",
             _ => throw new InvalidOperationException("Unsupported video rate-control type.")
         };
     }
@@ -304,8 +304,8 @@ public sealed class ToH264GpuFfmpegTool
 
         var parts = new List<string>
         {
-            "-spatial_aq 1",
-            "-temporal_aq 1",
+            "-spatial-aq 1",
+            "-temporal-aq 1",
             $"-rc-lookahead {options.RcLookahead}"
         };
 

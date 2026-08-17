@@ -498,5 +498,9 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Local agent instructions and state
+/[Aa][Gg][Ee][Nn][Tt][Ss].[Mm][Dd]
+/.agents/
+
 # Vim temporary swap files
 *.swp

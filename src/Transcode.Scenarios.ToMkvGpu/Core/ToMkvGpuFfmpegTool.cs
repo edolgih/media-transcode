@@ -194,11 +194,11 @@ public sealed class ToMkvGpuFfmpegTool
         var frameRatePart = encodeVideo.TargetFramesPerSecond.HasValue
             ? $"-fps_mode:v cfr -r {fpsToken} "
             : string.Empty;
-        var aqPart = "-spatial_aq 1 -temporal_aq 1 -rc-lookahead 32 ";
+        var aqPart = "-spatial-aq 1 -temporal-aq 1 -rc-lookahead 32 ";
         var pixelFormatPart = useHardwareDecode
             ? string.Empty
             : "-pix_fmt yuv420p ";
-        var rateControlPart = $"-rc vbr_hq -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} ";
+        var rateControlPart = $"-rc vbr -multipass fullres -cq {settings.Cq} -b:v 0 -maxrate {FormatRate(settings.Maxrate)} -bufsize {FormatRate(settings.Bufsize)} ";
         var downscale = encodeVideo.Downscale;
 
         if (decision.ApplyOverlayBackground)

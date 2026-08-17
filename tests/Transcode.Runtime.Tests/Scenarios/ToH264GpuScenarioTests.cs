@@ -1145,7 +1145,9 @@ public sealed class ToH264GpuScenarioTests
         actual.Commands[0].Should().Contain("-c:v h264_nvenc");
         actual.Commands[0].Should().NotContain("-hwaccel cuda -hwaccel_output_format cuda");
         actual.Commands[0].Should().Contain("-preset p6");
-        actual.Commands[0].Should().Contain("-rc vbr_hq -cq");
+        actual.Commands[0].Should().Contain("-rc vbr -multipass fullres -cq");
+        actual.Commands[0].Should().Contain("-spatial-aq 1 -temporal-aq 1 -rc-lookahead 32");
+        actual.Commands[0].Should().NotContain("_aq");
         actual.Commands[0].Should().Contain("-pix_fmt yuv420p");
     }
 

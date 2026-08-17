@@ -147,8 +147,8 @@ ffmpeg_args=(
     -b:v 0
     -maxrate "${maxrate_kbps}k"
     -bufsize "${bufsize_kbps}k"
-    -spatial_aq 1
-    -temporal_aq 1
+    -spatial-aq 1
+    -temporal-aq 1
     -rc-lookahead 32
     -pix_fmt yuv420p
     -map 1:a?
