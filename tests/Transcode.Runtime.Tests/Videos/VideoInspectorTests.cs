@@ -177,6 +177,7 @@ public sealed class VideoInspectorTests
 
         actual.Container.Should().Be("mp4");
         actual.VideoCodec.Should().Be("h264");
+        actual.H264SpsFlags.Should().BeNull();
         actual.AudioCodecs.Should().Equal("aac", "ac3");
         actual.Width.Should().Be(1920);
         actual.Height.Should().Be(1080);
@@ -221,7 +222,8 @@ public sealed class VideoInspectorTests
                     framesPerSecond: 59.94,
                     bitrate: 4_000_000,
                     rawFramesPerSecond: 59.94,
-                    averageFramesPerSecond: 29.97),
+                    averageFramesPerSecond: 29.97,
+                    h264SpsFlags: new H264SpsFlags(true, false)),
                 new VideoProbeStream(
                     streamType: "audio",
                     codec: "aac",
@@ -239,6 +241,7 @@ public sealed class VideoInspectorTests
         actual.RawFramesPerSecond.Should().Be(59.94);
         actual.AverageFramesPerSecond.Should().Be(29.97);
         actual.HasFrameRateMismatch.Should().BeTrue();
+        actual.H264SpsFlags.Should().Be(new H264SpsFlags(true, false));
         actual.PrimaryAudioBitrate.Should().Be(128_000);
         actual.PrimaryAudioSampleRate.Should().Be(44_100);
         actual.PrimaryAudioChannels.Should().Be(2);

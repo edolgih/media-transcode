@@ -1,6 +1,8 @@
 using FluentAssertions;
+using System.Text.Json;
 using Transcode.Core.Failures;
 using Transcode.Core.Inspection;
+using Transcode.Core.Videos;
 
 namespace Transcode.Runtime.Tests.Inspection;
 
@@ -13,6 +15,32 @@ namespace Transcode.Runtime.Tests.Inspection;
 /// </summary>
 public sealed class FfprobeVideoProbeTests
 {
+    [Theory]
+    [InlineData("h264", true)]
+    [InlineData("H264", true)]
+    [InlineData("hevc", false)]
+    [InlineData("mpeg4", false)]
+    public void Probe_WhenExtradataIsPresent_ExposesSpsFactsOnlyForH264(string codec, bool hasFlags)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            streams = new[]
+            {
+                new
+                {
+                    codec_type = "video", codec_name = codec,
+                    width = 1920, height = 800, r_frame_rate = "24/1",
+                    extradata = H264SpsFlagsReaderTests.SourceExtradata
+                }
+            }
+        });
+        var probe = new FfprobeVideoProbe(_ => new FfprobeProcessResult(0, json, string.Empty));
+
+        var actual = new VideoInspector(probe).Load(@"C:\video\input.mkv");
+
+        actual.H264SpsFlags.Should().Be(hasFlags ? new H264SpsFlags(true, false) : null);
+    }
+
     [Fact]
     public void Probe_WhenProcessReturnsValidJson_ReturnsMappedSnapshot()
     {
@@ -39,6 +67,7 @@ public sealed class FfprobeVideoProbeTests
         actual.streams[0].height.Should().Be(1080);
         actual.streams[0].framesPerSecond.Should().BeApproximately(30000d / 1001d, 0.0001);
         actual.streams[0].bitrate.Should().Be(3456000);
+        actual.streams[0].h264SpsFlags.Should().BeNull();
         actual.streams[1].streamType.Should().Be("audio");
         actual.streams[1].codec.Should().Be("aac");
         actual.streams[1].bitrate.Should().Be(192000);

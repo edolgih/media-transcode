@@ -101,7 +101,8 @@ public sealed class VideoInspector
             primaryAudioBitrate: primaryAudioStream?.bitrate,
             primaryAudioSampleRate: primaryAudioStream?.sampleRate,
             primaryAudioChannels: primaryAudioStream?.channels,
-            primaryVideoBitrate: videoStream.bitrate);
+            primaryVideoBitrate: videoStream.bitrate,
+            h264SpsFlags: videoStream.h264SpsFlags);
     }
 
     private static long? ResolveBitrate(VideoProbeSnapshot snapshot)

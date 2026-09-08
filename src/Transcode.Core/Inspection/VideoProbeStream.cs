@@ -1,3 +1,5 @@
+using Transcode.Core.Videos;
+
 namespace Transcode.Core.Inspection;
 
 /*
@@ -17,4 +19,5 @@ public sealed record VideoProbeStream(
     double? rawFramesPerSecond = null,
     double? averageFramesPerSecond = null,
     int? sampleRate = null,
-    int? channels = null);
+    int? channels = null,
+    H264SpsFlags? h264SpsFlags = null);

@@ -111,7 +111,11 @@ public sealed class FfprobeVideoProbe : IVideoProbe
                 rawFramesPerSecond: rawFramesPerSecond,
                 averageFramesPerSecond: averageFramesPerSecond,
                 sampleRate: TryGetInt(streamElement, "sample_rate"),
-                channels: TryGetInt(streamElement, "channels")));
+                channels: TryGetInt(streamElement, "channels"),
+                h264SpsFlags: streamType.Equals("video", StringComparison.OrdinalIgnoreCase) &&
+                              codec.Equals("h264", StringComparison.OrdinalIgnoreCase)
+                    ? H264SpsFlagsReader.Read(TryGetString(streamElement, "extradata"))
+                    : null));
         }
 
         var duration = TryGetDuration(root);
@@ -398,6 +402,7 @@ public sealed class FfprobeVideoProbe : IVideoProbe
         startInfo.ArgumentList.Add("json");
         startInfo.ArgumentList.Add("-show_format");
         startInfo.ArgumentList.Add("-show_streams");
+        startInfo.ArgumentList.Add("-show_data");
         startInfo.ArgumentList.Add(filePath);
 
         return startInfo;

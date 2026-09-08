@@ -29,7 +29,8 @@ internal sealed class ToMkvGpuDecision
         bool applyOverlayBackground,
         NvdecMaxThreads? nvdecMaxThreads,
         ProfileDrivenVideoSettingsResolution? videoResolution = null,
-        ToMkvGpuResolvedSourceBitrate? sourceBitrate = null)
+        ToMkvGpuResolvedSourceBitrate? sourceBitrate = null,
+        bool clearH264ConstraintFlags = false)
     {
         TargetContainer = targetContainer ?? throw new ArgumentNullException(nameof(targetContainer));
         Video = NormalizeVideoPlan(video);
@@ -40,6 +41,7 @@ internal sealed class ToMkvGpuDecision
         NvdecMaxThreads = nvdecMaxThreads;
         VideoResolution = videoResolution;
         SourceBitrate = sourceBitrate;
+        ClearH264ConstraintFlags = clearH264ConstraintFlags;
     }
 
     /*
@@ -111,6 +113,14 @@ internal sealed class ToMkvGpuDecision
     /// Gets resolved source bitrate metadata used for profile resolution and diagnostics.
     /// </summary>
     public ToMkvGpuResolvedSourceBitrate? SourceBitrate { get; }
+
+    /*
+    Это флаг, что в копируемом H.264 должны быть сброшены constraint_set4/5.
+    */
+    /// <summary>
+    /// Gets a value indicating whether copied H.264 must have constraint_set4/5 cleared.
+    /// </summary>
+    public bool ClearH264ConstraintFlags { get; }
 
     /*
     Это флаг, что видео можно копировать без перекодирования.

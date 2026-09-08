@@ -31,6 +31,7 @@ public sealed record SourceVideo
     /// <param name="primaryAudioSampleRate">Optional primary audio sample rate in hertz.</param>
     /// <param name="primaryAudioChannels">Optional primary audio channel count.</param>
     /// <param name="primaryVideoBitrate">Optional primary video-stream bitrate in bits per second.</param>
+    /// <param name="h264SpsFlags">Необязательные SPS-флаги из codec extradata основного видеопотока; null означает неизвестность. / Optional SPS flags observed in the primary video's codec extradata; null when unknown.</param>
     public SourceVideo(
         string filePath,
         string container,
@@ -47,7 +48,8 @@ public sealed record SourceVideo
         long? primaryAudioBitrate = null,
         int? primaryAudioSampleRate = null,
         int? primaryAudioChannels = null,
-        long? primaryVideoBitrate = null)
+        long? primaryVideoBitrate = null,
+        H264SpsFlags? h264SpsFlags = null)
     {
         FilePath = NormalizeFilePath(filePath);
         Container = NormalizeToken(container, nameof(container));
@@ -79,6 +81,7 @@ public sealed record SourceVideo
         PrimaryVideoBitrate = primaryVideoBitrate is null || primaryVideoBitrate >= 0
             ? primaryVideoBitrate
             : throw new ArgumentOutOfRangeException(nameof(primaryVideoBitrate), primaryVideoBitrate, "Primary video bitrate must not be negative.");
+        H264SpsFlags = VideoCodec == "h264" ? h264SpsFlags : null;
     }
 
     /*
@@ -104,6 +107,16 @@ public sealed record SourceVideo
     /// Gets the normalized source video codec identifier.
     /// </summary>
     public string VideoCodec { get; }
+
+    /*
+    Это SPS-флаги, найденные в codec extradata основного H.264-видеопотока.
+    Null означает неизвестность или поток не H.264, а не сброшенные флаги.
+    */
+    /// <summary>
+    /// Gets SPS flags observed in the primary H.264 video's codec extradata.
+    /// Null means unknown or not H.264, not that the flags are cleared.
+    /// </summary>
+    public H264SpsFlags? H264SpsFlags { get; }
 
     /*
     Это свойство, которое возвращает normalized list of source audio codec identifiers

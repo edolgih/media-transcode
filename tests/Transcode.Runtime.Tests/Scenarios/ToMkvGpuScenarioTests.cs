@@ -224,6 +224,39 @@ public sealed class ToMkvGpuScenarioTests
         actual.SynchronizeAudio.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void BuildDecision_WhenCopiedH264SetsConstraintFlags_ClearsThem(bool constraintSet4Flag, bool constraintSet5Flag)
+    {
+        var video = CreateVideo(
+            container: "mkv",
+            videoCodec: "h264",
+            audioCodecs: ["mp3"],
+            h264SpsFlags: new H264SpsFlags(constraintSet4Flag, constraintSet5Flag));
+
+        var actual = CreateSut().BuildDecision(video);
+
+        actual.CopyVideo.Should().BeTrue();
+        actual.CopyAudio.Should().BeTrue();
+        actual.ClearH264ConstraintFlags.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildDecision_WhenH264SpsFlagsAreUnknownOrCleared_DoesNotScheduleRepair()
+    {
+        foreach (var h264SpsFlags in new H264SpsFlags?[] { null, new(false, false) })
+        {
+            var video = CreateVideo(
+                container: "mkv",
+                videoCodec: "h264",
+                audioCodecs: ["mp3"],
+                h264SpsFlags: h264SpsFlags);
+
+            CreateSut().BuildDecision(video).ClearH264ConstraintFlags.Should().BeFalse();
+        }
+    }
+
     [Fact]
     public void BuildDecision_WhenSynchronizeAudioIsRequested_ForcesAudioEncode()
     {
@@ -633,6 +666,43 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildExecution_WhenCopiedH264SetsConstraintFlags_RewritesThemWithoutVideoEncode()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(
+            container: "mkv",
+            videoCodec: "h264",
+            audioCodecs: ["mp3"],
+            filePath: @"C:\video\input.mkv",
+            h264SpsFlags: new H264SpsFlags(true, false));
+        var decision = CreateSut().BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands.Should().HaveCount(3);
+        actual.Commands[0].Should().Contain("-map 0:v:0 -c:v copy -bsf:v h264_metadata=zero_new_constraint_set_flags=1");
+        actual.Commands[0].Should().Contain("-map 0:a? -c:a copy");
+        actual.Commands[0].Should().NotContain("h264_nvenc");
+        actual.Commands[1].Should().Be("del \"C:\\video\\input.mkv\"");
+        actual.Commands[2].Should().Be("ren \"C:\\video\\input_temp.mkv\" \"input.mkv\"");
+    }
+
+    [Fact]
+    public void BuildDecision_WhenKeepingH264WithConstraintFlags_ReturnsDistinctOutputPath()
+    {
+        var video = CreateVideo(
+            container: "mkv",
+            videoCodec: "h264",
+            audioCodecs: ["mp3"],
+            filePath: @"C:\video\input.mkv",
+            h264SpsFlags: new H264SpsFlags(true, false));
+
+        var actual = CreateSut(keepSource: true).BuildDecision(video);
+
+        actual.OutputPath.Should().Be(@"C:\video\input_out.mkv");
+    }
+
+    [Fact]
     public void BuildExecution_WhenAv1EncodeIsRequired_UsesCpuDecodeNvencEncodeAndDeleteStep()
     {
         var tool = CreateFfmpegTool();
@@ -795,7 +865,8 @@ public sealed class ToMkvGpuScenarioTests
         double framesPerSecond = 29.97,
         string filePath = @"C:\video\input.mkv",
         long? bitrate = null,
-        long? primaryAudioBitrate = null)
+        long? primaryAudioBitrate = null,
+        H264SpsFlags? h264SpsFlags = null)
     {
         return new SourceVideo(
             filePath: filePath,
@@ -807,7 +878,8 @@ public sealed class ToMkvGpuScenarioTests
             framesPerSecond: framesPerSecond,
             duration: TimeSpan.FromMinutes(10),
             bitrate: bitrate,
-            primaryAudioBitrate: primaryAudioBitrate);
+            primaryAudioBitrate: primaryAudioBitrate,
+            h264SpsFlags: h264SpsFlags);
     }
 
     private static VideoSettingsDefaults[] CreateDefaults()

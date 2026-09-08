@@ -120,6 +120,7 @@ public sealed class ToMkvGpuFfmpegTool
         var finalOutputPath = FfmpegExecutionLayout.ResolveFinalOutputPath(decision.OutputPath);
         return decision.CopyVideo &&
                decision.CopyAudio &&
+               !decision.ClearH264ConstraintFlags &&
                video.Container.Equals(decision.TargetContainer.Value, StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }
@@ -176,9 +177,12 @@ public sealed class ToMkvGpuFfmpegTool
     {
         if (decision.Video is CopyVideoIntent)
         {
-            return UsesStrongSyncRemux(decision)
+            var copyPart = UsesStrongSyncRemux(decision)
                 ? "-map 0:v:0 -c:v copy -copytb 1"
                 : "-map 0:v:0 -c:v copy";
+            return decision.ClearH264ConstraintFlags
+                ? $"{copyPart} -bsf:v h264_metadata=zero_new_constraint_set_flags=1"
+                : copyPart;
         }
 
         var encodeVideo = GetRequiredEncodeVideoIntent(decision);

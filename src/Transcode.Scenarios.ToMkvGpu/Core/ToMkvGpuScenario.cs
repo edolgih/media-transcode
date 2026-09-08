@@ -156,11 +156,18 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             video: videoIntent,
             audio: audioIntent,
             keepSource: options.KeepSource,
-            outputPath: ResolveOutputPath(video, options.KeepSource, options.CopyVideo, options.CopyAudio, options.Downscale),
+            outputPath: ResolveOutputPath(
+                video,
+                options.KeepSource,
+                options.CopyVideo,
+                options.CopyAudio,
+                options.ClearH264ConstraintFlags,
+                options.Downscale),
             applyOverlayBackground: options.ApplyOverlayBackground,
             nvdecMaxThreads: options.NvdecMaxThreads,
             videoResolution: videoResolution,
-            sourceBitrate: sourceBitrate);
+            sourceBitrate: sourceBitrate,
+            clearH264ConstraintFlags: options.ClearH264ConstraintFlags);
     }
 
     /// <inheritdoc />
@@ -194,6 +201,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         bool KeepSource,
         bool CopyVideo,
         AudioPathMode AudioMode,
+        bool ClearH264ConstraintFlags,
         DownscaleRequest? Downscale,
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
@@ -226,6 +234,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             KeepSource: Request.KeepSource,
             CopyVideo: copyVideo,
             AudioMode: ResolveAudioMode(video, copyVideo, requiresTimestampFix),
+            ClearH264ConstraintFlags: ShouldClearH264ConstraintFlags(video, copyVideo),
             Downscale: applyDownscale ? requestedDownscale : null,
             TargetFramesPerSecond: copyVideo
                 ? null
@@ -315,11 +324,20 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         return audioCodecs.All(codec => codec.Equals("mp3", StringComparison.OrdinalIgnoreCase));
     }
 
+    private static bool ShouldClearH264ConstraintFlags(SourceVideo video, bool copyVideo)
+    {
+        return copyVideo &&
+               video.VideoCodec.Equals("h264", StringComparison.OrdinalIgnoreCase) &&
+               (video.H264SpsFlags?.ConstraintSet4Flag == true ||
+                video.H264SpsFlags?.ConstraintSet5Flag == true);
+    }
+
     private static string ResolveOutputPath(
         SourceVideo video,
         bool keepSource,
         bool copyVideo,
         bool copyAudio,
+        bool clearH264ConstraintFlags,
         DownscaleRequest? downscale)
     {
         var directory = Path.GetDirectoryName(video.FilePath);
@@ -336,7 +354,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.mkv");
         if (!keepSource ||
             !video.Container.Equals("mkv", StringComparison.OrdinalIgnoreCase) ||
-            (copyVideo && copyAudio))
+            (copyVideo && copyAudio && !clearH264ConstraintFlags))
         {
             return outputPath;
         }

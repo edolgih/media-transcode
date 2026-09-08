@@ -71,6 +71,18 @@ public sealed class ToMkvGpuInfoFormatterTests
     }
 
     [Fact]
+    public void Format_WhenH264ConstraintFlagsRequireRepair_ReturnsCompatibilityMarker()
+    {
+        var sut = CreateSut();
+        var video = CreateVideo(filePath: @"C:\video\input.mkv", container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"]);
+        var plan = CreateDecision(copyVideo: true, copyAudio: true, outputPath: video.FilePath, clearH264ConstraintFlags: true);
+
+        var actual = sut.Format(video, plan);
+
+        actual.Should().Be("input.mkv: 1920x1080 fps 29.97 [h264 constraint flags]");
+    }
+
+    [Fact]
     public void Format_WhenPathContainsDirectories_UsesOnlyFileName()
     {
         var sut = CreateSut();
@@ -182,7 +194,8 @@ public sealed class ToMkvGpuInfoFormatterTests
         string? targetVideoCodec = null,
         string? preferredBackend = null,
         bool synchronizeAudio = false,
-        double? targetFramesPerSecond = null)
+        double? targetFramesPerSecond = null,
+        bool clearH264ConstraintFlags = false)
     {
         VideoIntent videoIntent = copyVideo
             ? new CopyVideoIntent()
@@ -206,6 +219,7 @@ public sealed class ToMkvGpuInfoFormatterTests
             keepSource: false,
             outputPath: outputPath,
             applyOverlayBackground: false,
-            nvdecMaxThreads: null);
+            nvdecMaxThreads: null,
+            clearH264ConstraintFlags: clearH264ConstraintFlags);
     }
 }

@@ -78,6 +78,11 @@ public sealed class ToMkvGpuInfoFormatter
             parts.Add($"fps {targetFramesPerSecond:0.###}");
         }
 
+        if (decision.ClearH264ConstraintFlags)
+        {
+            parts.Add("h264 constraint flags");
+        }
+
         if (HasNonMp3Audio(video))
         {
             parts.Add("audio non-MP3");
