@@ -232,12 +232,6 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             applyFrameRateCap,
             Request.ForceEncode);
         var audioMode = ResolveAudioMode(video, copyVideo, requiresTimestampFix);
-        if (Request.ForceRemux &&
-            (!copyVideo || audioMode != AudioPathMode.Copy))
-        {
-            throw new InvalidOperationException(
-                "--force-remux requires a copy-compatible source and cannot be combined with options that require encoding.");
-        }
 
         return new ResolvedScenarioOptions(
             ApplyOverlayBackground: Request.OverlayBackground,

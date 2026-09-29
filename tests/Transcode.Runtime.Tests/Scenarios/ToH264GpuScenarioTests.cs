@@ -1105,8 +1105,23 @@ public sealed class ToH264GpuScenarioTests
         // Assert
         actual.IsEmpty.Should().BeFalse();
         actual.Commands[0].Should().Contain("-movflags +faststart");
+        actual.Commands[0].Should().NotContain("-cues_to_front");
         actual.Commands[0].Should().Contain("-map 0:a:0? -c:a copy");
         actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0");
+    }
+
+    [Fact]
+    public void BuildExecution_WhenMkvOutputIsRequested_WritesCuesToTheFront()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mp4", videoCodec: "h264", audioCodecs: ["aac"], filePath: @"C:\video\input.mp4");
+        var decision = CreateSut(outputMkv: true).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.IsEmpty.Should().BeFalse();
+        actual.Commands[0].Should().Contain("-cues_to_front 1");
+        actual.Commands[0].Should().NotContain("-movflags +faststart");
     }
 
     [Fact]

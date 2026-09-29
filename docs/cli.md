@@ -52,7 +52,7 @@ Gently repackage an already compatible MKV without transcoding (the source is re
 dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --force-remux --keep-source
 ```
 
-`--force-remux` is for H.264/MPEG-4 with MP3 audio. It rebuilds the container with correct packet interleave, but does not repair stream timestamps or audio/video sync; use `--sync-audio` for that.
+`--force-remux` prevents a no-op: for compatible H.264/MPEG-4 with MP3 audio it gently rebuilds the container without transcoding, with correct packet interleave and the Matroska Cues index at the front. If the file still needs compatibility encoding (for example, AAC audio), the normal encode path is used instead of failing. Use `--sync-audio` for actual stream timestamps or audio/video sync.
 
 Overlay with explicit repair mode:
 
@@ -139,7 +139,7 @@ Quality-oriented video settings:
 
 - `--keep-source`; default: off
 - `--force-encode`; default: off
-- `--force-remux`; default: off; repackages a copy-compatible file without transcoding to repair container packet interleave
+- `--force-remux`; default: off; prevents a no-op: repackages a compatible file without transcoding to repair packet interleave and Matroska Cues index placement, or uses the normal compatibility encode path when required
 - `--overlay-bg`; default: off
 - `--downscale <720|576|480|424>`; default: off
 - `--max-fps <50|40|30|24>`; default: no cap

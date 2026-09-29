@@ -52,7 +52,7 @@ dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\
 dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --force-remux --keep-source
 ```
 
-`--force-remux` предназначен для H.264/MPEG-4 с MP3-аудио. Он пересобирает контейнер с корректным packet interleave, но не исправляет собственно таймстампы или рассинхрон дорожек; для этого нужен `--sync-audio`.
+`--force-remux` предотвращает no-op: для совместимых H.264/MPEG-4 с MP3-аудио он мягко пересобирает контейнер без перекодирования с корректным packet interleave и индексом Matroska Cues в начале. Если конкретному файлу всё же нужен encode для совместимости (например, AAC-аудио), применяется обычный encode-путь, а не ошибка. Для собственно таймстампов или рассинхрона дорожек нужен `--sync-audio`.
 
 Overlay с явным repair mode:
 
@@ -139,7 +139,7 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 
 - `--keep-source`; по умолчанию выключен
 - `--force-encode`; по умолчанию выключен
-- `--force-remux`; по умолчанию выключен; пересобирает copy-compatible файл без перекодирования для исправления packet interleave контейнера
+- `--force-remux`; по умолчанию выключен; предотвращает no-op: совместимый файл перепаковывает без перекодирования для исправления packet interleave и индекса Matroska Cues, а несовместимый обрабатывает обычным compatibility encode-путём
 - `--overlay-bg`; по умолчанию выключен
 - `--downscale <720|576|480|424>`; по умолчанию не применяется
 - `--max-fps <50|40|30|24>`; по умолчанию без cap

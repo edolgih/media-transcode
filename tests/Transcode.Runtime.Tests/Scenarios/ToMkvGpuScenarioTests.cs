@@ -677,7 +677,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.Commands.Should().HaveCount(3);
         actual.Commands[0].Should().Contain("-map 0:v:0 -c:v copy");
         actual.Commands[0].Should().Contain("-map 0:a? -c:a copy");
-        actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0");
+        actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0 -cues_to_front 1");
         actual.Commands[0].Should().NotContain("h264_nvenc");
         actual.Commands[0].Should().NotContain("libmp3lame");
         actual.Commands[1].Should().Be("del \"C:\\video\\input.mkv\"");
@@ -695,14 +695,18 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
-    public void BuildDecision_WhenForceRemuxWouldRequireTranscoding_Throws()
+    public void BuildExecution_WhenForceRemuxWouldRequireTranscoding_UsesRequiredCompatibilityEncode()
     {
+        var tool = CreateFfmpegTool();
         var video = CreateVideo(container: "mkv", videoCodec: "av1", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
 
-        var action = () => CreateSut(forceRemux: true).BuildDecision(video);
+        var decision = CreateSut(forceRemux: true).BuildDecision(video);
+        var actual = tool.BuildExecution(video, decision);
 
-        action.Should().Throw<InvalidOperationException>()
-            .WithMessage("--force-remux requires a copy-compatible source and cannot be combined with options that require encoding.");
+        decision.ForceRemux.Should().BeTrue();
+        actual.Commands[0].Should().Contain("-c:v h264_nvenc");
+        actual.Commands[0].Should().Contain("-c:a libmp3lame -q:a 2");
+        actual.Commands[0].Should().Contain("-cues_to_front 1");
     }
 
     [Fact]
@@ -732,7 +736,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.Commands.Should().HaveCount(3);
         actual.Commands[0].Should().Contain("-map 0:v:0 -c:v copy -bsf:v h264_metadata=zero_new_constraint_set_flags=1");
         actual.Commands[0].Should().Contain("-map 0:a? -c:a copy");
-        actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0");
+        actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0 -cues_to_front 1");
         actual.Commands[0].Should().NotContain("h264_nvenc");
         actual.Commands[1].Should().Be("del \"C:\\video\\input.mkv\"");
         actual.Commands[2].Should().Be("ren \"C:\\video\\input_temp.mkv\" \"input.mkv\"");

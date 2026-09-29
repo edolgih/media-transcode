@@ -154,6 +154,7 @@ public sealed class ToMkvGpuFfmpegTool
         parts.Add("-sn");
         parts.Add("-max_muxing_queue_size 4096");
         parts.Add("-max_interleave_delta 0");
+        parts.Add("-cues_to_front 1");
         parts.Add(FfmpegExecutionLayout.Quote(outputPath));
 
         return string.Join(" ", parts.Where(static part => !string.IsNullOrWhiteSpace(part)));

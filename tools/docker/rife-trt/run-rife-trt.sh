@@ -160,6 +160,8 @@ ffmpeg_args=(
 
 if [[ "${container_name,,}" == "mp4" ]]; then
     ffmpeg_args+=(-movflags +faststart)
+elif [[ "${container_name,,}" == "mkv" ]]; then
+    ffmpeg_args+=(-cues_to_front 1)
 fi
 
 vspipe -c y4m "$script_path" - >"$pipe_path" &
