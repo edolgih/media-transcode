@@ -42,6 +42,7 @@ public sealed class ToMkvGpuRequest
     /// <param name="synchronizeAudio">Whether the audio sync-safe path should be forced.</param>
     /// <param name="keepSource">Whether the source file should be preserved after execution.</param>
     /// <param name="forceEncode">Whether remux-compatible sources should still use the encode path at source resolution.</param>
+    /// <param name="forceRemux">Whether a copy-compatible source should be repackaged without transcoding.</param>
     /// <param name="videoSettings">Reusable video-settings directives.</param>
     /// <param name="downscale">Explicit downscale intent when the scenario requests resized output.</param>
     /// <param name="nvencPreset">Explicit NVENC preset override.</param>
@@ -52,6 +53,7 @@ public sealed class ToMkvGpuRequest
         bool synchronizeAudio = false,
         bool keepSource = false,
         bool forceEncode = false,
+        bool forceRemux = false,
         VideoSettingsRequest? videoSettings = null,
         DownscaleRequest? downscale = null,
         string? nvencPreset = null,
@@ -73,6 +75,7 @@ public sealed class ToMkvGpuRequest
         SynchronizeAudio = synchronizeAudio;
         KeepSource = keepSource;
         ForceEncode = forceEncode;
+        ForceRemux = forceRemux;
         VideoSettings = videoSettings;
         Downscale = downscale;
         NvencPreset = resolvedNvencPreset ?? NvencPreset.Default;
@@ -95,6 +98,11 @@ public sealed class ToMkvGpuRequest
     /// Gets a value indicating whether remux-compatible sources should still be rebuilt through the encode path.
     /// </summary>
     public bool ForceEncode { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether a copy-compatible source should be repackaged without transcoding.
+    /// </summary>
+    public bool ForceRemux { get; }
 
     /*
     Это профильные video-настройки качества для encode-пути.

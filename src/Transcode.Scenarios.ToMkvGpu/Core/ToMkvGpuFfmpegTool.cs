@@ -121,6 +121,7 @@ public sealed class ToMkvGpuFfmpegTool
         return decision.CopyVideo &&
                decision.CopyAudio &&
                !decision.ClearH264ConstraintFlags &&
+               !decision.ForceRemux &&
                video.Container.Equals(decision.TargetContainer.Value, StringComparison.OrdinalIgnoreCase) &&
                finalOutputPath.Equals(video.FilePath, StringComparison.OrdinalIgnoreCase);
     }

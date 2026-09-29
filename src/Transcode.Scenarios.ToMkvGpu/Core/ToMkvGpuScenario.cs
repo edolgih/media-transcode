@@ -162,12 +162,14 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
                 options.CopyVideo,
                 options.CopyAudio,
                 options.ClearH264ConstraintFlags,
+                options.ForceRemux,
                 options.Downscale),
             applyOverlayBackground: options.ApplyOverlayBackground,
             nvdecMaxThreads: options.NvdecMaxThreads,
             videoResolution: videoResolution,
             sourceBitrate: sourceBitrate,
-            clearH264ConstraintFlags: options.ClearH264ConstraintFlags);
+            clearH264ConstraintFlags: options.ClearH264ConstraintFlags,
+            forceRemux: options.ForceRemux);
     }
 
     /// <inheritdoc />
@@ -202,6 +204,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         bool CopyVideo,
         AudioPathMode AudioMode,
         bool ClearH264ConstraintFlags,
+        bool ForceRemux,
         DownscaleRequest? Downscale,
         double? TargetFramesPerSecond,
         VideoSettingsRequest? VideoSettings,
@@ -228,13 +231,21 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
             applyDownscale,
             applyFrameRateCap,
             Request.ForceEncode);
+        var audioMode = ResolveAudioMode(video, copyVideo, requiresTimestampFix);
+        if (Request.ForceRemux &&
+            (!copyVideo || audioMode != AudioPathMode.Copy))
+        {
+            throw new InvalidOperationException(
+                "--force-remux requires a copy-compatible source and cannot be combined with options that require encoding.");
+        }
 
         return new ResolvedScenarioOptions(
             ApplyOverlayBackground: Request.OverlayBackground,
             KeepSource: Request.KeepSource,
             CopyVideo: copyVideo,
-            AudioMode: ResolveAudioMode(video, copyVideo, requiresTimestampFix),
+            AudioMode: audioMode,
             ClearH264ConstraintFlags: ShouldClearH264ConstraintFlags(video, copyVideo),
+            ForceRemux: Request.ForceRemux,
             Downscale: applyDownscale ? requestedDownscale : null,
             TargetFramesPerSecond: copyVideo
                 ? null
@@ -338,6 +349,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         bool copyVideo,
         bool copyAudio,
         bool clearH264ConstraintFlags,
+        bool forceRemux,
         DownscaleRequest? downscale)
     {
         var directory = Path.GetDirectoryName(video.FilePath);
@@ -354,7 +366,7 @@ public sealed class ToMkvGpuScenario : TranscodeScenario
         var outputPath = Path.Combine(directory, $"{video.FileNameWithoutExtension}.mkv");
         if (!keepSource ||
             !video.Container.Equals("mkv", StringComparison.OrdinalIgnoreCase) ||
-            (copyVideo && copyAudio && !clearH264ConstraintFlags))
+            (copyVideo && copyAudio && !clearH264ConstraintFlags && !forceRemux))
         {
             return outputPath;
         }

@@ -666,6 +666,56 @@ public sealed class ToMkvGpuScenarioTests
     }
 
     [Fact]
+    public void BuildExecution_WhenForceRemuxIsRequestedOnCopyCompatibleMkv_RepackagesWithoutTranscoding()
+    {
+        var tool = CreateFfmpegTool();
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3", "mp3"], filePath: @"C:\video\input.mkv");
+        var decision = CreateSut(forceRemux: true).BuildDecision(video);
+
+        var actual = tool.BuildExecution(video, decision);
+
+        actual.Commands.Should().HaveCount(3);
+        actual.Commands[0].Should().Contain("-map 0:v:0 -c:v copy");
+        actual.Commands[0].Should().Contain("-map 0:a? -c:a copy");
+        actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0");
+        actual.Commands[0].Should().NotContain("h264_nvenc");
+        actual.Commands[0].Should().NotContain("libmp3lame");
+        actual.Commands[1].Should().Be("del \"C:\\video\\input.mkv\"");
+        actual.Commands[2].Should().Be("ren \"C:\\video\\input_temp.mkv\" \"input.mkv\"");
+    }
+
+    [Fact]
+    public void BuildDecision_WhenKeepingSourceAndForceRemuxIsRequested_ReturnsDistinctOutputPath()
+    {
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
+
+        var actual = CreateSut(keepSource: true, forceRemux: true).BuildDecision(video);
+
+        actual.OutputPath.Should().Be(@"C:\video\input_out.mkv");
+    }
+
+    [Fact]
+    public void BuildDecision_WhenForceRemuxWouldRequireTranscoding_Throws()
+    {
+        var video = CreateVideo(container: "mkv", videoCodec: "av1", audioCodecs: ["aac"], filePath: @"C:\video\input.mkv");
+
+        var action = () => CreateSut(forceRemux: true).BuildDecision(video);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("--force-remux requires a copy-compatible source and cannot be combined with options that require encoding.");
+    }
+
+    [Fact]
+    public void FormatInfo_WhenForceRemuxIsRequested_IdentifiesTheRepairPath()
+    {
+        var video = CreateVideo(container: "mkv", videoCodec: "h264", audioCodecs: ["mp3"], filePath: @"C:\video\input.mkv");
+
+        var actual = CreateSut(forceRemux: true).FormatInfo(video);
+
+        actual.Should().Contain("force remux");
+    }
+
+    [Fact]
     public void BuildExecution_WhenCopiedH264SetsConstraintFlags_RewritesThemWithoutVideoEncode()
     {
         var tool = CreateFfmpegTool();
@@ -834,6 +884,7 @@ public sealed class ToMkvGpuScenarioTests
         bool synchronizeAudio = false,
         bool keepSource = false,
         bool forceEncode = false,
+        bool forceRemux = false,
         int? maxFramesPerSecond = null,
         int? nvdecMaxThreads = null)
     {
@@ -842,6 +893,7 @@ public sealed class ToMkvGpuScenarioTests
             synchronizeAudio: synchronizeAudio,
             keepSource: keepSource,
             forceEncode: forceEncode,
+            forceRemux: forceRemux,
             downscale: downscaleTarget.HasValue ? new DownscaleRequest(downscaleTarget.Value) : null,
             maxFramesPerSecond: maxFramesPerSecond,
             nvdecMaxThreads: nvdecMaxThreads));

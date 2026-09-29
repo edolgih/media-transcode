@@ -46,6 +46,14 @@ Force encode at source resolution while still resolving to target caps:
 dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --force-encode --content-profile film --quality-profile default
 ```
 
+Gently repackage an already compatible MKV without transcoding (the source is retained and the output receives an `_out` suffix):
+
+```bash
+dotnet run --project src/Transcode.Cli -- --scenario tomkvgpu --input "D:\\Src\\movie.mkv" --force-remux --keep-source
+```
+
+`--force-remux` is for H.264/MPEG-4 with MP3 audio. It rebuilds the container with correct packet interleave, but does not repair stream timestamps or audio/video sync; use `--sync-audio` for that.
+
 Overlay with explicit repair mode:
 
 ```bash
@@ -131,6 +139,7 @@ Quality-oriented video settings:
 
 - `--keep-source`; default: off
 - `--force-encode`; default: off
+- `--force-remux`; default: off; repackages a copy-compatible file without transcoding to repair container packet interleave
 - `--overlay-bg`; default: off
 - `--downscale <720|576|480|424>`; default: off
 - `--max-fps <50|40|30|24>`; default: no cap

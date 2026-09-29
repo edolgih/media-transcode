@@ -17,6 +17,7 @@ internal static class ToMkvGpuCliRequestParser
     private const string DownscaleOptionName = "--downscale";
     private const string KeepSourceOptionName = "--keep-source";
     private const string ForceEncodeOptionName = "--force-encode";
+    private const string ForceRemuxOptionName = "--force-remux";
     private const string OverlayBackgroundOptionName = "--overlay-bg";
     private const string MaxFramesPerSecondOptionName = "--max-fps";
     private const string SynchronizeAudioOptionName = "--sync-audio";
@@ -93,6 +94,10 @@ internal static class ToMkvGpuCliRequestParser
                 return true;
             case ForceEncodeOptionName:
                 state.ForceEncode = true;
+                errorText = null;
+                return true;
+            case ForceRemuxOptionName:
+                state.ForceRemux = true;
                 errorText = null;
                 return true;
             case OverlayBackgroundOptionName:
@@ -242,6 +247,7 @@ internal static class ToMkvGpuCliRequestParser
                 synchronizeAudio: state.SynchronizeAudio,
                 keepSource: state.KeepSource,
                 forceEncode: state.ForceEncode,
+                forceRemux: state.ForceRemux,
                 videoSettings: videoSettingsRequest,
                 downscale: downscaleRequest,
                 nvencPreset: state.NvencPreset,
@@ -311,6 +317,7 @@ internal static class ToMkvGpuCliRequestParser
         public bool SynchronizeAudio;
         public bool KeepSource;
         public bool ForceEncode;
+        public bool ForceRemux;
         public int? DownscaleTargetHeight;
         public int? MaxFramesPerSecond;
         public int? NvdecMaxThreads;

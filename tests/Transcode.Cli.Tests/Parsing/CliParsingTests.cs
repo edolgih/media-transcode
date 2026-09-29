@@ -436,6 +436,38 @@ public sealed class CliParsingTests
         scenario.Request.ForceEncode.Should().BeTrue();
     }
 
+    [Fact]
+    public void CreateScenario_WhenTomkvgpuUsesForceRemux_MapsRuntimeRequest()
+    {
+        var parsedOk = CliArgumentParser.TryParse(
+            [
+                "--scenario", "tomkvgpu",
+                "--input", @"C:\video\a.mkv",
+                "--force-remux"
+            ],
+            CreateRegistry(),
+            out var parsed,
+            out var errorText);
+
+        parsedOk.Should().BeTrue();
+        errorText.Should().BeNull();
+
+        var request = new CliTranscodeRequest(
+            inputPath: @"C:\video\a.mkv",
+            scenarioName: parsed!.Scenario,
+            info: parsed.Info,
+            scenarioInput: parsed.ScenarioInput,
+            scenarioArgCount: parsed.ScenarioArgCount);
+
+        var scenario = new ToMkvGpuCliScenarioHandler(new ToMkvGpuInfoFormatter())
+            .CreateScenario(request)
+            .Should()
+            .BeOfType<ToMkvGpuScenario>()
+            .Subject;
+
+        scenario.Request.ForceRemux.Should().BeTrue();
+    }
+
     [Theory]
     [InlineData(480)]
     [InlineData(424)]

@@ -30,7 +30,8 @@ internal sealed class ToMkvGpuDecision
         NvdecMaxThreads? nvdecMaxThreads,
         ProfileDrivenVideoSettingsResolution? videoResolution = null,
         ToMkvGpuResolvedSourceBitrate? sourceBitrate = null,
-        bool clearH264ConstraintFlags = false)
+        bool clearH264ConstraintFlags = false,
+        bool forceRemux = false)
     {
         TargetContainer = targetContainer ?? throw new ArgumentNullException(nameof(targetContainer));
         Video = NormalizeVideoPlan(video);
@@ -42,6 +43,7 @@ internal sealed class ToMkvGpuDecision
         VideoResolution = videoResolution;
         SourceBitrate = sourceBitrate;
         ClearH264ConstraintFlags = clearH264ConstraintFlags;
+        ForceRemux = forceRemux;
     }
 
     /*
@@ -121,6 +123,11 @@ internal sealed class ToMkvGpuDecision
     /// Gets a value indicating whether copied H.264 must have constraint_set4/5 cleared.
     /// </summary>
     public bool ClearH264ConstraintFlags { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the source must be repackaged even when it is otherwise a no-op.
+    /// </summary>
+    public bool ForceRemux { get; }
 
     /*
     Это флаг, что видео можно копировать без перекодирования.

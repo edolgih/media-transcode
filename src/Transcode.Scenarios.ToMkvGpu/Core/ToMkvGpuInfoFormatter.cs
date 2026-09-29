@@ -83,6 +83,11 @@ public sealed class ToMkvGpuInfoFormatter
             parts.Add("h264 constraint flags");
         }
 
+        if (decision.ForceRemux)
+        {
+            parts.Add("force remux");
+        }
+
         if (HasNonMp3Audio(video))
         {
             parts.Add("audio non-MP3");
