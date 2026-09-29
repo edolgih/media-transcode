@@ -180,6 +180,20 @@ Quality-oriented video settings:
 - `docker` with GPU access for `toh264rife`
 - a locally built `media-transcode-rife-trt` image from `tools/docker/rife-trt`
 
+### Rife Docker Image
+
+Check whether the image is available locally:
+
+```powershell
+docker image inspect media-transcode-rife-trt
+```
+
+Build the image, or update it after changing `tools/docker/rife-trt`:
+
+```powershell
+docker build -t media-transcode-rife-trt tools/docker/rife-trt
+```
+
 The CLI resolves binary paths from standard host configuration sources such as `appsettings.json` and environment variables. `toh264rife` uses a Docker backend. A minimal `appsettings.json` looks like this:
 
 ```json

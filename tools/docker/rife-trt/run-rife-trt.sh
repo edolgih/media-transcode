@@ -155,6 +155,7 @@ ffmpeg_args=(
     -c:a copy
     -sn
     -max_muxing_queue_size 4096
+    -max_interleave_delta 0
 )
 
 if [[ "${container_name,,}" == "mp4" ]]; then

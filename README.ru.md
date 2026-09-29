@@ -49,6 +49,20 @@
 - `docker` с доступом к GPU при использовании сценария `toh264rife`
 - локально собранный image `media-transcode-rife-trt` из `tools/docker/rife-trt`
 
+### Образ Docker для Rife
+
+Проверить, что нужный образ уже есть локально:
+
+```powershell
+docker image inspect media-transcode-rife-trt
+```
+
+Собрать образ (либо обновить его после изменений в `tools/docker/rife-trt`):
+
+```powershell
+docker build -t media-transcode-rife-trt tools/docker/rife-trt
+```
+
 CLI получает пути к tool-ам из стандартных источников конфигурации host-а, включая `appsettings.json` и переменные окружения. Для `toh264rife` снаружи настраивается только `Scenarios:ToH264Rife:DockerImage`. Имена cache volume и имя команды `docker` зашиты в backend.
 
 ## Сборка И Тесты

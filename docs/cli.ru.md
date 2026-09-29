@@ -180,6 +180,20 @@ Get-ChildItem -Recurse *.mp4 | ForEach-Object FullName | dotnet run --project sr
 - `docker` с доступом к GPU для `toh264rife`
 - локально собранный image `media-transcode-rife-trt` из `tools/docker/rife-trt`
 
+### Образ Docker для Rife
+
+Проверить наличие локального образа:
+
+```powershell
+docker image inspect media-transcode-rife-trt
+```
+
+Собрать образ или обновить его после изменений в `tools/docker/rife-trt`:
+
+```powershell
+docker build -t media-transcode-rife-trt tools/docker/rife-trt
+```
+
 CLI получает пути к бинарникам из стандартных источников host configuration, например `appsettings.json` и переменных окружения. `toh264rife` использует Docker backend. Минимальный `appsettings.json` выглядит так:
 
 ```json

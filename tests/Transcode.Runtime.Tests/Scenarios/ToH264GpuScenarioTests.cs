@@ -1106,6 +1106,7 @@ public sealed class ToH264GpuScenarioTests
         actual.IsEmpty.Should().BeFalse();
         actual.Commands[0].Should().Contain("-movflags +faststart");
         actual.Commands[0].Should().Contain("-map 0:a:0? -c:a copy");
+        actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0");
     }
 
     [Fact]

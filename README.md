@@ -49,6 +49,20 @@ The CLI requires an explicit `--scenario <name>` argument. The current public sc
 - `docker` with GPU access when using the `toh264rife` scenario
 - a locally built `media-transcode-rife-trt` image from `tools/docker/rife-trt`
 
+### Rife Docker Image
+
+Check whether the required image is available locally:
+
+```powershell
+docker image inspect media-transcode-rife-trt
+```
+
+Build the image, or update it after changing `tools/docker/rife-trt`:
+
+```powershell
+docker build -t media-transcode-rife-trt tools/docker/rife-trt
+```
+
 The CLI resolves tool paths from standard host configuration sources such as `appsettings.json` and environment variables. For `toh264rife`, only `Scenarios:ToH264Rife:DockerImage` is externally configurable. Cache volume names and the `docker` command name are built into the backend.
 
 ## Build And Test

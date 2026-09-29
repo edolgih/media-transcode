@@ -20,6 +20,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\tools\docker\rife-trt\run-rife-trt.sh"
+          Link="rife-trt\run-rife-trt.sh"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Transcode.Core\Transcode.Core.csproj" />
     <ProjectReference Include="..\..\src\Transcode.Scenarios.ToH264Gpu\Transcode.Scenarios.ToH264Gpu.csproj" />
     <ProjectReference Include="..\..\src\Transcode.Scenarios.ToH264Rife\Transcode.Scenarios.ToH264Rife.csproj" />

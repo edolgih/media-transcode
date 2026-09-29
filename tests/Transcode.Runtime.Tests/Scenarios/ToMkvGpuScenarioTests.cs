@@ -682,6 +682,7 @@ public sealed class ToMkvGpuScenarioTests
         actual.Commands.Should().HaveCount(3);
         actual.Commands[0].Should().Contain("-map 0:v:0 -c:v copy -bsf:v h264_metadata=zero_new_constraint_set_flags=1");
         actual.Commands[0].Should().Contain("-map 0:a? -c:a copy");
+        actual.Commands[0].Should().Contain("-max_muxing_queue_size 4096 -max_interleave_delta 0");
         actual.Commands[0].Should().NotContain("h264_nvenc");
         actual.Commands[1].Should().Be("del \"C:\\video\\input.mkv\"");
         actual.Commands[2].Should().Be("ren \"C:\\video\\input_temp.mkv\" \"input.mkv\"");
